@@ -8,9 +8,12 @@ export const NotificationProvider = ({ children }) => {
 
     const showNotification = useCallback((message, type = 'info', duration = 3000) => {
         // Clear any existing timeout to prevent multiple notifications overlapping
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
+        setTimeoutId(prevTimeoutId => {
+            if (prevTimeoutId) {
+                clearTimeout(prevTimeoutId);
+            }
+            return null;
+        });
 
         setNotification({ message, type });
 
@@ -19,15 +22,17 @@ export const NotificationProvider = ({ children }) => {
             setTimeoutId(null);
         }, duration);
         setTimeoutId(newTimeoutId);
-    }, [timeoutId]);
+    }, []); // Empty dependency array for stability
 
     const hideNotification = useCallback(() => {
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-            setTimeoutId(null);
-        }
+        setTimeoutId(prevTimeoutId => {
+            if (prevTimeoutId) {
+                clearTimeout(prevTimeoutId);
+            }
+            return null;
+        });
         setNotification(null);
-    }, [timeoutId]);
+    }, []); // Empty dependency array for stability
 
     return (
         <NotificationContext.Provider value={{ notification, showNotification, hideNotification }}>

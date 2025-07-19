@@ -14,6 +14,7 @@ export const AppProvider = ({ children }) => {
     const [groups, setGroups] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [notifiedOverduePayments, setNotifiedOverduePayments] = useState({});
 
     useEffect(() => {
         const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -70,13 +71,15 @@ export const AppProvider = ({ children }) => {
         students.forEach(student => {
             if (student.installments && student.installments.length > 0) {
                 student.installments.forEach(installment => {
-                    if (installment.status !== 'Paid' && installment.dueDate && installment.dueDate.toDate() < today) {
+                    const installmentId = `${student.id}-${installment.number}`;
+                    if (installment.status !== 'Paid' && installment.dueDate && installment.dueDate.toDate() < today && !notifiedOverduePayments[installmentId]) {
                         showNotification(`Overdue payment for ${student.fullName}: Installment #${installment.number} (₺${installment.amount.toFixed(2)}) was due on ${installment.dueDate.toDate().toLocaleDateString()}.`, 'warning', 10000);
+                        setNotifiedOverduePayments(prev => ({ ...prev, [installmentId]: true }));
                     }
                 });
             }
         });
-    }, [students, showNotification]);
+    }, [students, showNotification, notifiedOverduePayments]);
 
     const value = {
         user,
