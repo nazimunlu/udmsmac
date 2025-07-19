@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
