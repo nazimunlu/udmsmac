@@ -83,7 +83,7 @@ const GroupsModule = () => {
     const filteredGroups = groups.filter(group => showArchivedGroups ? group.isArchived : !group.isArchived);
 
     return (
-        <div className="relative p-4 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
+        <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-800">Groups</h2>
                 <button onClick={openAddModal} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Group</button>
