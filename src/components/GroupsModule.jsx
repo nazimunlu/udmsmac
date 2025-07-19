@@ -85,7 +85,7 @@ const GroupsModule = () => {
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                <h2 className="text-3xl font-bold text-gray-800">Groups</h2>
+                <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.GROUPS} className="w-8 h-8 mr-3"/>Groups</h2>
                 <button onClick={openAddModal} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Group</button>
             </div>
             <div className="mb-4 border-b border-gray-200">
