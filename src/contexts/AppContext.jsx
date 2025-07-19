@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onSnapshot, collection, query, where } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth, db } from '../firebase';
+import { useNotification } from './NotificationContext';
 
 const AppContext = createContext();
 
@@ -32,7 +33,7 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         if (!userId || !appId) return;
 
-        const studentsQuery = query(collection(db, 'artifacts', appId, 'users', userId, 'students'), where("isArchived", "==", false));
+        const studentsQuery = collection(db, 'artifacts', appId, 'users', userId, 'students');
         const unsubStudents = onSnapshot(studentsQuery, (snapshot) => {
             const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setStudents(studentsData);
@@ -57,6 +58,25 @@ export const AppProvider = ({ children }) => {
             unsubTransactions();
         };
     }, [userId, appId]);
+
+    const { showNotification } = useNotification();
+
+    useEffect(() => {
+        if (!students.length) return;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        students.forEach(student => {
+            if (student.installments && student.installments.length > 0) {
+                student.installments.forEach(installment => {
+                    if (installment.status !== 'Paid' && installment.dueDate && installment.dueDate.toDate() < today) {
+                        showNotification(`Overdue payment for ${student.fullName}: Installment #${installment.number} (₺${installment.amount.toFixed(2)}) was due on ${installment.dueDate.toDate().toLocaleDateString()}.`, 'warning', 10000);
+                    }
+                });
+            }
+        });
+    }, [students, showNotification]);
 
     const value = {
         user,

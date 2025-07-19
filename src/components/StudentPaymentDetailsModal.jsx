@@ -4,12 +4,15 @@ import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput } from './Form';
 import { formatDate } from '../utils/formatDate';
+import InvoiceGenerator from './InvoiceGenerator';
 
 const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
     const { db, userId, appId, transactions } = useAppContext();
     const [hours, setHours] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingInstallment, setEditingInstallment] = useState(null);
+    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+    const [selectedPaymentForInvoice, setSelectedPaymentForInvoice] = useState(null);
 
     if (!student) return null;
 
@@ -239,6 +242,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
                                                         Log Payment
                                                     </button>
                                                     <button onClick={() => handleEditInstallment(inst)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-200">Edit</button>
+                                                    <button onClick={() => handleGenerateInvoice(inst)} className="px-3 py-1 text-sm rounded-lg text-white bg-purple-600 hover:bg-purple-700">Invoice</button>
                                                 </div>
                                             ) : (
                                                 <button onClick={() => handleUndoInstallmentPayment(inst.number)} className="px-3 py-1 text-sm rounded-lg text-white bg-yellow-600 hover:bg-yellow-700">
@@ -252,6 +256,14 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
                         ))}
                     </ul>
                 </div>
+            )}
+            {showInvoiceModal && selectedPaymentForInvoice && (
+                <Modal isOpen={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title="Invoice Preview">
+                    <InvoiceGenerator student={student} payment={selectedPaymentForInvoice} />
+                    <div className="flex justify-end mt-4">
+                        <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Print Invoice</button>
+                    </div>
+                </Modal>
             )}
         </Modal>
     );
