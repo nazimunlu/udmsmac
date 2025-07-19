@@ -60,7 +60,7 @@ const FinancesModule = () => {
                         <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200">
                             <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600" />
                         </button>
-                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-3 py-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow text-sm">
+                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow">
                             <Icon path={ICONS.ADD} className="mr-2"/>Log Transaction
                         </button>
                     </div>

@@ -114,9 +114,9 @@ const GroupsModule = () => {
                                 <div className="flex-grow"></div>
                                 <div className="flex justify-between items-center mt-4">
                                     <span className="text-sm text-gray-500">{studentCount(group.id)} Students</span>
-                                    <div className="flex items-center space-x-2">
-                                        <button onClick={() => openDetailsModal(group)} className="text-sm font-medium text-blue-600 hover:underline">Details</button>
-                                        <button onClick={() => openEditModal(group)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openDetailsModal(group)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
+                                        <button onClick={() => openEditModal(group)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                         <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                         {showArchivedGroups && (
                                             <button onClick={() => handleUnarchiveGroup(group)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.UPLOAD} className="w-5 h-5" /></button>
