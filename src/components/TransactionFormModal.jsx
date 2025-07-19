@@ -8,6 +8,7 @@ import CustomDatePicker from './CustomDatePicker';
 
 const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
     const { db, storage, userId, appId } = useAppContext();
+    const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
         type: 'income-group',
         amount: '',
