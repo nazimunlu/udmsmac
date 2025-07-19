@@ -82,9 +82,11 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
                 <div className="space-y-6">
-                     <FormSection title="Lessons">
-                        <div className="sm:col-span-6">
-                            <button onClick={() => openLessonFormModal(null)} className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700"><Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>Log Lesson</button>
+                     <FormSection title="Lessons Log">
+                        <div className="absolute top-0 right-0 mt-4 mr-4">
+                            <button onClick={() => openLessonFormModal(null)} className="flex items-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm">
+                                <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
+                            </button>
                         </div>
                         <div className="sm:col-span-6 mt-4">
                              {lessons.length > 0 ? (
