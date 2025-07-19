@@ -101,6 +101,39 @@ const DashboardModule = ({ setActiveModule }) => {
         return <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-4 ${color}`}><Icon path={path} className="w-5 h-5"/></div>
     };
 
+    const getTimeRemaining = (item) => {
+        const now = Date.now();
+        const startTime = item.startTime.toMillis();
+        const endTime = item.effectiveEndTime;
+
+        if (item.type === 'birthday') return null; // Birthdays don't have time remaining
+
+        if (now < startTime) {
+            // Event is upcoming
+            const diff = startTime - now;
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            let timeString = '';
+            if (days > 0) timeString += `${days}d `;
+            if (hours > 0) timeString += `${hours}h `;
+            timeString += `${minutes}m`;
+            return `starts in ${timeString.trim()}`;
+        } else if (now >= startTime && now < endTime) {
+            // Event is in progress
+            const diff = endTime - now;
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+
+            let timeString = '';
+            if (hours > 0) timeString += `${hours}h `;
+            timeString += `${minutes}m`;
+            return `ends in ${timeString.trim()}`;
+        }
+        return null;
+    };
+
     return (
         <div className="relative p-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
@@ -145,7 +178,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 <li key={item.id} className="flex items-center">
                                     <EventIcon type={item.type} />
                                     <div>
-                                        <p className="font-medium text-gray-800">{item.eventName}</p>
+                                        <p className="font-medium text-gray-800">{item.eventName} <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span></p>
                                         <p className="text-sm text-gray-500">{item.startTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                     </div>
                                 </li>
@@ -163,7 +196,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 <li key={item.id} className={`p-3 rounded-lg flex items-center ${index === 0 ? 'bg-blue-50' : ''}`}>
                                      <EventIcon type={item.type} />
                                     <div>
-                                        <p className="font-medium text-gray-800">{item.eventName}</p>
+                                        <p className="font-medium text-gray-800">{item.eventName} <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span></p>
                                         <p className="text-sm text-gray-500">{formatDate(item.startTime.toDate())}</p>
                                     </div>
                                 </li>
