@@ -155,7 +155,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
                     students={students}
                 />
             )}
-            <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} />
+            <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} students={students} />
         </>
     );
 };
