@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  background-color: #f9fafb; /* A very light gray, equivalent to Tailwind's bg-gray-50 */
+}
