@@ -34,10 +34,27 @@ const DashboardModule = ({ setActiveModule }) => {
 
         const processAllEvents = () => {
             const allItems = [...(window.lessons || []), ...(window.events || []), ...(window.birthdays || [])];
-            
-            setTodaysSchedule(allItems.filter(i => getSortableTime(i) >= now.getTime() && getSortableTime(i) <= todayEnd.getTime()).sort((a,b) => getSortableTime(a) - getSortableTime(b)));
-            setWeekEvents(allItems.filter(i => getSortableTime(i) >= weekStart.getTime() && getSortableTime(i) < weekEnd.getTime()));
-            setUpcomingEvents(allItems.filter(i => getSortableTime(i) >= now.getTime()).sort((a,b) => getSortableTime(a) - getSortableTime(b)));
+
+            const eventsWithEndTimes = allItems.map(item => {
+                let effectiveEndTime = item.startTime.toMillis(); // Default to start time
+                if (item.type === 'lesson') {
+                    effectiveEndTime = item.startTime.toMillis() + 2 * 60 * 60 * 1000; // 2 hours for lessons
+                } else if (item.type === 'event' && item.endTime) {
+                    effectiveEndTime = item.endTime.toMillis();
+                } else if (item.type === 'event') { // Default 1 hour for events if no endTime
+                    effectiveEndTime = item.startTime.toMillis() + 1 * 60 * 60 * 1000;
+                }
+                return { ...item, effectiveEndTime };
+            });
+
+            setTodaysSchedule(eventsWithEndTimes.filter(i =>
+                i.effectiveEndTime >= now.getTime() && // Event ends after or at current time
+                i.startTime.toMillis() <= todayEnd.getTime() // Event started before or at end of today
+            ).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis())); // Sort by start time
+
+            setUpcomingEvents(eventsWithEndTimes.filter(i => i.startTime.toMillis() >= now.getTime()).sort((a,b) => i.startTime.toMillis() - b.startTime.toMillis()));
+
+            setWeekEvents(eventsWithEndTimes.filter(i => i.startTime.toMillis() >= weekStart.getTime() && i.startTime.toMillis() < weekEnd.getTime()));
         };
 
         const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
