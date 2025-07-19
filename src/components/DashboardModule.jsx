@@ -143,6 +143,31 @@ const DashboardModule = ({ setActiveModule }) => {
         return null;
     };
 
+    const handleEditEvent = (event) => {
+        setEventToEdit(event);
+        setIsEventModalOpen(true);
+    };
+
+    const openDeleteConfirmation = (event) => {
+        setEventToDelete(event);
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleDeleteEvent = async () => {
+        if (!eventToDelete) return;
+        try {
+            const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToDelete.id);
+            await deleteDoc(eventDocRef);
+            showNotification('Event deleted successfully!', 'success');
+        } catch (error) {
+            console.error("Error deleting event:", error);
+            showNotification('Failed to delete event.', 'error');
+        } finally {
+            setIsConfirmModalOpen(false);
+            setEventToDelete(null);
+        }
+    };
+
     return (
         <div className="relative p-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
@@ -184,12 +209,20 @@ const DashboardModule = ({ setActiveModule }) => {
                     {todaysSchedule.length > 0 ? (
                         <ul className="space-y-4">
                             {todaysSchedule.map(item => (
-                                <li key={item.id} className="flex items-center">
-                                    <EventIcon type={item.type} />
-                                    <div>
-                                        <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                        <p className="text-sm text-gray-500">{item.startTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                <li key={item.id} className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <EventIcon type={item.type} />
+                                        <div>
+                                            <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                            <p className="text-sm text-gray-500">{item.startTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                        </div>
                                     </div>
+                                    {item.type === 'event' && (
+                                        <div className="flex space-x-2">
+                                            <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                            <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -202,12 +235,20 @@ const DashboardModule = ({ setActiveModule }) => {
                      {upcomingEvents.length > 0 ? (
                         <ul className="space-y-4">
                             {upcomingEvents.slice(0, 5).map((item, index) => (
-                                <li key={item.id} className={`p-3 rounded-lg flex items-center ${index === 0 ? 'bg-blue-50' : ''}`}>
-                                     <EventIcon type={item.type} />
-                                    <div>
-                                        <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                        <p className="text-sm text-gray-500">{formatDate(item.startTime.toDate())}</p>
-                                    </div>
+                                <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between ${index === 0 ? 'bg-blue-50' : ''}`}>
+                                     <div className="flex items-center">
+                                        <EventIcon type={item.type} />
+                                        <div>
+                                            <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                            <p className="text-sm text-gray-500">{formatDate(item.startTime.toDate())}</p>
+                                        </div>
+                                     </div>
+                                     {item.type === 'event' && (
+                                        <div className="flex space-x-2">
+                                            <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                            <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -221,7 +262,16 @@ const DashboardModule = ({ setActiveModule }) => {
                 </div>
             </div>
             <StudentFormModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
-            <EventFormModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} />
+            <EventFormModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventToEdit={eventToEdit} />
+            {eventToDelete && (
+                <ConfirmationModal
+                    isOpen={isConfirmModalOpen}
+                    onClose={() => setIsConfirmModalOpen(false)}
+                    onConfirm={handleDeleteEvent}
+                    title="Delete Event"
+                    message={`Are you sure you want to delete the event "${eventToDelete.eventName}"? This action cannot be undone.`}
+                />
+            )}
         </div>
     );
 };
