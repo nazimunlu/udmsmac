@@ -10,7 +10,7 @@ import { formatDate } from '../utils/formatDate';
 
 const StudentTypeCard = ({ title, count, icon, onClick }) => (
     <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105">
-        <div className="bg-blue-100 text-blue-600 rounded-full p-3 mb-4 flex items-center justify-center">
+        <div className="bg-gray-100 text-blue-600 rounded-full p-3 mb-4 flex items-center justify-center">
             <Icon path={icon} className="w-8 h-8" />
         </div>
         <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
@@ -88,7 +88,7 @@ const StudentsModule = () => {
     const openDetailsModal = (student) => { setStudentToView(student); setIsDetailsModalOpen(true); };
 
     return (
-        <div className="relative p-4 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
+        <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-800">Students</h2>
                 <button onClick={openAddModal} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Student</button>
