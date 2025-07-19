@@ -142,7 +142,7 @@ const DashboardModule = ({ setActiveModule }) => {
         if (item.type === 'birthday') {
             const diff = startTime - now;
             const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-            return days > 0 ? `in ${days} day(s)` : 'Today';
+            return days > 0 ? `in ${days} day${days > 1 ? 's' : ''}` : 'Today';
         }
 
         if (now < startTime) {
