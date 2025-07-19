@@ -69,19 +69,19 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
     };
 
     return (
-        <div className="space-y-8 p-6 bg-gray-50 rounded-lg shadow-inner">
+        <div className="space-y-8 p-4 bg-gray-50 rounded-lg shadow-inner">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                  <div className="bg-white p-6 rounded-xl shadow-lg text-center transform transition duration-300 hover:scale-105 border-b-4 border-green-500">
-                    <h3 className="text-gray-600 text-sm font-semibold uppercase mb-2">Total Income</h3>
-                    <p className="text-4xl font-extrabold text-green-700">{formatCurrency(processedData.totalIncome)}</p>
+                    <h3 className="text-gray-600 text-base font-semibold uppercase mb-2">Total Income</h3>
+                    <p className="text-3xl font-extrabold text-green-700">{formatCurrency(processedData.totalIncome)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-lg text-center transform transition duration-300 hover:scale-105 border-b-4 border-red-500">
-                    <h3 className="text-gray-600 text-sm font-semibold uppercase mb-2">Total Expenses</h3>
-                    <p className="text-4xl font-extrabold text-red-700">{formatCurrency(processedData.totalExpenses)}</p>
+                    <h3 className="text-gray-600 text-base font-semibold uppercase mb-2">Total Expenses</h3>
+                    <p className="text-3xl font-extrabold text-red-700">{formatCurrency(processedData.totalExpenses)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-lg text-center transform transition duration-300 hover:scale-105 border-b-4 border-blue-500">
-                    <h3 className="text-gray-600 text-sm font-semibold uppercase mb-2">Net Profit</h3>
-                    <p className={`text-4xl font-extrabold ${processedData.totalIncome - processedData.totalExpenses >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
+                    <h3 className="text-gray-600 text-base font-semibold uppercase mb-2">Net Profit</h3>
+                    <p className={`text-3xl font-extrabold ${processedData.totalIncome - processedData.totalExpenses >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
                         {formatCurrency(processedData.totalIncome - processedData.totalExpenses)}
                     </p>
                 </div>
@@ -98,8 +98,8 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                                 nameKey="name"
                                 cx="50%"
                                 cy="50%"
-                                outerRadius={120}
-                                innerRadius={60}
+                                outerRadius={100}
+                                innerRadius={50}
                                 fill="#8884d8"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
@@ -124,8 +124,8 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                                 nameKey="name"
                                 cx="50%"
                                 cy="50%"
-                                outerRadius={120}
-                                innerRadius={60}
+                                outerRadius={100}
+                                innerRadius={50}
                                 fill="#82ca9d"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
@@ -148,11 +148,11 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                     <BarChart data={processedData.monthlySummaryData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} padding={{ left: 20, right: 20 }} />
-                        <YAxis tickFormatter={(value) => `₺${value / 1000}k`} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={(value) => formatCurrency(value)} axisLine={false} tickLine={false} />
                         <Tooltip formatter={(value) => formatCurrency(value)} cursor={{ fill: 'rgba(0,0,0,0.1)' }} />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                        <Bar dataKey="income" fill="#10b981" name="Income" barSize={20} radius={[10, 10, 0, 0]} />
-                        <Bar dataKey="expenses" fill="#ef4444" name="Expenses" barSize={20} radius={[10, 10, 0, 0]} />
+                        <Bar dataKey="income" fill="#10b981" name="Income" barSize={30} radius={[10, 10, 0, 0]} />
+                        <Bar dataKey="expenses" fill="#ef4444" name="Expenses" barSize={30} radius={[10, 10, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

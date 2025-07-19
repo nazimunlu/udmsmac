@@ -17,19 +17,25 @@ const FinancesModule = () => {
 
     const formatCurrency = (value) => {
         if (isDataHidden) return '₺•••,••';
-        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value || 0);
+        const options = {
+            style: 'currency',
+            currency: 'TRY',
+            minimumFractionDigits: (value % 1 === 0) ? 0 : 2,
+            maximumFractionDigits: (value % 1 === 0) ? 0 : 2,
+        };
+        return new Intl.NumberFormat('tr-TR', options).format(value || 0);
     };
 
     return (
         <>
             <div className="relative p-4 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-3xl font-bold text-gray-800">Finances</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Finances</h2>
                     <div className="flex items-center space-x-4">
                         <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200">
                             <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600" />
                         </button>
-                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow">
+                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-3 py-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow text-sm">
                             <Icon path={ICONS.ADD} className="mr-2"/>Log Transaction
                         </button>
                     </div>
