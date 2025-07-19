@@ -62,9 +62,9 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
 
     const uploadFile = async (file, path) => {
         if (!file) return null;
-        const { data, error } = await supabase.storage.from('udms-files').upload(path, file);
+        const { data, error } = await supabase.storage.from('udms').upload(path, file);
         if (error) throw error;
-        return supabase.storage.from('udms-files').getPublicUrl(path).data.publicUrl;
+        return supabase.storage.from('udms').getPublicUrl(path).data.publicUrl;
     };
 
     const handleSubmit = async (e) => {

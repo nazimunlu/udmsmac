@@ -68,7 +68,7 @@ const DocumentsModule = () => {
                 const data = doc.data();
                 // Generate public URL for Supabase stored files
                 if (data.url && data.url.startsWith('student_documents/') || data.url.startsWith('transactions/')) {
-                    const { publicURL, error } = supabase.storage.from('udms-files').getPublicUrl(data.url);
+                    const { publicURL, error } = supabase.storage.from('udms').getPublicUrl(data.url);
                     if (error) {
                         console.error("Error getting public URL:", error);
                         return { id: doc.id, ...data, url: '#' }; // Fallback
