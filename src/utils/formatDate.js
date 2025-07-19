@@ -5,8 +5,14 @@ export const formatDate = (date) => {
     d = date.toDate();
   }
   d = new Date(d);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}.${month}.${year}`;
+
+  // Adjust for timezone offset to prevent date shifts
+  const offset = d.getTimezoneOffset();
+  d = new Date(d.getTime() + (offset * 60 * 1000));
+
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 };
