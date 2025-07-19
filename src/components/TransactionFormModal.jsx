@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 
 const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
-    const { db, storage, userId, appId } = useAppContext();
+    const { db, userId, appId } = useAppContext();
     const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
         type: 'income-group',
@@ -19,8 +18,6 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         invoiceName: '',
     });
     const [invoiceFile, setInvoiceFile] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [statusMessage, setStatusMessage] = useState(null);
 
     useEffect(() => {
         if (transactionToEdit) {
@@ -53,19 +50,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFileChange = (e) => {
-        if (e.target.files[0]) {
-            setInvoiceFile(e.target.files[0]);
-            setFormData(prev => ({ ...prev, invoiceName: e.target.files[0].name }));
-        }
-    };
-
-    const uploadFile = async (file, path) => {
-        if (!file) return null;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        return await getDownloadURL(storageRef);
-    };
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -75,30 +60,10 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         const isBusinessExpense = formData.type === 'expense-business';
         const isMandatoryCategory = mandatoryInvoiceCategories.includes(formData.category);
 
-        if (isBusinessExpense && isMandatoryCategory && !invoiceFile && !formData.invoiceUrl) {
-            setStatusMessage({ type: 'error', text: 'Invoice upload is mandatory for this category.' });
-            return;
-        }
-
         setIsSubmitting(true);
         let dataToSave = { ...formData };
 
         try {
-            if (invoiceFile) {
-                const invoicePath = `artifacts/${appId}/public/data/transactions/${userId}/${Date.now()}_${invoiceFile.name}`;
-                dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
-
-                // Add document entry for the invoice
-                const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: invoiceFile.name,
-                    url: dataToSave.invoiceUrl,
-                    type: 'invoice', // New type for invoices
-                    uploadDate: Timestamp.now(),
-                    // transactionId will be added after the transaction is saved
-                });
-                dataToSave.documentId = docRef.id; // Store document ID in transaction
-            }
-
             dataToSave.date = Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/')));
             dataToSave.amount = parseFloat(formData.amount);
 
@@ -108,12 +73,6 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
             } else {
                 const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
                 await addDoc(transactionsCollectionPath, dataToSave);
-                if (dataToSave.documentId) {
-                    // Update the document entry with the transaction ID
-                    await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'documents', dataToSave.documentId), {
-                        transactionId: newTransactionRef.id,
-                    });
-                }
             }
             onClose();
         } catch (error) {
@@ -167,14 +126,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
                             </FormSelect>
                         </div>
                     )}
-                    {(formData.type === 'expense-business' && mandatoryInvoiceCategories.includes(formData.category)) && (
-                        <div className="sm:col-span-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
-                            <input type="file" name="invoice" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                            {formData.invoiceUrl && <p className="mt-2 text-sm text-gray-500">Current: <a href={formData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.invoiceName || 'View Invoice'}</a></p>}
-                            {statusMessage && statusMessage.type === 'error' && <p className="mt-2 text-sm text-red-600">{statusMessage.text}</p>}
-                        </div>
-                    )}
+                    
                 </FormSection>
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
@@ -8,7 +7,7 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
-    const { db, storage, userId, appId, groups } = useAppContext();
+    const { db, userId, appId, groups } = useAppContext();
     
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
@@ -49,14 +48,12 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     }, [studentToEdit]);
 
     const [formData, setFormData] = useState(getInitialFormData());
-    const [files, setFiles] = useState({ nationalId: null, agreement: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [statusMessage, setStatusMessage] = useState(null);
     
     useEffect(() => {
         if (isOpen) {
             setFormData(getInitialFormData());
-            setFiles({ nationalId: null, agreement: null });
             setStatusMessage(null);
         }
     }, [isOpen, getInitialFormData]);
@@ -98,28 +95,14 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         setFormData(prev => ({...prev, tutoringDetails: {...prev.tutoringDetails, schedule: {...prev.tutoringDetails.schedule, days: newDays}}}));
     };
 
-    const handleFileChange = (e) => {
-        const { name, files: selectedFiles } = e.target;
-        if (selectedFiles[0]) { setFiles(prev => ({ ...prev, [name]: selectedFiles[0] })); }
-    };
-
-    const uploadFile = async (file, path) => {
-        if (!file) return null;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        return await getDownloadURL(storageRef);
-    };
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.isTutoring && (!files.nationalId || !files.agreement)) {
-            if(studentToEdit && studentToEdit.documents && studentToEdit.documents.nationalIdUrl && studentToEdit.documents.agreementUrl) {
-                // Documents already exist, so we don't need to block
-            } else {
-                setStatusMessage({ type: 'error', text: 'National ID and Agreement are mandatory for group students.' });
-                return;
-            }
+        if (!formData.isTutoring && (!studentToEdit?.documents?.nationalIdUrl || !studentToEdit?.documents?.agreementUrl)) {
+            setStatusMessage({ type: 'error', text: 'National ID and Agreement are mandatory for group students.' });
+            return;
         }
 
         setIsSubmitting(true);
@@ -164,29 +147,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
 
         try {
-            const nationalIdUrl = await uploadFile(files.nationalId, `artifacts/${appId}/public/data/studentDocuments/${userId}/${Date.now()}_nationalId`);
-            if(nationalIdUrl) {
-                dataToSave.documents.nationalIdUrl = nationalIdUrl;
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: files.nationalId.name,
-                    url: nationalIdUrl,
-                    type: 'nationalId',
-                    uploadDate: Timestamp.now(),
-                    studentId: studentToEdit?.id || null, // Link to student
-                });
-            }
-
-            const agreementUrl = await uploadFile(files.agreement, `artifacts/${appId}/public/data/studentDocuments/${userId}/${Date.now()}_agreement`);
-            if(agreementUrl) {
-                dataToSave.documents.agreementUrl = agreementUrl;
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: files.agreement.name,
-                    url: agreementUrl,
-                    type: 'agreement',
-                    uploadDate: Timestamp.now(),
-                    studentId: studentToEdit?.id || null, // Link to student
-                });
-            }
+            
             
             const toTimestamp = (dateString) => {
                 if (!dateString || typeof dateString !== 'string') return null;
@@ -270,34 +231,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                             <div className="sm:col-span-3"><FormInput label="Total Fee (₺)" name="totalFee" type="number" value={formData.feeDetails.totalFee} onChange={handleFeeChange} /></div>
                             <div className="sm:col-span-3"><FormInput label="Number of Installments" name="numberOfInstallments" type="number" value={formData.feeDetails.numberOfInstallments} onChange={handleFeeChange} /></div>
                         </FormSection>
-                        <FormSection title="Document Uploads">
-                           <div className="sm:col-span-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">National ID</label>
-                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                    <div className="space-y-1 text-center">
-                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>Upload a file</span><input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} /></label>
-                                            <p className="pl-1">or drag and drop</p>
-                                        </div>
-                                        <p className="text-xs text-gray-500">{files.nationalId ? files.nationalId.name : 'PNG, JPG, PDF up to 10MB'}</p>
-                                    </div>
-                                </div>
-                           </div>
-                           <div className="sm:col-span-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Agreement</label>
-                                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                    <div className="space-y-1 text-center">
-                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>Upload a file</span><input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} /></label>
-                                            <p className="pl-1">or drag and drop</p>
-                                        </div>
-                                        <p className="text-xs text-gray-500">{files.agreement ? files.agreement.name : 'PNG, JPG, PDF up to 10MB'}</p>
-                                    </div>
-                                </div>
-                           </div>
-                        </FormSection>
+                        
                     </>
                 )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
