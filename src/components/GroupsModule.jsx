@@ -15,7 +15,7 @@ const GroupsModule = () => {
     const [groupToEdit, setGroupToEdit] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModal = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [groupToDelete, setGroupToDelete] = useState(null);
     const [showArchivedGroups, setShowArchivedGroups] = useState(false);
 
