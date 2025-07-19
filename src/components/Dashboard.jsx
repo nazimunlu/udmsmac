@@ -7,6 +7,7 @@ import FinancesModule from './FinancesModule';
 import DashboardModule from './DashboardModule';
 import DocumentsModule from './DocumentsModule';
 import SettingsModule from './SettingsModule';
+import LoadingSpinner from './LoadingSpinner';
 
 const Sidebar = ({ activeModule, setActiveModule }) => {
     const navItems = [
@@ -91,7 +92,7 @@ const Dashboard = () => {
     const [activeModule, setActiveModule] = useState('dashboard');
 
     if (isLoading) {
-        return <div>Loading...</div>;
+        return <LoadingSpinner />;
     }
 
     return (
