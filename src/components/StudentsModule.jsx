@@ -137,7 +137,7 @@ const StudentsModule = () => {
                                 <tr>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Full Name</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Contact</th>
-                                    {activeStudentType === 'group' && <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Group</th>}
+                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Group</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Enrollment Date</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Actions</th>
                                 </tr>
@@ -147,7 +147,7 @@ const StudentsModule = () => {
                                     <tr key={student.id} className="hover:bg-gray-50">
                                         <td className="p-4 text-gray-800">{student.fullName}</td>
                                         <td className="p-4 text-gray-600">{student.studentContact}</td>
-                                        {activeStudentType === 'group' && <td className="p-4 text-gray-600"><span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span></td>}
+                                        <td className="p-4 text-gray-600"><span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span></td>
                                         <td className="p-4 text-gray-600">{formatDate(student.enrollmentDate)}</td>
                                         <td className="p-4">
                                             <div className="flex space-x-2">
