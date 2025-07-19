@@ -7,6 +7,7 @@ import AttendanceModal from './AttendanceModal';
 import LessonFormModal from './LessonFormModal';
 import CustomDatePicker from './CustomDatePicker';
 import AddStudentToGroupModal from './AddStudentToGroupModal';
+import { FormSection } from './Form';
 
 import { formatDate } from '../utils/formatDate';
 
