@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onSnapshot, collection, query, where } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { useNotification } from './NotificationContext';
 
 const AppContext = createContext();
@@ -87,7 +87,7 @@ export const AppProvider = ({ children }) => {
         transactions,
         isLoading,
         db,
-        storage: null, // You need to import and provide storage from firebase.js if you use it
+        storage, // You need to import and provide storage from firebase.js if you use it
     };
 
     return (
