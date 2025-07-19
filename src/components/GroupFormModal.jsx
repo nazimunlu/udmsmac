@@ -15,10 +15,28 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     }
     timeOptions.push('00:00');
 
+    const vibrantColors = [
+        '#FF6B6B', // Red-Orange
+        '#4ECDC4', // Turquoise
+        '#45B7D1', // Sky Blue
+        '#FED766', // Yellow
+        '#FFA07A', // Light Salmon
+        '#98D8AA', // Mint Green
+        '#A28089', // Muted Rose
+        '#6A057F', // Deep Purple
+        '#FFD166', // Sunny Yellow
+        '#06D6A0', // Emerald
+        '#1B9AAA', // Teal
+        '#EF476F', // Raspberry
+        '#073B4C', // Dark Teal (for contrast)
+        '#F78C6B', // Coral
+        '#70C1B7', // Seafoam Green
+    ];
+
     const getInitialData = useCallback(() => ({
         groupName: groupToEdit?.groupName || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
-        color: groupToEdit?.color || '#' + Math.floor(Math.random()*16777215).toString(16),
+        color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
         startDate: groupToEdit?.startDate ? groupToEdit.startDate.toDate().toISOString().split('T')[0] : '',
         programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
     }), [groupToEdit]);
