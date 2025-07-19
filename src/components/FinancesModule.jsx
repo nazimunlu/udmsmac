@@ -9,9 +9,19 @@ import FinancialOverview from './FinancialOverview';
 import TransactionFormModal from './TransactionFormModal';
 import FinancialReports from './FinancialReports';
 
+const FinancialCard = ({ title, value, icon, onClick, isDataHidden }) => (
+    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105">
+        <div className="bg-blue-100 text-blue-600 rounded-full p-3 mb-4 flex items-center justify-center">
+            <Icon path={icon} className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+        <p className="text-gray-500 text-sm">{isDataHidden ? '₺•••,••' : value}</p>
+    </div>
+);
+
 const FinancesModule = () => {
-    const { transactions } = useAppContext();
-    const [activeTab, setActiveTab] = useState('overview');
+    const { transactions, students } = useAppContext();
+    const [activeView, setActiveView] = useState('overview'); // 'overview', 'studentPayments', 'businessExpenses', 'personalExpenses', 'reports'
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isDataHidden, setIsDataHidden] = useState(false);
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -26,6 +36,20 @@ const FinancesModule = () => {
         };
         return new Intl.NumberFormat('tr-TR', options).format(value || 0);
     };
+
+    const totalIncome = useMemo(() => {
+        return transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [transactions]);
+
+    const totalBusinessExpenses = useMemo(() => {
+        return transactions.filter(t => t.type === 'expense' && t.category === 'business').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [transactions]);
+
+    const totalPersonalExpenses = useMemo(() => {
+        return transactions.filter(t => t.type === 'expense' && t.category === 'personal').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [transactions]);
+
+    const netProfit = totalIncome - totalBusinessExpenses - totalPersonalExpenses;
 
     return (
         <>
@@ -42,22 +66,55 @@ const FinancesModule = () => {
                     </div>
                 </div>
 
-                <div className="mb-4 border-b border-gray-200">
-                    <nav className="flex space-x-4" aria-label="Tabs">
-                        <button onClick={() => setActiveTab('overview')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'overview' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Overview</button>
-                        <button onClick={() => setActiveTab('studentPayments')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'studentPayments' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Student Payments</button>
-                        <button onClick={() => setActiveTab('businessExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'businessExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Business Expenses</button>
-                        <button onClick={() => setActiveTab('personalExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'personalExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Personal Expenses</button>
-                        <button onClick={() => setActiveTab('reports')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'reports' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Reports</button>
-                    </nav>
-                </div>
+                {activeView === 'overview' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <FinancialCard
+                            title="Total Income"
+                            value={formatCurrency(totalIncome)}
+                            icon={ICONS.INCOME}
+                            onClick={() => setActiveView('studentPayments')}
+                            isDataHidden={isDataHidden}
+                        />
+                        <FinancialCard
+                            title="Business Expenses"
+                            value={formatCurrency(totalBusinessExpenses)}
+                            icon={ICONS.BUSINESS_EXPENSE}
+                            onClick={() => setActiveView('businessExpenses')}
+                            isDataHidden={isDataHidden}
+                        />
+                        <FinancialCard
+                            title="Personal Expenses"
+                            value={formatCurrency(totalPersonalExpenses)}
+                            icon={ICONS.PERSONAL_EXPENSE}
+                            onClick={() => setActiveView('personalExpenses')}
+                            isDataHidden={isDataHidden}
+                        />
+                        <FinancialCard
+                            title="Net Profit"
+                            value={formatCurrency(netProfit)}
+                            icon={ICONS.PROFIT}
+                            onClick={() => setActiveView('reports')}
+                            isDataHidden={isDataHidden}
+                        />
+                    </div>
+                ) : (
+                    <div className="mb-4 border-b border-gray-200">
+                        <nav className="flex space-x-4" aria-label="Tabs">
+                            <button onClick={() => setActiveView('overview')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'overview' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Overview</button>
+                            <button onClick={() => setActiveView('studentPayments')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'studentPayments' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Student Payments</button>
+                            <button onClick={() => setActiveView('businessExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'businessExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Business Expenses</button>
+                            <button onClick={() => setActiveView('personalExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'personalExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Personal Expenses</button>
+                            <button onClick={() => setActiveView('reports')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'reports' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Reports</button>
+                        </nav>
+                    </div>
+                )}
 
                 <div>
-                    {activeTab === 'overview' && <FinancialOverview transactions={transactions} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />}
-                    {activeTab === 'studentPayments' && <StudentPaymentsView onStudentSelect={setSelectedStudent} />}
-                    {activeTab === 'businessExpenses' && <BusinessExpensesView />}
-                    {activeTab === 'personalExpenses' && <PersonalExpensesView />}
-                    {activeTab === 'reports' && <FinancialReports formatCurrency={formatCurrency} />}
+                    {activeView === 'overview' && <FinancialOverview transactions={transactions} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />}
+                    {activeView === 'studentPayments' && <StudentPaymentsView onStudentSelect={setSelectedStudent} />}
+                    {activeView === 'businessExpenses' && <BusinessExpensesView />}
+                    {activeView === 'personalExpenses' && <PersonalExpensesView />}
+                    {activeView === 'reports' && <FinancialReports formatCurrency={formatCurrency} />}
                 </div>
             </div>
 

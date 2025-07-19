@@ -141,20 +141,62 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             }
         } else {
             const hourlyRate = parseFloat(dataToSave.tutoringDetails.hourlyRate) || 0;
-            const numberOfLessons = parseInt(dataToSave.tutoringDetails.numberOfLessons, 10) || 0;
             const enrollmentDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
+            const tutoringEndDate = dataToSave.tutoringDetails.endDate ? new Date(dataToSave.tutoringDetails.endDate.replace(/-/g, '/')) : null;
+            const scheduledDays = dataToSave.tutoringDetails.schedule.days.map(day => {
+                switch (day) {
+                    case 'Mon': return 1;
+                    case 'Tue': return 2;
+                    case 'Wed': return 3;
+                    case 'Thu': return 4;
+                    case 'Fri': return 5;
+                    case 'Sat': return 6;
+                    case 'Sun': return 0;
+                    default: return -1;
+                }
+            }).filter(day => day !== -1);
+            const [startHour, startMinute] = dataToSave.tutoringDetails.schedule.startTime.split(':').map(Number);
 
             dataToSave.installments = [];
-            for (let i = 0; i < numberOfLessons; i++) {
-                const lessonDate = new Date(enrollmentDate);
-                // Assuming one lesson per week for simplicity, adjust as needed
-                lessonDate.setDate(enrollmentDate.getDate() + (i * 7)); 
-                dataToSave.installments.push({
-                    number: i + 1,
-                    amount: hourlyRate,
-                    dueDate: Timestamp.fromDate(lessonDate),
-                    status: 'Unpaid'
-                });
+            let currentLessonDate = new Date(enrollmentDate);
+            let lessonCount = 0;
+
+            // If numberOfLessons is provided, prioritize it
+            if (dataToSave.tutoringDetails.numberOfLessons) {
+                const targetLessons = parseInt(dataToSave.tutoringDetails.numberOfLessons, 10);
+                while (lessonCount < targetLessons) {
+                    if (scheduledDays.includes(currentLessonDate.getDay())) {
+                        const dueDate = new Date(currentLessonDate);
+                        dueDate.setHours(startHour, startMinute, 0, 0);
+                        dataToSave.installments.push({
+                            number: lessonCount + 1,
+                            amount: hourlyRate,
+                            dueDate: Timestamp.fromDate(dueDate),
+                            status: 'Unpaid'
+                        });
+                        lessonCount++;
+                    }
+                    currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+                }
+                // Update endDate based on calculated lessons
+                dataToSave.tutoringDetails.endDate = Timestamp.fromDate(currentLessonDate);
+
+            } else if (tutoringEndDate) { // If endDate is provided, calculate lessons
+                while (currentLessonDate <= tutoringEndDate) {
+                    if (scheduledDays.includes(currentLessonDate.getDay())) {
+                        const dueDate = new Date(currentLessonDate);
+                        dueDate.setHours(startHour, startMinute, 0, 0);
+                        dataToSave.installments.push({
+                            number: lessonCount + 1,
+                            amount: hourlyRate,
+                            dueDate: Timestamp.fromDate(dueDate),
+                            status: 'Unpaid'
+                        });
+                        lessonCount++;
+                    }
+                    currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+                }
+                dataToSave.tutoringDetails.numberOfLessons = lessonCount; // Update numberOfLessons
             }
         }
 
@@ -201,6 +243,16 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 dataToSave.tutoringDetails.endDate = toTimestamp(dataToSave.tutoringDetails.endDate);
             } else {
                 dataToSave.tutoringDetails.endDate = null;
+            }
+
+            // Calculate total fee for tutoring students based on hourly rate and number of lessons
+            if (dataToSave.tutoringDetails.hourlyRate && dataToSave.tutoringDetails.numberOfLessons) {
+                dataToSave.feeDetails = {
+                    totalFee: (parseFloat(dataToSave.tutoringDetails.hourlyRate) * parseInt(dataToSave.tutoringDetails.numberOfLessons, 10)).toString(),
+                    numberOfInstallments: dataToSave.tutoringDetails.numberOfLessons.toString() // Each lesson is an installment
+                };
+            } else {
+                dataToSave.feeDetails = { totalFee: '0', numberOfInstallments: '0' };
             }
 
             if (studentToEdit) {

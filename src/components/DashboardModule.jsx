@@ -27,6 +27,44 @@ const DashboardModule = ({ setActiveModule }) => {
 
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
+            const lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
+            setAllEvents(prev => ({ ...prev, lessons }));
+        });
+
+        const unsubEvents = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'events'), where("startTime", ">=", todayStart)), (snapshot) => {
+            const events = snapshot.docs.map(doc => ({id: doc.id, type: 'event', ...doc.data()}));
+            setAllEvents(prev => ({ ...prev, events }));
+        });
+        
+        const currentYear = new Date().getFullYear();
+        const birthdays = students.filter(s => s.birthDate).map(s => {
+            const birthDate = s.birthDate.toDate();
+            let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
+            if (nextBirthday < todayStart) {
+                nextBirthday.setFullYear(currentYear + 1);
+            }
+            return {
+                id: `bday-${s.id}`,
+                type: 'birthday',
+                eventName: `${s.fullName}'s Birthday`,
+                startTime: Timestamp.fromDate(nextBirthday)
+            };
+        });
+        setAllEvents(prev => ({ ...prev, birthdays }));
+
+
+        return () => {
+            unsubLessons();
+            unsubEvents();
+        }
+
+    }, [db, userId, appId, students]);
+
+    useEffect(() => {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
         
         const weekStart = new Date(todayStart);
@@ -65,40 +103,7 @@ const DashboardModule = ({ setActiveModule }) => {
         };
 
         processAllEvents();
-
-        const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
-            const lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
-            setAllEvents(prev => ({ ...prev, lessons }));
-        });
-
-        const unsubEvents = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'events'), where("startTime", ">=", todayStart)), (snapshot) => {
-            const events = snapshot.docs.map(doc => ({id: doc.id, type: 'event', ...doc.data()}));
-            setAllEvents(prev => ({ ...prev, events }));
-        });
-        
-        const currentYear = new Date().getFullYear();
-        const birthdays = students.filter(s => s.birthDate).map(s => {
-            const birthDate = s.birthDate.toDate();
-            let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-            if (nextBirthday < todayStart) {
-                nextBirthday.setFullYear(currentYear + 1);
-            }
-            return {
-                id: `bday-${s.id}`,
-                type: 'birthday',
-                eventName: `${s.fullName}'s Birthday`,
-                startTime: Timestamp.fromDate(nextBirthday)
-            };
-        });
-        setAllEvents(prev => ({ ...prev, birthdays }));
-
-
-        return () => {
-            unsubLessons();
-            unsubEvents();
-        }
-
-    }, [db, userId, appId, students]);
+    }, [allEvents]);
     
     const EventIcon = ({type}) => {
         const iconMap = {
@@ -115,7 +120,11 @@ const DashboardModule = ({ setActiveModule }) => {
         const startTime = item.startTime.toMillis();
         const endTime = item.effectiveEndTime;
 
-        if (item.type === 'birthday') return null; // Birthdays don't have time remaining
+        if (item.type === 'birthday') {
+            const diff = startTime - now;
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            return days > 0 ? `in ${days} day(s)` : 'Today';
+        }
 
         if (now < startTime) {
             // Event is upcoming
@@ -209,7 +218,7 @@ const DashboardModule = ({ setActiveModule }) => {
                     {todaysSchedule.length > 0 ? (
                         <ul className="space-y-4">
                             {todaysSchedule.map(item => (
-                                <li key={item.id} className="flex items-center justify-between">
+                                <li key={item.id} className="flex items-center justify-between group">
                                     <div className="flex items-center">
                                         <EventIcon type={item.type} />
                                         <div>
@@ -218,7 +227,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         </div>
                                     </div>
                                     {item.type === 'event' && (
-                                        <div className="flex space-x-2">
+                                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                             <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                         </div>
@@ -235,7 +244,7 @@ const DashboardModule = ({ setActiveModule }) => {
                      {upcomingEvents.length > 0 ? (
                         <ul className="space-y-4">
                             {upcomingEvents.slice(0, 5).map((item, index) => (
-                                <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between ${index === 0 ? 'bg-blue-50' : ''}`}>
+                                <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
                                      <div className="flex items-center">
                                         <EventIcon type={item.type} />
                                         <div>
@@ -244,7 +253,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         </div>
                                      </div>
                                      {item.type === 'event' && (
-                                        <div className="flex space-x-2">
+                                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                             <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                         </div>

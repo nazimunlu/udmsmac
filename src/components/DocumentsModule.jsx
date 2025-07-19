@@ -94,6 +94,11 @@ const DocumentsModule = () => {
         setSelectedCategoryDocuments(docs);
     };
 
+    const handleEditDocument = (doc) => {
+        setDocumentToEdit(doc);
+        setIsEditModalOpen(true);
+    };
+
     return (
         <div className="relative p-4 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Documents</h2>
@@ -116,6 +121,16 @@ const DocumentsModule = () => {
                     category={selectedCategory}
                     documents={selectedCategoryDocuments}
                     onEditDocument={handleEditDocument}
+                />
+            )}
+            {documentToEdit && (
+                <DocumentEditModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setDocumentToEdit(null);
+                    }}
+                    documentToEdit={documentToEdit}
                 />
             )}
             

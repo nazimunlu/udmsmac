@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
-import { FormInput } from './Form';
+import { FormInput, FormSelect } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 
@@ -18,9 +18,9 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const getInitialData = useCallback(() => ({
         groupName: groupToEdit?.groupName || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
-        color: groupToEdit?.color || '#3b82f6',
+        color: groupToEdit?.color || '#' + Math.floor(Math.random()*16777215).toString(16),
         startDate: groupToEdit?.startDate ? groupToEdit.startDate.toDate().toISOString().split('T')[0] : '',
-        endDate: groupToEdit?.endDate ? groupToEdit.endDate.toDate().toISOString().split('T')[0] : '',
+        programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
     }), [groupToEdit]);
 
     const [formData, setFormData] = useState(getInitialData());
@@ -60,10 +60,40 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        const { startDate, programLength, schedule } = formData;
+        let calculatedEndDate = null;
+
+        if (startDate && programLength && schedule.days.length > 0) {
+            const start = new Date(startDate);
+            let current = new Date(start);
+            let weeksCounted = 0;
+            let daysInWeek = 0;
+
+            const dayMap = {
+                'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+            };
+            const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
+
+            while (weeksCounted < parseInt(programLength, 10)) {
+                if (scheduledDayNumbers.includes(current.getDay())) {
+                    daysInWeek++;
+                }
+                current.setDate(current.getDate() + 1);
+                if (current.getDay() === dayMap['Sun']) { // Assuming week starts on Sunday for counting weeks
+                    weeksCounted++;
+                    daysInWeek = 0; // Reset for next week
+                }
+            }
+            // Go back one day to get the last day of the last counted week
+            current.setDate(current.getDate() - 1);
+            calculatedEndDate = current;
+        }
+
         const dataToSave = {
             ...formData,
             startDate: formData.startDate ? Timestamp.fromDate(new Date(formData.startDate)) : null,
-            endDate: formData.endDate ? Timestamp.fromDate(new Date(formData.endDate)) : null,
+            endDate: calculatedEndDate ? Timestamp.fromDate(calculatedEndDate) : null,
         };
 
         try {
@@ -87,13 +117,14 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
                     <FormInput label="Group Name" name="groupName" value={formData.groupName} onChange={handleChange} required />
-                    <div className="flex items-center">
-                        <label htmlFor="color" className="block text-sm font-medium text-gray-700 mr-4">Group Color</label>
-                        <input type="color" id="color" name="color" value={formData.color} onChange={handleChange} className="w-10 h-10 rounded-full" />
-                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <CustomDatePicker label="Start Date" name="startDate" value={formData.startDate} onChange={(e) => handleDateChange('startDate', e.target.value)} />
-                        <CustomDatePicker label="End Date" name="endDate" value={formData.endDate} onChange={(e) => handleDateChange('endDate', e.target.value)} />
+                        <FormSelect label="Program Length (Weeks)" name="programLength" value={formData.programLength} onChange={handleChange}>
+                            {[4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48].map(length => (
+                                <option key={length} value={length}>{length} Weeks</option>
+                            ))}
+                        </FormSelect>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>

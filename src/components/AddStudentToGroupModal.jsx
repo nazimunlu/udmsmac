@@ -3,12 +3,14 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { Icon, ICONS } from './Icons';
+import StudentFormModal from './StudentFormModal';
 
 const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => {
     const { db, userId, appId, students: allStudents } = useAppContext();
     const [unassignedStudents, setUnassignedStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isStudentFormModalOpen, setIsStudentFormModalOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -45,6 +47,12 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <button
+                    onClick={() => setIsStudentFormModalOpen(true)}
+                    className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 mb-4"
+                >
+                    <Icon path={ICONS.ADD} className="w-5 h-5 mr-2" />Add New Student
+                </button>
                 {unassignedStudents.length > 0 ? (
                     <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
                         {unassignedStudents.map(student => (
@@ -64,6 +72,19 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
                     <p className="text-center text-gray-500">No unassigned students found.</p>
                 )}
             </div>
+            <StudentFormModal 
+                isOpen={isStudentFormModalOpen} 
+                onClose={() => {
+                    setIsStudentFormModalOpen(false);
+                    // Refresh the list of unassigned students after a new student is potentially added
+                    const filtered = allStudents.filter(s => 
+                        !s.groupId && 
+                        !s.isTutoring && 
+                        s.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    setUnassignedStudents(filtered);
+                }}
+            />
         </Modal>
     );
 };

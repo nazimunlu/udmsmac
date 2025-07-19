@@ -2,11 +2,21 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
+    const COLORS = {
+        primary: '#4F46E5', // Indigo 600
+        secondary: '#10B981', // Emerald 500
+        tertiary: '#F59E0B', // Amber 500
+        danger: '#EF4444', // Red 500
+        info: '#3B82F6', // Blue 500
+        lightGray: '#E5E7EB', // Gray 200
+        darkGray: '#6B7280', // Gray 500
+    };
+
     const PIE_COLORS = {
-        'income-group': '#3b82f6', // blue-500
-        'income-tutoring': '#10b981', // emerald-500
-        'expense-business': '#ef4444', // red-500
-        'expense-personal': '#f59e0b', // amber-500
+        'income-group': COLORS.secondary,
+        'income-tutoring': COLORS.info,
+        'expense-business': COLORS.danger,
+        'expense-personal': COLORS.tertiary,
     };
     
     const incomeSourceColors = [PIE_COLORS['income-group'], PIE_COLORS['income-tutoring']];
@@ -100,17 +110,17 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                                 cy="50%"
                                 outerRadius={100}
                                 innerRadius={50}
-                                fill="#8884d8"
+                                fill={COLORS.primary}
                                 labelLine={false}
-                                label={renderCustomizedLabel}
-                                stroke="#fff"
-                                strokeWidth={3}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                stroke="none"
+                                
                             >
                                 {processedData.incomeSourceData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={incomeSourceColors[index % incomeSourceColors.length]} />
+                                    <Cell key={`cell-${index}`} fill={incomeSourceColors[index % incomeSourceColors.length]} stroke={COLORS.lightGray} strokeWidth={1} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Tooltip formatter={(value, name, props) => [`${formatCurrency(value)}`, `${props.payload.name}`]} />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
@@ -126,17 +136,16 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                                 cy="50%"
                                 outerRadius={100}
                                 innerRadius={50}
-                                fill="#82ca9d"
+                                fill={COLORS.primary}
                                 labelLine={false}
-                                label={renderCustomizedLabel}
-                                stroke="#fff"
-                                strokeWidth={3}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                stroke="none"
                             >
                                 {processedData.expenseBreakdownData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={expenseBreakdownColors[index % expenseBreakdownColors.length]} />
+                                    <Cell key={`cell-${index}`} fill={expenseBreakdownColors[index % expenseBreakdownColors.length]} stroke={COLORS.lightGray} strokeWidth={1} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Tooltip formatter={(value, name, props) => [`${formatCurrency(value)}`, `${props.payload.name}`]} />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
@@ -149,10 +158,10 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} padding={{ left: 20, right: 20 }} />
                         <YAxis tickFormatter={(value) => formatCurrency(value)} axisLine={false} tickLine={false} />
-                        <Tooltip formatter={(value) => formatCurrency(value)} cursor={{ fill: 'rgba(0,0,0,0.1)' }} />
+                        <Tooltip formatter={(value) => formatCurrency(value)} cursor={{ fill: COLORS.lightGray }} />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                        <Bar dataKey="income" fill="#10b981" name="Income" barSize={30} radius={[10, 10, 0, 0]} />
-                        <Bar dataKey="expenses" fill="#ef4444" name="Expenses" barSize={30} radius={[10, 10, 0, 0]} />
+                        <Bar dataKey="income" fill={COLORS.secondary} name="Income" barSize={30} radius={[10, 10, 0, 0]} />
+                        <Bar dataKey="expenses" fill={COLORS.danger} name="Expenses" barSize={30} radius={[10, 10, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
-import { FormInput, FormSelect, FormSection } from './Form';
+import { FormInput, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 
@@ -39,7 +39,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             startTime: getSafeTimeString(eventToEdit?.startTime),
             endTime: getSafeTimeString(eventToEdit?.endTime),
             description: eventToEdit?.description || '',
-            category: eventToEdit?.category || 'lesson',
             isAllDay: eventToEdit?.isAllDay || false,
         };
     }, [eventToEdit]);
@@ -62,7 +61,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        const { eventName, date, startTime, endTime, description, category, isAllDay } = formData;
+        const { eventName, date, startTime, endTime, description, isAllDay } = formData;
         const [startHour, startMinute] = isAllDay ? [0, 0] : startTime.split(':').map(Number);
         const [endHour, endMinute] = isAllDay ? [23, 59] : endTime.split(':').map(Number);
         const [year, month, day] = date.split('-').map(Number);
@@ -75,7 +74,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             description,
             startTime: Timestamp.fromDate(startDateTime),
             endTime: Timestamp.fromDate(endDateTime),
-            category,
             isAllDay,
         };
 
@@ -101,18 +99,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
                 <FormSection title="Event Details">
                     <div className="sm:col-span-6"><FormInput label="Event Name" name="eventName" value={formData.eventName} onChange={handleChange} required /></div>
                     <div className="sm:col-span-6"><FormInput label="Description" name="description" value={formData.description} onChange={handleChange} /></div>
-                    <div className="sm:col-span-3"><FormSelect label="Category" name="category" value={formData.category} onChange={handleChange}>
-                        <option value="lesson">Lesson</option>
-                        <option value="meeting">Meeting</option>
-                        <option value="other">Other</option>
-                    </FormSelect></div>
-                    <div className="sm:col-span-3 flex items-center justify-end pt-5">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="isAllDay" checked={formData.isAllDay} onChange={handleChange} className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            <span className="ml-3 text-sm font-medium text-gray-900">All-day</span>
-                        </label>
-                    </div>
+                    
                     <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={handleChange} /></div>
                     {!formData.isAllDay && <><div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={handleChange} options={timeOptions}/></div>
                     <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={handleChange} options={timeOptions}/></div></>} 
