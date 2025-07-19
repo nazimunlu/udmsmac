@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { supabase } from '../supabaseClient';
 import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
 import Modal from './Modal';
@@ -63,7 +64,19 @@ const DocumentsModule = () => {
         if (!userId || !appId) return;
         const q = collection(db, 'artifacts', appId, 'users', userId, 'documents');
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const docsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const docsData = snapshot.docs.map(doc => {
+                const data = doc.data();
+                // Generate public URL for Supabase stored files
+                if (data.url && data.url.startsWith('student_documents/') || data.url.startsWith('transactions/')) {
+                    const { publicURL, error } = supabase.storage.from('udms-files').getPublicUrl(data.url);
+                    if (error) {
+                        console.error("Error getting public URL:", error);
+                        return { id: doc.id, ...data, url: '#' }; // Fallback
+                    }
+                    return { id: doc.id, ...data, url: publicURL };
+                }
+                return { id: doc.id, ...data };
+            });
             setDocuments(docsData);
         });
         return () => unsubscribe();
