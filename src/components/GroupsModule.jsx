@@ -107,8 +107,9 @@ const GroupsModule = () => {
                                         <div>{group.schedule.days.join(', ')}: {group.schedule.startTime} - {group.schedule.endTime}</div>
                                     )}
                                     <div className="text-sm text-gray-500 mt-2">
-                                        {group.startDate && <span>Starts: {formatDate(group.startDate)}</span>}
-                                        {group.endDate && <span className="ml-4">Ends: {formatDate(group.endDate)}</span>}
+                                        {group.startDate && group.endDate && 
+                                            <span>{formatDate(group.startDate)} - {formatDate(group.endDate)}</span>
+                                        }
                                     </div>
                                 </div>
                                 <div className="flex-grow"></div>
