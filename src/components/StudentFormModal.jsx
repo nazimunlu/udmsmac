@@ -123,85 +123,102 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         setIsSubmitting(true);
         setStatusMessage(null);
         let dataToSave = { ...formData };
-        
-        if (!dataToSave.isTutoring) {
-            const totalFee = parseFloat(dataToSave.feeDetails.totalFee) || 0;
-            const numInstallments = parseInt(dataToSave.feeDetails.numberOfInstallments, 10) || 1;
-            const installmentAmount = totalFee / numInstallments;
-            const startDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
-            
-            dataToSave.installments = [];
-            for (let i = 0; i < numInstallments; i++) {
-                const dueDate = new Date(startDate);
-                dueDate.setMonth(startDate.getMonth() + i);
-                dataToSave.installments.push({
-                    number: i + 1,
-                    amount: installmentAmount,
-                    dueDate: Timestamp.fromDate(dueDate),
-                    status: 'Unpaid'
-                });
+
+        const getSafeDateString = (dateSource) => {
+            if (dateSource && typeof dateSource.toDate === 'function') {
+                return dateSource.toDate().toISOString().split('T')[0];
             }
-        } else {
-            const hourlyRate = parseFloat(dataToSave.tutoringDetails.hourlyRate) || 0;
-            const enrollmentDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
-            const tutoringEndDate = dataToSave.tutoringDetails.endDate ? new Date(dataToSave.tutoringDetails.endDate.replace(/-/g, '/')) : null;
-            const scheduledDays = dataToSave.tutoringDetails.schedule.days.map(day => {
-                switch (day) {
-                    case 'Mon': return 1;
-                    case 'Tue': return 2;
-                    case 'Wed': return 3;
-                    case 'Thu': return 4;
-                    case 'Fri': return 5;
-                    case 'Sat': return 6;
-                    case 'Sun': return 0;
-                    default: return -1;
-                }
-            }).filter(day => day !== -1);
-            const [startHour, startMinute] = dataToSave.tutoringDetails.schedule.startTime.split(':').map(Number);
+            return typeof dateSource === 'string' ? dateSource : '';
+        };
 
-            dataToSave.installments = [];
-            let currentLessonDate = new Date(enrollmentDate);
-            let lessonCount = 0;
-
-            // If numberOfLessons is provided, prioritize it
-            if (dataToSave.tutoringDetails.numberOfLessons) {
-                const targetLessons = parseInt(dataToSave.tutoringDetails.numberOfLessons, 10);
-                while (lessonCount < targetLessons) {
-                    if (scheduledDays.includes(currentLessonDate.getDay())) {
-                        const dueDate = new Date(currentLessonDate);
-                        dueDate.setHours(startHour, startMinute, 0, 0);
-                        dataToSave.installments.push({
-                            number: lessonCount + 1,
-                            amount: hourlyRate,
-                            dueDate: Timestamp.fromDate(dueDate),
-                            status: 'Unpaid'
-                        });
-                        lessonCount++;
-                    }
-                    currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+        let feeStructureChanged = !studentToEdit;
+        if (studentToEdit) {
+            const isTutoringChanged = studentToEdit.isTutoring !== formData.isTutoring;
+            if (isTutoringChanged) {
+                feeStructureChanged = true;
+            } else if (formData.isTutoring) {
+                const originalTutoring = studentToEdit.tutoringDetails || {};
+                const currentTutoring = formData.tutoringDetails;
+                const originalSchedule = originalTutoring.schedule || {};
+                const currentSchedule = currentTutoring.schedule || {};
+                if (
+                    String(originalTutoring.hourlyRate || '') !== currentTutoring.hourlyRate ||
+                    String(originalTutoring.numberOfLessons || '') !== currentTutoring.numberOfLessons ||
+                    getSafeDateString(originalTutoring.endDate) !== getSafeDateString(currentTutoring.endDate) ||
+                    getSafeDateString(studentToEdit.enrollmentDate) !== getSafeDateString(formData.enrollmentDate) ||
+                    JSON.stringify(originalSchedule.days || []) !== JSON.stringify(currentSchedule.days || []) ||
+                    originalSchedule.startTime !== currentSchedule.startTime
+                ) {
+                    feeStructureChanged = true;
                 }
-                // Update endDate based on calculated lessons
-                dataToSave.tutoringDetails.endDate = Timestamp.fromDate(currentLessonDate);
-
-            } else if (tutoringEndDate) { // If endDate is provided, calculate lessons
-                while (currentLessonDate <= tutoringEndDate) {
-                    if (scheduledDays.includes(currentLessonDate.getDay())) {
-                        const dueDate = new Date(currentLessonDate);
-                        dueDate.setHours(startHour, startMinute, 0, 0);
-                        dataToSave.installments.push({
-                            number: lessonCount + 1,
-                            amount: hourlyRate,
-                            dueDate: Timestamp.fromDate(dueDate),
-                            status: 'Unpaid'
-                        });
-                        lessonCount++;
-                    }
-                    currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+            } else { // Not tutoring
+                if (
+                    String(studentToEdit.feeDetails?.totalFee || '') !== formData.feeDetails.totalFee ||
+                    String(studentToEdit.feeDetails?.numberOfInstallments || '') !== formData.feeDetails.numberOfInstallments ||
+                    getSafeDateString(studentToEdit.enrollmentDate) !== getSafeDateString(formData.enrollmentDate)
+                ) {
+                    feeStructureChanged = true;
                 }
-                dataToSave.tutoringDetails.numberOfLessons = lessonCount; // Update numberOfLessons
             }
         }
 
+        if (feeStructureChanged) {
+            if (!dataToSave.isTutoring) {
+                const totalFee = parseFloat(dataToSave.feeDetails.totalFee) || 0;
+                const numInstallments = parseInt(dataToSave.feeDetails.numberOfInstallments, 10) || 1;
+                const installmentAmount = totalFee > 0 && numInstallments > 0 ? totalFee / numInstallments : 0;
+                const startDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
+                
+                dataToSave.installments = Array.from({ length: numInstallments }, (_, i) => {
+                    const dueDate = new Date(startDate);
+                    dueDate.setMonth(startDate.getMonth() + i);
+                    return {
+                        number: i + 1,
+                        amount: installmentAmount,
+                        dueDate: Timestamp.fromDate(dueDate),
+                        status: 'Unpaid'
+                    };
+                });
+            } else {
+                const hourlyRate = parseFloat(dataToSave.tutoringDetails.hourlyRate) || 0;
+                const enrollmentDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
+                const tutoringEndDate = dataToSave.tutoringDetails.endDate ? new Date(dataToSave.tutoringDetails.endDate.replace(/-/g, '/')) : null;
+                const scheduledDays = (dataToSave.tutoringDetails.schedule.days || []).map(day => ({'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6}[day])).filter(d => d !== undefined);
+                const [startHour, startMinute] = (dataToSave.tutoringDetails.schedule.startTime || "09:00").split(':').map(Number);
+
+                dataToSave.installments = [];
+                let currentLessonDate = new Date(enrollmentDate);
+                let lessonCount = 0;
+
+                if (dataToSave.tutoringDetails.numberOfLessons) {
+                    const targetLessons = parseInt(dataToSave.tutoringDetails.numberOfLessons, 10);
+                    while (lessonCount < targetLessons) {
+                        if (scheduledDays.includes(currentLessonDate.getDay())) {
+                            const dueDate = new Date(currentLessonDate);
+                            dueDate.setHours(startHour, startMinute, 0, 0);
+                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: Timestamp.fromDate(dueDate), status: 'Unpaid' });
+                            lessonCount++;
+                        }
+                        currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+                    }
+                    if(lessonCount > 0) {
+                       currentLessonDate.setDate(currentLessonDate.getDate() - 1);
+                    }
+                    dataToSave.tutoringDetails.endDate = Timestamp.fromDate(currentLessonDate);
+                } else if (tutoringEndDate) {
+                    while (currentLessonDate <= tutoringEndDate) {
+                        if (scheduledDays.includes(currentLessonDate.getDay())) {
+                            const dueDate = new Date(currentLessonDate);
+                            dueDate.setHours(startHour, startMinute, 0, 0);
+                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: Timestamp.fromDate(dueDate), status: 'Unpaid' });
+                            lessonCount++;
+                        }
+                        currentLessonDate.setDate(currentLessonDate.getDate() + 1);
+                    }
+                    dataToSave.tutoringDetails.numberOfLessons = lessonCount;
+                }
+            }
+        }
 
         try {
             const nationalIdPath = `student_documents/${userId}/${Date.now()}_nationalId_${files.nationalId?.name}`;
@@ -236,26 +253,28 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             const toTimestamp = (dateString) => {
                 if (!dateString || typeof dateString !== 'string') return null;
                 const [year, month, day] = dateString.split('-').map(Number);
+                if(isNaN(year) || isNaN(month) || isNaN(day)) return null;
                 return Timestamp.fromDate(new Date(year, month - 1, day));
             };
 
             dataToSave.enrollmentDate = toTimestamp(dataToSave.enrollmentDate);
             dataToSave.birthDate = toTimestamp(dataToSave.birthDate);
-            if (dataToSave.tutoringDetails.endDate) {
-                dataToSave.tutoringDetails.endDate = toTimestamp(dataToSave.tutoringDetails.endDate);
-            } else {
-                dataToSave.tutoringDetails.endDate = null;
+            if (dataToSave.tutoringDetails.endDate && typeof dataToSave.tutoringDetails.endDate === 'string') {
+                 dataToSave.tutoringDetails.endDate = toTimestamp(dataToSave.tutoringDetails.endDate);
+            } else if (!dataToSave.tutoringDetails.endDate) {
+                 dataToSave.tutoringDetails.endDate = null;
             }
 
-            // Calculate total fee for tutoring students based on hourly rate and number of lessons
-            if (dataToSave.tutoringDetails.hourlyRate && dataToSave.tutoringDetails.numberOfLessons) {
-                dataToSave.feeDetails = {
-                    totalFee: (parseFloat(dataToSave.tutoringDetails.hourlyRate) * parseInt(dataToSave.tutoringDetails.numberOfLessons, 10)).toString(),
-                    numberOfInstallments: dataToSave.tutoringDetails.numberOfLessons.toString() // Each lesson is an installment
-                };
-            } else {
-                dataToSave.feeDetails = { totalFee: '0', numberOfInstallments: '0' };
+
+            if (formData.isTutoring) {
+                 if (dataToSave.tutoringDetails.hourlyRate && dataToSave.tutoringDetails.numberOfLessons) {
+                    dataToSave.feeDetails = {
+                        totalFee: (parseFloat(dataToSave.tutoringDetails.hourlyRate) * parseInt(dataToSave.tutoringDetails.numberOfLessons, 10)).toString(),
+                        numberOfInstallments: dataToSave.tutoringDetails.numberOfLessons.toString()
+                    };
+                }
             }
+
 
             if (studentToEdit) {
                 const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToEdit.id);
