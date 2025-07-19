@@ -178,7 +178,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 <li key={item.id} className="flex items-center">
                                     <EventIcon type={item.type} />
                                     <div>
-                                        <p className="font-medium text-gray-800">{item.eventName} <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span></p>
+                                        <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
                                         <p className="text-sm text-gray-500">{item.startTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                     </div>
                                 </li>
@@ -196,7 +196,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 <li key={item.id} className={`p-3 rounded-lg flex items-center ${index === 0 ? 'bg-blue-50' : ''}`}>
                                      <EventIcon type={item.type} />
                                     <div>
-                                        <p className="font-medium text-gray-800">{item.eventName} <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span></p>
+                                        <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
                                         <p className="text-sm text-gray-500">{formatDate(item.startTime.toDate())}</p>
                                     </div>
                                 </li>
