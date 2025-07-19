@@ -138,7 +138,6 @@ const StudentsModule = () => {
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Full Name</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Contact</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Group</th>
-                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Type</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Enrollment Date</th>
                                     <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Actions</th>
                                 </tr>
@@ -149,17 +148,12 @@ const StudentsModule = () => {
                                         <td className="p-4 text-gray-800">{student.fullName}</td>
                                         <td className="p-4 text-gray-600">{student.studentContact}</td>
                                         <td className="p-4 text-gray-600">
-                                            {student.groupId ? (
+                                            {student.isTutoring ? (
+                                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Tutoring</span>
+                                            ) : student.groupId ? (
                                                 <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span>
                                             ) : (
                                                 'N/A'
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-gray-600">
-                                            {student.isTutoring ? (
-                                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Tutoring</span>
-                                            ) : (
-                                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Group</span>
                                             )}
                                         </td>
                                         <td className="p-4 text-gray-600">{formatDate(student.enrollmentDate)}</td>
