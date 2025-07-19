@@ -33,13 +33,13 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         '#70C1B7', // Seafoam Green
     ];
 
-    const getInitialData = () => ({
+    const getInitialData = useCallback(() => ({
         groupName: groupToEdit?.groupName || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
         color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
         startDate: groupToEdit?.startDate ? groupToEdit.startDate.toDate().toISOString().split('T')[0] : '',
         programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
-    });
+    }), [groupToEdit]);
 
     const [formData, setFormData] = useState(getInitialData());
     const [isSubmitting, setIsSubmitting] = useState(false);
