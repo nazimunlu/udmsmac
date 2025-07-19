@@ -181,7 +181,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             } else {
                 const hourlyRate = parseFloat(dataToSave.tutoringDetails.hourlyRate) || 0;
                 const enrollmentDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
-                const tutoringEndDate = dataToSave.tutoringDetails.endDate ? new Date(dataToSave.tutoringDetails.endDate.replace(/-/g, '/')) : null;
+                const tutoringEndDateString = typeof dataToSave.tutoringDetails.endDate === 'string' ? dataToSave.tutoringDetails.endDate : null;
+                const tutoringEndDate = tutoringEndDateString ? new Date(tutoringEndDateString.replace(/-/g, '/')) : null;
                 const scheduledDays = (dataToSave.tutoringDetails.schedule.days || []).map(day => ({'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6}[day])).filter(d => d !== undefined);
                 const [startHour, startMinute] = (dataToSave.tutoringDetails.schedule.startTime || "09:00").split(':').map(Number);
 
