@@ -67,7 +67,7 @@ const CustomDatePicker = ({ label, value, onChange, name }) => {
         <div className="relative" ref={pickerRef}>
             <FormInput 
                 label={label} 
-                value={value ? formatDate(Timestamp.fromDate(new Date(value.replace(/-/g, '/')))) : ''}
+                value={value ? formatDate(value) : ''}
                 readOnly 
                 onClick={() => setIsOpen(!isOpen)} 
                 icon={<Icon path={ICONS.CALENDAR} className="w-5 h-5 text-gray-400"/>}
