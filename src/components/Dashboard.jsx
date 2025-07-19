@@ -8,7 +8,7 @@ import DashboardModule from './DashboardModule';
 import DocumentsModule from './DocumentsModule';
 import SettingsModule from './SettingsModule';
 import LoadingSpinner from './LoadingSpinner';
-import EventManagementModule from './EventManagementModule';
+
 
 const Sidebar = ({ activeModule, setActiveModule }) => {
     const navItems = [
@@ -76,7 +76,7 @@ const MainContent = ({ activeModule, setActiveModule }) => {
             case 'documents':
                 return <DocumentsModule />;
             case 'events':
-                return <EventManagementModule />;
+                return null; // Events module removed
             case 'settings':
                 return <SettingsModule />;
             default:
