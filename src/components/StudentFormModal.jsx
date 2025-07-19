@@ -38,7 +38,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             groupId: studentToEdit?.groupId || null,
             documents: studentToEdit?.documents || { nationalIdUrl: '', agreementUrl: '' },
             documentNames: studentToEdit?.documentNames || { nationalId: '', agreement: '' },
-            feeDetails: studentToEdit?.feeDetails || { totalFee: '12000', numberOfInstallments: '3' },
+            feeDetails: studentToEdit?.feeDetails || { totalFee: '', numberOfInstallments: '' },
             tutoringDetails: studentToEdit?.tutoringDetails || {
                     hourlyRate: '',
                     numberOfLessons: '',

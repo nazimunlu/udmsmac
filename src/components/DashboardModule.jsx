@@ -116,7 +116,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 item.startTime.toMillis() <= todayEnd.getTime() // Event started before or at end of today
             ).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis())); // Sort by start time
 
-            setUpcomingEvents(eventsWithEndTimes.filter(item => item.startTime.toMillis() >= now.getTime() && item.startTime.toMillis() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis()));
+            setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.toMillis() >= now.getTime() && item.startTime.toMillis() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis()));
 
             setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.toMillis() >= weekStart.getTime() && item.startTime.toMillis() < weekEnd.getTime()));
         };
