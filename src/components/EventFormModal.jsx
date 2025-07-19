@@ -35,7 +35,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             date: getSafeDateString(eventToEdit?.startTime) || new Date().toISOString().split('T')[0],
             startTime: getSafeTimeString(eventToEdit?.startTime),
             endTime: getSafeTimeString(eventToEdit?.endTime),
-            description: eventToEdit?.description || '',
             isAllDay: eventToEdit?.isAllDay || false,
         };
     }, [eventToEdit]);
@@ -58,7 +57,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        const { eventName, date, startTime, endTime, description, isAllDay } = formData;
+        const { eventName, date, startTime, endTime, isAllDay } = formData;
         const [startHour, startMinute] = isAllDay ? [0, 0] : startTime.split(':').map(Number);
         const [endHour, endMinute] = isAllDay ? [23, 59] : endTime.split(':').map(Number);
         const [year, month, day] = date.split('-').map(Number);
@@ -68,7 +67,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
         const dataToSave = {
             eventName,
-            description,
             startTime: Timestamp.fromDate(startDateTime),
             endTime: Timestamp.fromDate(endDateTime),
             isAllDay,
@@ -98,7 +96,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             <form onSubmit={handleSubmit}>
                 <FormSection title="Event Details">
                     <div className="sm:col-span-6"><FormInput label="Event Name" name="eventName" value={formData.eventName} onChange={handleChange} required /></div>
-                    <div className="sm:col-span-6"><FormInput label="Description" name="description" value={formData.description} onChange={handleChange} /></div>
                     
                     <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={handleChange} /></div>
                     {!formData.isAllDay && <><div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={handleChange} options={timeOptions}/></div>

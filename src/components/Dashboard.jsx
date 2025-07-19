@@ -17,7 +17,6 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
         { id: 'groups', label: 'Groups', icon: ICONS.GROUPS },
         { id: 'finances', label: 'Finances', icon: ICONS.FINANCES },
         { id: 'documents', label: 'Documents', icon: ICONS.DOCUMENTS },
-        { id: 'events', label: 'Events', icon: ICONS.CALENDAR },
     ];
 
     const settingsItem = { id: 'settings', label: 'Settings', icon: ICONS.SETTINGS };
@@ -75,8 +74,6 @@ const MainContent = ({ activeModule, setActiveModule }) => {
                 return <FinancesModule />;
             case 'documents':
                 return <DocumentsModule />;
-            case 'events':
-                return null; // Events module removed
             case 'settings':
                 return <SettingsModule />;
             default:
