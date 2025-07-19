@@ -101,7 +101,7 @@ const DocumentsModule = () => {
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Documents</h2>
+            <h2 className="text-3xl font-bold text-gray-800 pb-4 mb-6 border-b border-gray-200">Documents</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {documentCategories.map(category => (
                     <DocumentCategoryCard
