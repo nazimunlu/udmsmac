@@ -10,6 +10,7 @@ import { formatDate } from '../utils/formatDate';
 
 const StudentsModule = () => {
     const { db, userId, appId, students, groups } = useAppContext();
+    const { showNotification } = useNotification();
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('group');
     const [showArchived, setShowArchived] = useState(false);
@@ -36,10 +37,10 @@ const StudentsModule = () => {
         try {
             const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToDelete.id);
             await updateDoc(studentDocRef, { isArchived: true });
-            useNotification().showNotification('Student archived successfully!', 'success');
+            showNotification('Student archived successfully!', 'success');
         } catch (error) {
             console.error("Error archiving student:", error);
-            useNotification().showNotification('Error archiving student.', 'error');
+            showNotification('Error archiving student.', 'error');
         } finally {
             setIsConfirmModalOpen(false);
             setStudentToDelete(null);
@@ -50,10 +51,10 @@ const StudentsModule = () => {
         try {
             const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
             await updateDoc(studentDocRef, { isArchived: false });
-            useNotification().showNotification('Student unarchived successfully!', 'success');
+            showNotification('Student unarchived successfully!', 'success');
         } catch (error) {
             console.error("Error unarchiving student:", error);
-            useNotification().showNotification('Error unarchiving student.', 'error');
+            showNotification('Error unarchiving student.', 'error');
         }
     };
 
