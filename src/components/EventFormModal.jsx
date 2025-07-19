@@ -10,9 +10,9 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
     const { db, userId, appId } = useAppContext();
     
     const timeOptions = [];
-    for (let h = 0; h <= 23; h++) {
+    for (let h = 9; h <= 23; h++) {
         timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
-        timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
+        if (h < 23) timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
     }
 
     const getInitialFormData = useCallback(() => {

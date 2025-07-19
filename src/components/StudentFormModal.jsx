@@ -15,7 +15,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
         timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
     }
-    timeOptions.push('00:00');
 
     const getInitialFormData = useCallback(() => {
         const getSafeDateString = (dateSource) => {
