@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
@@ -53,6 +53,7 @@ const StudentsModule = () => {
 
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
+        console.log("Attempting to delete/archive student:", studentToDelete.id, "Active student type:", activeStudentType);
         try {
             const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToDelete.id);
             if (activeStudentType === 'archived') {

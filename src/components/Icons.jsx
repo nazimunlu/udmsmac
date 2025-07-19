@@ -26,7 +26,9 @@ import {
     faInfoCircle,
     faBirthdayCake,
     faBookOpen,
-    faSave
+    faSave,
+    faCheck,
+    faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
@@ -60,4 +62,6 @@ export const ICONS = {
     CAKE: faBirthdayCake,
     LESSON: faBookOpen,
     SAVE: faSave,
+    CHECK: faCheck,
+    EXCLAMATION: faExclamationTriangle,
 };

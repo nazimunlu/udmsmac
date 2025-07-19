@@ -20,15 +20,12 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             if (dateSource && typeof dateSource.toDate === 'function') {
                 return dateSource.toDate().toISOString().split('T')[0];
             }
-            if (typeof dateSource === 'string' && dateSource) {
-                return dateSource;
-            }
-            return '';
+            return new Date().toISOString().split('T')[0];
         };
 
         const getSafeTimeString = (dateSource) => {
             if (dateSource && typeof dateSource.toDate === 'function') {
-                return dateSource.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return dateSource.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
             }
             return '09:00';
         };
@@ -79,6 +76,8 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
         try {
             if (eventToEdit) {
+                console.log("Editing event with ID:", eventToEdit.id);
+                console.log("Data to save:", dataToSave);
                 const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToEdit.id);
                 await setDoc(eventDocRef, dataToSave, { merge: true });
             } else {

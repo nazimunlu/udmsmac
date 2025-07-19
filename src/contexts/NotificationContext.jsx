@@ -3,18 +3,39 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
-    const [notifications, setNotifications] = useState([]);
+    const [notification, setNotification] = useState(null);
+    const [timeoutId, setTimeoutId] = useState(null);
 
-    const showNotification = useCallback((message, type = 'info') => {
-        setNotifications(prev => [...prev, { id: Date.now(), message, type }]);
+    const showNotification = useCallback((message, type = 'info', duration = 3000) => {
+        // Clear any existing timeout to prevent multiple notifications overlapping
+        setTimeoutId(prevTimeoutId => {
+            if (prevTimeoutId) {
+                clearTimeout(prevTimeoutId);
+            }
+            return null;
+        });
+
+        setNotification({ message, type });
+
+        const newTimeoutId = setTimeout(() => {
+            setNotification(null);
+            setTimeoutId(null);
+        }, duration);
+        setTimeoutId(newTimeoutId);
     }, []);
 
-    const dismissNotification = useCallback((id) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+    const hideNotification = useCallback(() => {
+        setTimeoutId(prevTimeoutId => {
+            if (prevTimeoutId) {
+                clearTimeout(prevTimeoutId);
+            }
+            return null;
+        });
+        setNotification(null);
     }, []);
 
     return (
-        <NotificationContext.Provider value={{ notifications, showNotification, dismissNotification }}>
+        <NotificationContext.Provider value={{ notification, showNotification, hideNotification }}>
             {children}
         </NotificationContext.Provider>
     );

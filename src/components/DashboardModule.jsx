@@ -8,6 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
 import WeeklyOverview from './WeeklyOverview';
+import NotificationCard from './NotificationCard';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { students, groups, db, userId, appId } = useAppContext();
@@ -21,12 +22,30 @@ const DashboardModule = ({ setActiveModule }) => {
     const [upcomingEvents, setUpcomingEvents] = useState([]);
     const [weekEvents, setWeekEvents] = useState([]);
     const [allEvents, setAllEvents] = useState({ lessons: [], events: [], birthdays: [] });
+    const [duePayments, setDuePayments] = useState([]);
 
     useEffect(() => {
         if (!userId || !appId) return;
 
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // Calculate due payments
+        const payments = [];
+        students.forEach(student => {
+            student.installments?.forEach(installment => {
+                if (installment.status === 'Unpaid' && installment.dueDate.toDate() <= now) {
+                    payments.push({
+                        id: `${student.id}-${installment.number}`,
+                        message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
+                        type: 'warning',
+                        studentId: student.id,
+                        installmentNumber: installment.number
+                    });
+                }
+            });
+        });
+        setDuePayments(payments);
 
         const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
             const lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
@@ -270,6 +289,23 @@ const DashboardModule = ({ setActiveModule }) => {
                     <WeeklyOverview events={weekEvents} />
                 </div>
             </div>
+
+            {/* Important Notifications */}
+            {duePayments.length > 0 && (
+                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h3 className="font-semibold mb-4 text-gray-800">Important Notifications</h3>
+                    <div className="space-y-3">
+                        {duePayments.map(notification => (
+                            <NotificationCard 
+                                key={notification.id} 
+                                message={notification.message} 
+                                type={notification.type} 
+                                // You might want to add an onDismiss prop here if notifications can be dismissed
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
             <StudentFormModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
             <EventFormModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventToEdit={eventToEdit} />
             {eventToDelete && (
