@@ -100,7 +100,7 @@ const GroupsModule = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredGroups.length > 0 ? (
                         filteredGroups.map(group => (
-                            <div key={group.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col" style={{borderTop: `5px solid ${group.color}`}}>
+                            <div key={group.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col group" style={{borderTop: `5px solid ${group.color}`}}>
                                 <h3 className="text-xl font-bold text-gray-800 mb-2">{group.groupName}</h3>
                                 <div className="text-gray-600 mb-4">
                                     {group.schedule && group.schedule.days && group.schedule.days.length > 0 && (
@@ -114,7 +114,7 @@ const GroupsModule = () => {
                                 <div className="flex-grow"></div>
                                 <div className="flex justify-between items-center mt-4">
                                     <span className="text-sm text-gray-500">{studentCount(group.id)} Students</span>
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => openDetailsModal(group)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
                                         <button onClick={() => openEditModal(group)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                         <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
