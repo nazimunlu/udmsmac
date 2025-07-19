@@ -1,15 +1,20 @@
 import React from 'react';
 import { AppProvider } from './contexts/AppContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import Notification from './components/Notification';
 import Dashboard from './components/Dashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <AppProvider>
-      <ErrorBoundary>
-        <Dashboard />
-      </ErrorBoundary>
-    </AppProvider>
+    <NotificationProvider>
+      <AppProvider>
+        <ErrorBoundary>
+          <Dashboard />
+        </ErrorBoundary>
+        <Notification />
+      </AppProvider>
+    </NotificationProvider>
   );
 }
 
