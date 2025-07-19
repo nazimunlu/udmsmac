@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
+import { useNotification } from '../contexts/NotificationContext';
 import Modal from './Modal';
 import { FormInput, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
@@ -8,6 +9,7 @@ import CustomTimePicker from './CustomTimePicker';
 
 const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
     const { db, userId, appId } = useAppContext();
+    const { showNotification } = useNotification();
     
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
@@ -79,9 +81,11 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
                 console.log("Data to save:", dataToLog);
                 const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToEdit.id);
                 await setDoc(eventDocRef, dataToSave, { merge: true });
+                showNotification('Event updated successfully!', 'success');
             } else {
                 const eventCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'events');
                 await addDoc(eventCollectionPath, dataToSave);
+                showNotification('Event logged successfully!', 'success');
             }
             onClose();
         } catch (error) {

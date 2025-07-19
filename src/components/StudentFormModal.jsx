@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { supabase } from '../supabaseClient';
 import { useAppContext } from '../contexts/AppContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { useNotification } from '../contexts/NotificationContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
@@ -9,6 +11,7 @@ import CustomTimePicker from './CustomTimePicker';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { db, userId, appId, groups } = useAppContext();
+    const { showNotification } = useNotification();
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
     
     const timeOptions = [];
@@ -258,9 +261,11 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             if (studentToEdit) {
                 const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToEdit.id);
                 await setDoc(studentDocRef, dataToSave, { merge: true });
+                showNotification('Student updated successfully!', 'success');
             } else {
                 const studentCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'students');
                 await addDoc(studentCollectionPath, dataToSave);
+                showNotification('Student enrolled successfully!', 'success');
             }
             onClose();
         } catch (error) {
