@@ -6,53 +6,21 @@ import StudentFormModal from './StudentFormModal';
 import EventFormModal from './EventFormModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
-import ConfirmationModal from './ConfirmationModal';
-import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
 import WeeklyOverview from './WeeklyOverview';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { students, groups, db, userId, appId } = useAppContext();
     const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
-    const { showNotification } = useNotification();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
-    const [eventToEdit, setEventToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
     const [eventToEdit, setEventToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [eventToDelete, setEventToDelete] = useState(null);
     const [todaysSchedule, setTodaysSchedule] = useState([]);
     const [upcomingEvents, setUpcomingEvents] = useState([]);
     const [weekEvents, setWeekEvents] = useState([]);
+    const [allEvents, setAllEvents] = useState({ lessons: [], events: [], birthdays: [] });
 
     useEffect(() => {
         if (!userId || !appId) return;
@@ -72,7 +40,7 @@ const DashboardModule = ({ setActiveModule }) => {
         const getSortableTime = (item) => (item.startTime)?.toMillis() || 0;
 
         const processAllEvents = () => {
-            const allItems = [...(window.lessons || []), ...(window.events || []), ...(window.birthdays || [])];
+            const allItems = [...allEvents.lessons, ...allEvents.events, ...allEvents.birthdays];
 
             const eventsWithEndTimes = allItems.map(item => {
                 let effectiveEndTime = item.startTime.toMillis(); // Default to start time
@@ -96,18 +64,20 @@ const DashboardModule = ({ setActiveModule }) => {
             setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.toMillis() >= weekStart.getTime() && item.startTime.toMillis() < weekEnd.getTime()));
         };
 
+        processAllEvents();
+
         const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
-            window.lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
-            processAllEvents();
+            const lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
+            setAllEvents(prev => ({ ...prev, lessons }));
         });
 
         const unsubEvents = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'events'), where("startTime", ">=", todayStart)), (snapshot) => {
-            window.events = snapshot.docs.map(doc => ({id: doc.id, type: 'event', ...doc.data()}));
-            processAllEvents();
+            const events = snapshot.docs.map(doc => ({id: doc.id, type: 'event', ...doc.data()}));
+            setAllEvents(prev => ({ ...prev, events }));
         });
         
         const currentYear = new Date().getFullYear();
-        window.birthdays = students.filter(s => s.birthDate).map(s => {
+        const birthdays = students.filter(s => s.birthDate).map(s => {
             const birthDate = s.birthDate.toDate();
             let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
             if (nextBirthday < todayStart) {
@@ -120,7 +90,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 startTime: Timestamp.fromDate(nextBirthday)
             };
         });
-        processAllEvents();
+        setAllEvents(prev => ({ ...prev, birthdays }));
 
 
         return () => {

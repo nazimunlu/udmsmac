@@ -7,9 +7,13 @@
 echo "✅ Staging all changes for commit..."
 git add .
 
-# Ask the user for a commit message
-echo "💬 Please enter a commit message (and press Enter):"
-read commit_message
+# Use the first argument as the commit message, or ask the user if it's not provided
+if [ -n "$1" ]; then
+  commit_message="$1"
+else
+  echo "💬 Please enter a commit message (and press Enter):"
+  read commit_message
+fi
 
 # Check if the commit message is empty
 if [ -z "$commit_message" ]; then
