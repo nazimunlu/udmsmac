@@ -8,6 +8,7 @@ import LessonFormModal from './LessonFormModal';
 import CustomDatePicker from './CustomDatePicker';
 import AddStudentToGroupModal from './AddStudentToGroupModal';
 import { FormSection } from './Form';
+import { Icon, ICONS } from './Icons';
 
 import { formatDate } from '../utils/formatDate';
 
