@@ -21,13 +21,12 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
     const getInitialFormData = useCallback(() => {
         const getSafeDateString = (dateSource) => {
-            if (dateSource && typeof dateSource.toDate === 'function') {
-                return dateSource.toDate().toISOString().split('T')[0];
-            }
-            if (typeof dateSource === 'string' && dateSource) {
-                return dateSource;
-            }
-            return '';
+            if (!dateSource) return '';
+            const date = dateSource.toDate ? dateSource.toDate() : new Date(dateSource);
+            // Add timezone offset to prevent date from shifting
+            const offset = date.getTimezoneOffset();
+            const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return adjustedDate.toISOString().split('T')[0];
         };
 
         return {
@@ -252,9 +251,10 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             
             const toTimestamp = (dateString) => {
                 if (!dateString || typeof dateString !== 'string') return null;
-                const [year, month, day] = dateString.split('-').map(Number);
-                if(isNaN(year) || isNaN(month) || isNaN(day)) return null;
-                return Timestamp.fromDate(new Date(year, month - 1, day));
+                // Create date in UTC to avoid timezone shifts
+                const date = new Date(`${dateString}T00:00:00Z`);
+                if (isNaN(date.getTime())) return null;
+                return Timestamp.fromDate(date);
             };
 
             dataToSave.enrollmentDate = toTimestamp(dataToSave.enrollmentDate);
