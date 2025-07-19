@@ -19,8 +19,16 @@ const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
     const { showNotification } = useNotification();
     const { showNotification } = useNotification();
+    const { showNotification } = useNotification();
+    const { showNotification } = useNotification();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [eventToEdit, setEventToEdit] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState(null);
+    const [eventToEdit, setEventToEdit] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState(null);
     const [eventToEdit, setEventToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [eventToDelete, setEventToDelete] = useState(null);
