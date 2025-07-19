@@ -3,6 +3,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
 import Modal from './Modal';
+import DocumentEditModal from './DocumentEditModal';
 
 const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCategory }) => (
     <div 
@@ -18,7 +19,7 @@ const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCatego
     </div>
 );
 
-const DocumentListModal = ({ isOpen, onClose, category, documents }) => (
+const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocument }) => (
     <Modal isOpen={isOpen} onClose={onClose} title={`${category} Documents`}>
         <div className="space-y-4">
             {documents.length > 0 ? (
@@ -29,9 +30,17 @@ const DocumentListModal = ({ isOpen, onClose, category, documents }) => (
                                 <p className="font-medium text-gray-800">{doc.name}</p>
                                 <p className="text-sm text-gray-500">Uploaded: {doc.uploadDate ? new Date(doc.uploadDate.toDate()).toLocaleDateString() : 'N/A'}</p>
                             </div>
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700">
-                                View
-                            </a>
+                            <div className="flex space-x-2">
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+                                    Preview
+                                </a>
+                                <a href={doc.url} download className="px-3 py-1 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">
+                                    Download
+                                </a>
+                                <button onClick={() => onEditDocument(doc)} className="px-3 py-1 text-sm rounded-lg text-white bg-yellow-600 hover:bg-yellow-700">
+                                    Edit
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>
@@ -47,6 +56,8 @@ const DocumentsModule = () => {
     const [documents, setDocuments] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedCategoryDocuments, setSelectedCategoryDocuments] = useState([]);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [documentToEdit, setDocumentToEdit] = useState(null);
 
     useEffect(() => {
         if (!userId || !appId) return;
