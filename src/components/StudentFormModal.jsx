@@ -166,9 +166,28 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
         try {
             const nationalIdUrl = await uploadFile(files.nationalId, `artifacts/${appId}/public/data/studentDocuments/${userId}/${Date.now()}_nationalId`);
+            if(nationalIdUrl) {
+                dataToSave.documents.nationalIdUrl = nationalIdUrl;
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: files.nationalId.name,
+                    url: nationalIdUrl,
+                    type: 'nationalId',
+                    uploadDate: Timestamp.now(),
+                    studentId: studentToEdit?.id || null, // Link to student
+                });
+            }
+
             const agreementUrl = await uploadFile(files.agreement, `artifacts/${appId}/public/data/studentDocuments/${userId}/${Date.now()}_agreement`);
-            if(nationalIdUrl) dataToSave.documents.nationalIdUrl = nationalIdUrl;
-            if(agreementUrl) dataToSave.documents.agreementUrl = agreementUrl;
+            if(agreementUrl) {
+                dataToSave.documents.agreementUrl = agreementUrl;
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: files.agreement.name,
+                    url: agreementUrl,
+                    type: 'agreement',
+                    uploadDate: Timestamp.now(),
+                    studentId: studentToEdit?.id || null, // Link to student
+                });
+            }
             
             const toTimestamp = (dateString) => {
                 if (!dateString || typeof dateString !== 'string') return null;

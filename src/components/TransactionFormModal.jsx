@@ -87,6 +87,16 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
             if (invoiceFile) {
                 const invoicePath = `artifacts/${appId}/public/data/transactions/${userId}/${Date.now()}_${invoiceFile.name}`;
                 dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
+
+                // Add document entry for the invoice
+                const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: invoiceFile.name,
+                    url: dataToSave.invoiceUrl,
+                    type: 'invoice', // New type for invoices
+                    uploadDate: Timestamp.now(),
+                    // transactionId will be added after the transaction is saved
+                });
+                dataToSave.documentId = docRef.id; // Store document ID in transaction
             }
 
             dataToSave.date = Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/')));
@@ -98,6 +108,12 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
             } else {
                 const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
                 await addDoc(transactionsCollectionPath, dataToSave);
+                if (dataToSave.documentId) {
+                    // Update the document entry with the transaction ID
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'documents', dataToSave.documentId), {
+                        transactionId: newTransactionRef.id,
+                    });
+                }
             }
             onClose();
         } catch (error) {
