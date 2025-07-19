@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { supabase } from '../supabaseClient';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
@@ -8,6 +9,7 @@ import CustomTimePicker from './CustomTimePicker';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { db, userId, appId, groups } = useAppContext();
+    const [files, setFiles] = useState({ nationalId: null, agreement: null });
     
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
@@ -54,6 +56,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     useEffect(() => {
         if (isOpen) {
             setFormData(getInitialFormData());
+            setFiles({ nationalId: null, agreement: null });
             setStatusMessage(null);
         }
     }, [isOpen, getInitialFormData]);
@@ -95,12 +98,22 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         setFormData(prev => ({...prev, tutoringDetails: {...prev.tutoringDetails, schedule: {...prev.tutoringDetails.schedule, days: newDays}}}));
     };
 
-    
+    const handleFileChange = (e) => {
+        const { name, files: selectedFiles } = e.target;
+        if (selectedFiles[0]) { setFiles(prev => ({ ...prev, [name]: selectedFiles[0] })); }
+    };
+
+    const uploadFile = async (file, path) => {
+        if (!file) return null;
+        const { data, error } = await supabase.storage.from('udms-files').upload(path, file);
+        if (error) throw error;
+        return supabase.storage.from('udms-files').getPublicUrl(path).data.publicUrl;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.isTutoring && (!studentToEdit?.documents?.nationalIdUrl || !studentToEdit?.documents?.agreementUrl)) {
+        if (!formData.isTutoring && (!files.nationalId && !studentToEdit?.documents?.nationalIdUrl || !files.agreement && !studentToEdit?.documents?.agreementUrl)) {
             setStatusMessage({ type: 'error', text: 'National ID and Agreement are mandatory for group students.' });
             return;
         }
@@ -147,7 +160,34 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
 
         try {
-            
+            const nationalIdPath = `student_documents/${userId}/${Date.now()}_nationalId_${files.nationalId?.name}`;
+            const agreementPath = `student_documents/${userId}/${Date.now()}_agreement_${files.agreement?.name}`;
+
+            if (files.nationalId) {
+                dataToSave.documents.nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: files.nationalId.name,
+                    url: dataToSave.documents.nationalIdUrl,
+                    type: 'nationalId',
+                    uploadDate: Timestamp.now(),
+                    studentId: studentToEdit?.id || null,
+                });
+            } else if (studentToEdit?.documents?.nationalIdUrl) {
+                dataToSave.documents.nationalIdUrl = studentToEdit.documents.nationalIdUrl;
+            }
+
+            if (files.agreement) {
+                dataToSave.documents.agreementUrl = await uploadFile(files.agreement, agreementPath);
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: files.agreement.name,
+                    url: dataToSave.documents.agreementUrl,
+                    type: 'agreement',
+                    uploadDate: Timestamp.now(),
+                    studentId: studentToEdit?.id || null,
+                });
+            } else if (studentToEdit?.documents?.agreementUrl) {
+                dataToSave.documents.agreementUrl = studentToEdit.documents.agreementUrl;
+            }
             
             const toTimestamp = (dateString) => {
                 if (!dateString || typeof dateString !== 'string') return null;
@@ -231,12 +271,39 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                             <div className="sm:col-span-3"><FormInput label="Total Fee (₺)" name="totalFee" type="number" value={formData.feeDetails.totalFee} onChange={handleFeeChange} /></div>
                             <div className="sm:col-span-3"><FormInput label="Number of Installments" name="numberOfInstallments" type="number" value={formData.feeDetails.numberOfInstallments} onChange={handleFeeChange} /></div>
                         </FormSection>
-                        
+                        <FormSection title="Document Uploads">
+                           <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">National ID</label>
+                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div className="space-y-1 text-center">
+                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                        <div className="flex text-sm text-gray-600">
+                                            <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>Upload a file</span><input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} /></label>
+                                            <p className="pl-1">or drag and drop</p>
+                                        </div>
+                                        <p className="text-xs text-gray-500">{files.nationalId ? files.nationalId.name : 'PNG, JPG, PDF up to 10MB'}</p>
+                                    </div>
+                                </div>
+                           </div>
+                           <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Agreement</label>
+                                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div className="space-y-1 text-center">
+                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                        <div className="flex text-sm text-gray-600">
+                                            <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>Upload a file</span><input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} /></label>
+                                            <p className="pl-1">or drag and drop</p>
+                                        </div>
+                                        <p className="text-xs text-gray-500">{files.agreement ? files.agreement.name : 'PNG, JPG, PDF up to 10MB'}</p>
+                                    </div>
+                                </div>
+                           </div>
+                        </FormSection>
                     </>
                 )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Student'}</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">Save Student</button>
                 </div>
                 {statusMessage && <p className={`mt-4 text-center text-sm ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>{statusMessage.text}</p>}
             </form>

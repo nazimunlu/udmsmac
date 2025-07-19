@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { supabase } from '../supabaseClient';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
@@ -18,6 +19,8 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         invoiceName: '',
     });
     const [invoiceFile, setInvoiceFile] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [statusMessage, setStatusMessage] = useState(null);
 
     useEffect(() => {
         if (transactionToEdit) {
@@ -50,7 +53,19 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    
+    const handleFileChange = (e) => {
+        if (e.target.files[0]) {
+            setInvoiceFile(e.target.files[0]);
+            setFormData(prev => ({ ...prev, invoiceName: e.target.files[0].name }));
+        }
+    };
+
+    const uploadFile = async (file, path) => {
+        if (!file) return null;
+        const { data, error } = await supabase.storage.from('udms-files').upload(path, file);
+        if (error) throw error;
+        return supabase.storage.from('udms-files').getPublicUrl(path).data.publicUrl;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -60,10 +75,29 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
         const isBusinessExpense = formData.type === 'expense-business';
         const isMandatoryCategory = mandatoryInvoiceCategories.includes(formData.category);
 
+        if (isBusinessExpense && isMandatoryCategory && !invoiceFile && !formData.invoiceUrl) {
+            setStatusMessage({ type: 'error', text: 'Invoice upload is mandatory for this category.' });
+            return;
+        }
+
         setIsSubmitting(true);
         let dataToSave = { ...formData };
 
         try {
+            if (invoiceFile) {
+                const invoicePath = `transactions/${userId}/${Date.now()}_${invoiceFile.name}`;
+                dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
+
+                const { id: newDocId } = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
+                    name: invoiceFile.name,
+                    url: dataToSave.invoiceUrl,
+                    type: 'invoice',
+                    uploadDate: Timestamp.now(),
+                    transactionId: null, // Will be updated after transaction is saved
+                });
+                dataToSave.documentId = newDocId;
+            }
+
             dataToSave.date = Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/')));
             dataToSave.amount = parseFloat(formData.amount);
 
@@ -72,7 +106,12 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
                 await setDoc(transactionDocRef, dataToSave, { merge: true });
             } else {
                 const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                await addDoc(transactionsCollectionPath, dataToSave);
+                const newTransactionRef = await addDoc(transactionsCollectionPath, dataToSave);
+                if (dataToSave.documentId) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'documents', dataToSave.documentId), {
+                        transactionId: newTransactionRef.id,
+                    });
+                }
             }
             onClose();
         } catch (error) {
@@ -124,6 +163,14 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </FormSelect>
+                        </div>
+                    )}
+                    {(formData.type === 'expense-business' && mandatoryInvoiceCategories.includes(formData.category)) && (
+                        <div className="sm:col-span-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
+                            <input type="file" name="invoice" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                            {formData.invoiceUrl && <p className="mt-2 text-sm text-gray-500">Current: <a href={formData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.invoiceName || 'View Invoice'}</a></p>}
+                            {statusMessage && statusMessage.type === 'error' && <p className="mt-2 text-sm text-red-600">{statusMessage.text}</p>}
                         </div>
                     )}
                     
