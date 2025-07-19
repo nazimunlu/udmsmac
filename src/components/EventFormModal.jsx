@@ -77,7 +77,8 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
         try {
             if (eventToEdit) {
                 console.log("Editing event with ID:", eventToEdit.id);
-                console.log("Data to save:", dataToSave);
+                const { description, ...dataToLog } = dataToSave;
+                console.log("Data to save:", dataToLog);
                 const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToEdit.id);
                 await setDoc(eventDocRef, dataToSave, { merge: true });
             } else {
