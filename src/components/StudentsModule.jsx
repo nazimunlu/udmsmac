@@ -6,7 +6,6 @@ import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
 import ConfirmationModal from './ConfirmationModal';
 import StudentDetailsModal from './StudentDetailsModal';
-import StudentCard from './StudentCard';
 import { formatDate } from '../utils/formatDate';
 
 const StudentsModule = () => {
@@ -131,17 +130,40 @@ const StudentsModule = () => {
             {isLoading ? (
                 <p className="text-center text-gray-500">Loading students...</p>
             ) : filteredStudents.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredStudents.map(student => (
-                        <StudentCard
-                            key={student.id}
-                            student={student}
-                            groups={groups}
-                            openEditModal={openEditModal}
-                            openDeleteConfirmation={openDeleteConfirmation}
-                            openDetailsModal={openDetailsModal}
-                        />
-                    ))}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Full Name</th>
+                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Contact</th>
+                                    {activeStudentType === 'group' && <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Group</th>}
+                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Enrollment Date</th>
+                                    <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {filteredStudents.map(student => (
+                                    <tr key={student.id} className="hover:bg-gray-50">
+                                        <td className="p-4 text-gray-800">{student.fullName}</td>
+                                        <td className="p-4 text-gray-600">{student.studentContact}</td>
+                                        {activeStudentType === 'group' && <td className="p-4 text-gray-600"><span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span></td>}
+                                        <td className="p-4 text-gray-600">{formatDate(student.enrollmentDate)}</td>
+                                        <td className="p-4">
+                                            <div className="flex space-x-2">
+                                                <button onClick={() => openDetailsModal(student)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
+                                                <button onClick={() => openEditModal(student)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                <button onClick={() => openDeleteConfirmation(student)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                {activeStudentType === 'archived' && (
+                                                    <button onClick={() => handleUnarchiveStudent(student)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.UPLOAD} className="w-5 h-5" /></button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : (
                 <p className="text-center text-gray-500 py-8">No students found matching your criteria.</p>
