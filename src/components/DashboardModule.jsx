@@ -130,7 +130,7 @@ const DashboardModule = ({ setActiveModule }) => {
             birthday: { path: ICONS.CAKE, color: 'bg-pink-100 text-pink-600' },
             event: { path: ICONS.CALENDAR, color: 'bg-green-100 text-green-600' },
         };
-        const { path, color } = iconMap[type] || iconMap.event;
+        const { path, color } = iconMap[type] || { path: ICONS.INFO, color: 'bg-gray-100 text-gray-600' }; // Default to ICONS.INFO
         return <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-4 ${color}`}><Icon path={path} className="w-5 h-5"/></div>
     };
 
