@@ -149,7 +149,7 @@ const StudentsModule = () => {
                                         <td className="p-4 text-gray-600">{student.studentContact}</td>
                                         <td className="p-4 text-gray-600">
                                             {student.isTutoring ? (
-                                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Tutoring</span>
+                                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-500 text-white">Tutoring</span>
                                             ) : student.groupId ? (
                                                 <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span>
                                             ) : (
