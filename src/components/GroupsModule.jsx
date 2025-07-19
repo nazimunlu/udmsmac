@@ -114,7 +114,7 @@ const GroupsModule = () => {
                                 <div className="flex-grow"></div>
                                 <div className="flex justify-between items-center mt-4">
                                     <span className="text-sm text-gray-500">{studentCount(group.id)} Students</span>
-                                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center space-x-2">
                                         <button onClick={() => openDetailsModal(group)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
                                         <button onClick={() => openEditModal(group)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                         <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
