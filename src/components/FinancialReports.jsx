@@ -1,0 +1,122 @@
+import React, { useState, useMemo } from 'react';
+import { useAppContext } from '../contexts/AppContext';
+import { formatDate } from '../utils/formatDate';
+import CustomDatePicker from './CustomDatePicker';
+import { FormSelect } from './Form';
+
+const FinancialReports = ({ formatCurrency }) => {
+    const { transactions } = useAppContext();
+    const [filters, setFilters] = useState({
+        startDate: '',
+        endDate: '',
+        type: 'all',
+        category: 'all',
+    });
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const transactionDate = t.date.toDate();
+            const start = filters.startDate ? new Date(filters.startDate) : null;
+            const end = filters.endDate ? new Date(filters.endDate) : null;
+
+            if (start && transactionDate < start) return false;
+            if (end && transactionDate > end) return false;
+            if (filters.type !== 'all' && t.type !== filters.type) return false;
+            if (filters.category !== 'all' && t.category !== filters.category) return false;
+
+            return true;
+        }).sort((a, b) => b.date.toMillis() - a.date.toMillis());
+    }, [transactions, filters]);
+
+    const totalIncome = filteredTransactions
+        .filter(t => t.type.startsWith('income'))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpenses = filteredTransactions
+        .filter(t => t.type.startsWith('expense'))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const allCategories = useMemo(() => {
+        const categories = new Set();
+        transactions.forEach(t => {
+            if (t.category) categories.add(t.category);
+        });
+        return ['all', ...Array.from(categories)];
+    }, [transactions]);
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-lg shadow-md">
+                <CustomDatePicker label="Start Date" name="startDate" value={filters.startDate} onChange={handleFilterChange} />
+                <CustomDatePicker label="End Date" name="endDate" value={filters.endDate} onChange={handleFilterChange} />
+                <FormSelect label="Type" name="type" value={filters.type} onChange={handleFilterChange}>
+                    <option value="all">All Types</option>
+                    <option value="income-group">Income (Group)</option>
+                    <option value="income-tutoring">Income (Tutoring)</option>
+                    <option value="expense-business">Expense (Business)</option>
+                    <option value="expense-personal">Expense (Personal)</option>
+                </FormSelect>
+                <FormSelect label="Category" name="category" value={filters.category} onChange={handleFilterChange}>
+                    {allCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
+                    ))}
+                </FormSelect>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-lg shadow-md text-center">
+                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Total Income</h3>
+                    <p className="text-2xl font-bold text-green-700">{formatCurrency(totalIncome)}</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-md text-center">
+                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Total Expenses</h3>
+                    <p className="text-2xl font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-md text-center">
+                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Net Profit</h3>
+                    <p className={`text-2xl font-bold ${totalIncome - totalExpenses >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
+                        {formatCurrency(totalIncome - totalExpenses)}
+                    </p>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="p-3 font-semibold text-gray-600 uppercase">Date</th>
+                                <th className="p-3 font-semibold text-gray-600 uppercase">Type</th>
+                                <th className="p-3 font-semibold text-gray-600 uppercase">Category</th>
+                                <th className="p-3 font-semibold text-gray-600 uppercase">Description</th>
+                                <th className="p-3 font-semibold text-gray-600 uppercase text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {filteredTransactions.length > 0 ? (
+                                filteredTransactions.map(t => (
+                                    <tr key={t.id} className="hover:bg-gray-50">
+                                        <td className="p-3 text-gray-800">{formatDate(t.date)}</td>
+                                        <td className="p-3 text-gray-800">{t.type}</td>
+                                        <td className="p-3 text-gray-800">{t.category || 'N/A'}</td>
+                                        <td className="p-3 text-gray-800">{t.description || 'N/A'}</td>
+                                        <td className={`p-3 text-right font-semibold ${t.type.startsWith('income') ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan="5" className="p-3 text-center text-gray-500">No transactions found for the selected filters.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default FinancialReports;
