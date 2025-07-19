@@ -9,6 +9,7 @@ import DocumentsModule from './DocumentsModule';
 import SettingsModule from './SettingsModule';
 import LoadingSpinner from './LoadingSpinner';
 import EventManagementModule from './EventManagementModule';
+import EventManagementModule from './EventManagementModule';
 
 const Sidebar = ({ activeModule, setActiveModule }) => {
     const navItems = [
@@ -17,6 +18,7 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
         { id: 'groups', label: 'Groups', icon: ICONS.GROUPS },
         { id: 'finances', label: 'Finances', icon: ICONS.FINANCES },
         { id: 'documents', label: 'Documents', icon: ICONS.DOCUMENTS },
+        { id: 'events', label: 'Events', icon: ICONS.CALENDAR },
         { id: 'events', label: 'Events', icon: ICONS.CALENDAR },
     ];
 
@@ -75,6 +77,8 @@ const MainContent = ({ activeModule, setActiveModule }) => {
                 return <FinancesModule />;
             case 'documents':
                 return <DocumentsModule />;
+            case 'events':
+                return <EventManagementModule />;
             case 'events':
                 return <EventManagementModule />;
             case 'settings':
