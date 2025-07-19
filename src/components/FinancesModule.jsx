@@ -7,6 +7,7 @@ import PersonalExpensesView from './PersonalExpensesView';
 import { Icon, ICONS } from './Icons';
 import FinancialOverview from './FinancialOverview';
 import TransactionFormModal from './TransactionFormModal';
+import FinancialReports from './FinancialReports';
 
 const FinancesModule = () => {
     const { transactions } = useAppContext();
@@ -47,6 +48,7 @@ const FinancesModule = () => {
                         <button onClick={() => setActiveTab('studentPayments')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'studentPayments' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Student Payments</button>
                         <button onClick={() => setActiveTab('businessExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'businessExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Business Expenses</button>
                         <button onClick={() => setActiveTab('personalExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'personalExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Personal Expenses</button>
+                        <button onClick={() => setActiveTab('reports')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'reports' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Reports</button>
                     </nav>
                 </div>
 
@@ -55,6 +57,7 @@ const FinancesModule = () => {
                     {activeTab === 'studentPayments' && <StudentPaymentsView onStudentSelect={setSelectedStudent} />}
                     {activeTab === 'businessExpenses' && <BusinessExpensesView />}
                     {activeTab === 'personalExpenses' && <PersonalExpensesView />}
+                    {activeTab === 'reports' && <FinancialReports formatCurrency={formatCurrency} />}
                 </div>
             </div>
 
