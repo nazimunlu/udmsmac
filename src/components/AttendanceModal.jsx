@@ -3,9 +3,11 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
+import { useNotification } from '../contexts/NotificationContext';
 
 const AttendanceModal = ({ isOpen, onClose, lesson, students }) => {
     const { db, userId, appId } = useAppContext();
+    const { showNotification } = useNotification();
     const [attendance, setAttendance] = useState(lesson.attendance || {});
 
     const handleStatusChange = async (studentId, status) => {
@@ -13,7 +15,13 @@ const AttendanceModal = ({ isOpen, onClose, lesson, students }) => {
         setAttendance(newAttendance);
         
         const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
-        await updateDoc(lessonDocRef, { attendance: newAttendance });
+        try {
+            await updateDoc(lessonDocRef, { attendance: newAttendance });
+            showNotification(`Attendance for ${student.fullName} marked as ${status}.`, 'success');
+        } catch (error) {
+            console.error("Error updating attendance:", error);
+            showNotification('Failed to update attendance.', 'error');
+        }
 
         if (status === 'absent') {
             // Send message to parent
