@@ -55,7 +55,7 @@ const FinancesModule = () => {
         <>
             <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Finances</h2>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6">Finances</h2>
                     <div className="flex items-center space-x-4">
                         <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200">
                             <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600" />
