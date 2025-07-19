@@ -7,7 +7,7 @@ import EventFormModal from './EventFormModal';
 import { formatDate } from '../utils/formatDate';
 import WeeklyOverview from './WeeklyOverview';
 
-const DashboardModule = () => {
+const DashboardModule = ({ setActiveModule }) => {
     const { students, groups, db, userId, appId } = useAppContext();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -89,14 +89,14 @@ const DashboardModule = () => {
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
+                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center cursor-pointer" onClick={() => setActiveModule('students')}>
                     <div className="bg-blue-100 text-blue-600 rounded-full p-3 mr-4 flex items-center justify-center"><Icon path={ICONS.STUDENTS} className="w-6 h-6" /></div>
                     <div>
                         <h3 className="text-gray-500 text-sm font-medium">Total Students</h3>
                         <p className="text-3xl font-bold text-gray-800">{students.length}</p>
                     </div>
                 </div>
-                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
+                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center cursor-pointer" onClick={() => setActiveModule('groups')}>
                     <div className="bg-green-100 text-green-600 rounded-full p-3 mr-4 flex items-center justify-center"><Icon path={ICONS.GROUPS} className="w-6 h-6"/></div>
                     <div>
                         <h3 className="text-gray-500 text-sm font-medium">Total Groups</h3>

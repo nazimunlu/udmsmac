@@ -59,11 +59,11 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
     );
 };
 
-const MainContent = ({ activeModule }) => {
+const MainContent = ({ activeModule, setActiveModule }) => {
     const renderModule = () => {
         switch (activeModule) {
             case 'dashboard':
-                return <DashboardModule />;
+                return <DashboardModule setActiveModule={setActiveModule} />;
             case 'students':
                 return <StudentsModule />;
             case 'groups':
@@ -97,7 +97,7 @@ const Dashboard = () => {
     return (
         <div className="flex h-screen bg-gray-100">
             <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} />
-            <MainContent activeModule={activeModule} />
+            <MainContent activeModule={activeModule} setActiveModule={setActiveModule} />
         </div>
     );
 };
