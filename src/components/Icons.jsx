@@ -1,0 +1,63 @@
+import React from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+    faTachometerAlt,
+    faUserGraduate,
+    faUsers,
+    faDollarSign,
+    faFileAlt,
+    faCog,
+    faBars,
+    faTrash,
+    faEdit,
+    faPlus,
+    faTimes,
+    faCalendarAlt,
+    faClock,
+    faChevronLeft,
+    faChevronRight,
+    faMinusCircle,
+    faBuilding,
+    faShoppingCart,
+    faEye,
+    faEyeSlash,
+    faDownload,
+    faUpload,
+    faInfoCircle,
+    faBirthdayCake,
+    faBookOpen,
+    faSave
+} from '@fortawesome/free-solid-svg-icons';
+
+export const Icon = ({ path, className = "" }) => {
+    return <FontAwesomeIcon icon={path} className={className} />;
+};
+
+export const ICONS = {
+    DASHBOARD: faTachometerAlt,
+    STUDENTS: faUserGraduate,
+    GROUPS: faUsers,
+    FINANCES: faDollarSign,
+    DOCUMENTS: faFileAlt,
+    SETTINGS: faCog,
+    MENU: faBars,
+    DELETE: faTrash,
+    EDIT: faEdit,
+    ADD: faPlus,
+    CLOSE: faTimes,
+    CALENDAR: faCalendarAlt,
+    CLOCK: faClock,
+    CHEVRON_LEFT: faChevronLeft,
+    CHEVRON_RIGHT: faChevronRight,
+    REMOVE_CIRCLE: faMinusCircle,
+    BUILDING: faBuilding,
+    SHOPPING_CART: faShoppingCart,
+    EYE: faEye,
+    EYE_OFF: faEyeSlash,
+    DOWNLOAD: faDownload,
+    UPLOAD: faUpload,
+    INFO: faInfoCircle,
+    CAKE: faBirthdayCake,
+    LESSON: faBookOpen,
+    SAVE: faSave,
+};
