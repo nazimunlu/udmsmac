@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
@@ -11,6 +12,7 @@ const StudentsModule = () => {
     const { db, userId, appId, students, groups } = useAppContext();
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('group');
+    const [showArchived, setShowArchived] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [studentToEdit, setStudentToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -33,19 +35,32 @@ const StudentsModule = () => {
         if (!studentToDelete) return;
         try {
             const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToDelete.id);
-            await deleteDoc(studentDocRef);
+            await updateDoc(studentDocRef, { isArchived: true });
+            useNotification().showNotification('Student archived successfully!', 'success');
         } catch (error) {
-            console.error("Error deleting student:", error);
+            console.error("Error archiving student:", error);
+            useNotification().showNotification('Error archiving student.', 'error');
         } finally {
             setIsConfirmModalOpen(false);
             setStudentToDelete(null);
         }
     };
 
+    const handleUnarchiveStudent = async (student) => {
+        try {
+            const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
+            await updateDoc(studentDocRef, { isArchived: false });
+            useNotification().showNotification('Student unarchived successfully!', 'success');
+        } catch (error) {
+            console.error("Error unarchiving student:", error);
+            useNotification().showNotification('Error unarchiving student.', 'error');
+        }
+    };
+
     const openAddModal = () => { setStudentToEdit(null); setIsFormModalOpen(true); };
     const openEditModal = (student) => { setStudentToEdit(student); setIsFormModalOpen(true); };
     const openDetailsModal = (student) => { setStudentToView(student); setIsDetailsModalOpen(true); };
-    const filteredStudents = students.filter(s => activeTab === 'group' ? !s.isTutoring : s.isTutoring);
+    const filteredStudents = students.filter(s => showArchived ? s.isArchived : (activeTab === 'group' ? !s.isTutoring && !s.isArchived : s.isTutoring && !s.isArchived));
 
     return (
         <div className="relative p-4 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg">
@@ -55,8 +70,9 @@ const StudentsModule = () => {
             </div>
             <div className="mb-4 border-b border-gray-200">
                 <nav className="flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('group')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'group' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Group Students</button>
-                    <button onClick={() => setActiveTab('tutoring')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'tutoring' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Tutoring Students</button>
+                    <button onClick={() => { setActiveTab('group'); setShowArchived(false); }} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'group' && !showArchived ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Group Students</button>
+                    <button onClick={() => { setActiveTab('tutoring'); setShowArchived(false); }} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'tutoring' && !showArchived ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Tutoring Students</button>
+                    <button onClick={() => setShowArchived(true)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${showArchived ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Archived Students</button>
                 </nav>
             </div>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -86,6 +102,9 @@ const StudentsModule = () => {
                                                 <button onClick={() => openDetailsModal(student)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
                                                 <button onClick={() => openEditModal(student)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                                 <button onClick={() => openDeleteConfirmation(student)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                {showArchived && (
+                                                    <button onClick={() => handleUnarchiveStudent(student)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.UPLOAD} className="w-5 h-5" /></button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

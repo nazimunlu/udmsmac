@@ -32,7 +32,7 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         if (!userId || !appId) return;
 
-        const studentsQuery = collection(db, 'artifacts', appId, 'users', userId, 'students');
+        const studentsQuery = query(collection(db, 'artifacts', appId, 'users', userId, 'students'), where("isArchived", "==", false));
         const unsubStudents = onSnapshot(studentsQuery, (snapshot) => {
             const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setStudents(studentsData);
