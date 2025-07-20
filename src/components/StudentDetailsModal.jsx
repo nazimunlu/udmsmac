@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import LessonFormModal from './LessonFormModal';
 import { Icon, ICONS } from './Icons';
+import ConfirmationModal from './ConfirmationModal';
 
 const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     const { db, userId, appId, groups } = useAppContext();
@@ -14,6 +15,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isLessonFormModalOpen, setIsLessonFormModalOpen] = useState(false);
     const [lessonToEdit, setLessonToEdit] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [lessonToDelete, setLessonToDelete] = useState(null);
 
     useEffect(() => {
         if (!student?.id) {
@@ -81,6 +84,25 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
             case 'late': return <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Late</span>;
             default: return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>N/A</span>;
         }
+    };
+
+    const handleEditLesson = (lesson) => {
+        setLessonToEdit(lesson);
+        setIsLessonFormModalOpen(true);
+    };
+
+    const handleDeleteLesson = (lesson) => {
+        setLessonToDelete(lesson);
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (lessonToDelete) {
+            const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lessonToDelete.id);
+            await deleteDoc(lessonDocRef);
+            setLessonToDelete(null);
+        }
+        setIsConfirmModalOpen(false);
     };
 
     const modalTitle = (
@@ -246,6 +268,14 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => handleEditLesson(lesson)} className="p-1.5 rounded-md hover:bg-gray-200">
+                                        <Icon path={ICONS.EDIT} className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                    <button onClick={() => handleDeleteLesson(lesson)} className="p-1.5 rounded-md hover:bg-gray-200">
+                                        <Icon path={ICONS.DELETE} className="w-4 h-4 text-red-600" />
+                                    </button>
+                                </div>
                             </li>
                         ))}
                         {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student.</p>}
@@ -253,7 +283,17 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                 </div>
             )}
         </Modal>
-        {isLessonFormModalOpen && <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} student={student} />}
+        {isLessonFormModalOpen && <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => {
+            setIsLessonFormModalOpen(false);
+            setLessonToEdit(null);
+        }} student={student} lessonToEdit={lessonToEdit} />}
+        <ConfirmationModal 
+            isOpen={isConfirmModalOpen}
+            onClose={() => setIsConfirmModalOpen(false)}
+            onConfirm={confirmDelete}
+            title="Delete Lesson"
+            message="Are you sure you want to delete this lesson? This action cannot be undone."
+        />
         </>
     );
 };
