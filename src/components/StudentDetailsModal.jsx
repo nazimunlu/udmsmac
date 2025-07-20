@@ -58,7 +58,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
             .reduce((sum, i) => sum + i.amount, 0);
         const totalFee = parseFloat(student.feeDetails?.totalFee) || 0;
         return { totalPaid, totalFee };
-    }, [student]);
+    }, [student.installments, student.feeDetails]);
 
     const attendanceSummary = useMemo(() => {
         if (student.isTutoring || lessons.length === 0) return null;
@@ -215,12 +215,9 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                         {inst.status === 'Unpaid' && new Date(inst.dueDate.toDate()) < new Date() && (
                                             <Icon path={ICONS.WARNING} className="w-4 h-4 text-yellow-500" title="Payment is overdue" />
                                         )}
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${inst.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {inst.status}
-                                        </span>
-                                        <button onClick={() => handleTogglePaymentStatus(inst.number)} className="p-1.5 rounded-md hover:bg-gray-200">
-                                            <Icon path={ICONS.CHECK} className="w-4 h-4 text-gray-600" />
-                                        </button>
+                                        <button onClick={() => handleTogglePaymentStatus(inst.number)} className={`px-2 py-1 text-xs font-semibold rounded-full ${inst.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        {inst.status}
+                                    </button>
                                     </div>
                                 </div>
                             </li>
