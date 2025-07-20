@@ -6,7 +6,7 @@ import { FormInput } from './Form';
 import { formatDate } from '../utils/formatDate';
 import InvoiceGenerator from './InvoiceGenerator';
 
-const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
+const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent }) => {
     const { db, userId, appId, transactions } = useAppContext();
     const [hours, setHours] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +38,10 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
             await updateDoc(studentDocRef, {
                 installments: updatedInstallments
             });
+
+            if (onUpdateStudent) {
+                onUpdateStudent({ ...student, installments: updatedInstallments });
+            }
 
             const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
             await addDoc(transactionsCollectionPath, {
@@ -71,6 +75,10 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
             await updateDoc(studentDocRef, {
                 installments: updatedInstallments
             });
+
+            if (onUpdateStudent) {
+                onUpdateStudent({ ...student, installments: updatedInstallments });
+            }
 
             // Delete the corresponding transaction
             const q = query(collection(db, 'artifacts', appId, 'users', userId, 'transactions'), where("installmentId", "==", `${student.id}-${installmentNumber}`));
@@ -109,6 +117,9 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student }) => {
                 installments: updatedInstallments
             });
             setEditingInstallment(null);
+            if (onUpdateStudent) {
+                onUpdateStudent({ ...student, installments: updatedInstallments });
+            }
         } catch (error) {
             console.error("Error saving installment edit: ", error);
         }

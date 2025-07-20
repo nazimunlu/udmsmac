@@ -16,7 +16,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 
     return (
         <div 
-            className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
+            className={`fixed inset-0 z-[1000] flex items-center justify-center transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
             onClick={onClose}
         >
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900/50 to-slate-700/50 backdrop-blur-sm"></div>
