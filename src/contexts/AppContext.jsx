@@ -28,7 +28,7 @@ const AppProvider = ({ children }) => {
         { data: settingsData, error: settingsError },
       ] = await Promise.all([
         supabase.from('students').select('*'),
-        supabase.from('groups').select('*'),
+        supabase.from('groups').select('id, created_at, groupName, schedule, color, startDate, programLength, endDate, isArchived'),
         supabase.from('lessons').select('*'),
         supabase.from('transactions').select('*'),
         supabase.from('documents').select('*'),
@@ -42,7 +42,6 @@ const AppProvider = ({ children }) => {
       if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
       if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
 
-      console.log("Fetched groupsData:", groupsData);
       setStudents(studentsData.map(s => {
         let parsedStudent = { ...s };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
@@ -56,7 +55,6 @@ const AppProvider = ({ children }) => {
         let parsedGroup = { ...g };
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
         parsedGroup.isArchived = !!g.isArchived; // Explicitly convert to boolean
-        console.log("Parsed group in map:", parsedGroup);
         return parsedGroup;
       }));
       console.log("Groups after parsing and setting:", groups);
