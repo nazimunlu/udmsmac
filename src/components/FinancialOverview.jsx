@@ -81,32 +81,6 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
 
     return (
         <div className="space-y-8 p-4 bg-gray-50 rounded-lg shadow-inner">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center transform transition duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="bg-green-100 text-green-600 rounded-full p-4 mb-4 flex items-center justify-center shadow-md">
-                        <Icon path={ICONS.INCOME} className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Total Income</h3>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(processedData.totalIncome)}</p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center transform transition duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="bg-red-100 text-red-600 rounded-full p-4 mb-4 flex items-center justify-center shadow-md">
-                        <Icon path={ICONS.BUSINESS_EXPENSE} className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Total Expenses</h3>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(processedData.totalExpenses)}</p>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center transform transition duration-300 hover:scale-105 hover:shadow-xl">
-                    <div className="bg-blue-100 text-blue-600 rounded-full p-4 mb-4 flex items-center justify-center shadow-md">
-                        <Icon path={ICONS.PROFIT} className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">Net Profit</h3>
-                    <p className={`text-2xl font-bold ${processedData.totalIncome - processedData.totalExpenses >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                        {formatCurrency(processedData.totalIncome - processedData.totalExpenses)}
-                    </p>
-                </div>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h3 className="font-semibold mb-4 text-gray-800">Income Sources</h3>
