@@ -9,6 +9,7 @@ import FinancialOverview from './FinancialOverview';
 import TransactionFormModal from './TransactionFormModal';
 import FinancialReports from './FinancialReports';
 import Modal from './Modal';
+import { useAppContext } from '../contexts/AppContext';
 
 const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor }) => (
     <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105" style={{ borderTop: `4px solid ${borderColor}` }}>
@@ -21,8 +22,7 @@ const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor 
 );
 
 const FinancesModule = () => {
-    const [transactions, setTransactions] = useState([]);
-    const [students, setStudents] = useState([]);
+    const { transactions, students } = useAppContext();
     const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
     const [isBusinessExpensesModalOpen, setIsBusinessExpensesModalOpen] = useState(false);
     const [isPersonalExpensesModalOpen, setIsPersonalExpensesModalOpen] = useState(false);
@@ -30,25 +30,7 @@ const FinancesModule = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isDataHidden, setIsDataHidden] = useState(false);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const { data: transactionsData, error: transactionsError } = await supabase.from('transactions').select('*');
-            if (transactionsError) console.error('Error fetching transactions:', transactionsError);
-            else setTransactions(transactionsData || []);
-
-            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
-            if (studentsError) console.error('Error fetching students:', studentsError);
-            else setStudents(studentsData.map(s => ({
-                ...s,
-                installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-            })) || []);
-        };
-        fetchData();
-    }, []);
+    
 
     const formatCurrency = (value) => {
         if (isDataHidden) return '₺•••,••';
