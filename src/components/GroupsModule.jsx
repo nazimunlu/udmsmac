@@ -6,11 +6,11 @@ import GroupDetailsModal from './GroupDetailsModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
+import { useAppContext } from '../contexts/AppContext';
 
 const GroupsModule = () => {
     const { showNotification } = useNotification();
-    const [groups, setGroups] = useState([]);
-    const [students, setStudents] = useState([]);
+    const { groups, students, fetchData } = useAppContext();
     const [isLoading, setIsLoading] = useState(true);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState(null);
@@ -20,31 +20,13 @@ const GroupsModule = () => {
     const [groupToDelete, setGroupToDelete] = useState(null);
     const [showArchivedGroups, setShowArchivedGroups] = useState(false);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');
-            if (groupsError) console.error('Error fetching groups:', groupsError);
-            else setGroups(groupsData.map(g => ({
-                ...g,
-                schedule: g.schedule ? JSON.parse(g.schedule) : {},
-            })) || []);
+    const [isLoading, setIsLoading] = useState(true);
 
-            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
-            if (studentsError) console.error('Error fetching students:', studentsError);
-            else setStudents(studentsData.map(s => ({
-                ...s,
-                installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-            })) || []);
-            
+    useEffect(() => {
+        if (groups.length > 0 || students.length > 0) {
             setIsLoading(false);
-        };
-        fetchData();
-    }, []);
+        }
+    }, [groups, students]);
 
     const openAddModal = () => {
         setGroupToEdit(null);
@@ -81,6 +63,7 @@ const GroupsModule = () => {
             // Unassign students from this group
             const { error: updateError } = await supabase.from('students').update({ groupId: null }).eq('groupId', groupToDelete.id);
             if (updateError) throw updateError;
+            fetchData();
 
         } catch (error) {
             console.error("Error deleting/archiving group:", error);
@@ -96,6 +79,7 @@ const GroupsModule = () => {
             const { error } = await supabase.from('groups').update({ isArchived: false }).match({ id: group.id });
             if (error) throw error;
             showNotification('Group unarchived successfully!', 'success');
+            fetchData();
         } catch (error) {
             console.error("Error unarchiving group:", error);
             showNotification('Error unarchiving group.', 'error');
