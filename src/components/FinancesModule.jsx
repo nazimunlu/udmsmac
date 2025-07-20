@@ -28,7 +28,6 @@ const FinancesModule = () => {
     const [isFinancialReportsModalOpen, setIsFinancialReportsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isDataHidden, setIsDataHidden] = useState(false);
-    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
     const formatCurrency = (value) => {
         if (isDataHidden) return '₺•••,••';
@@ -63,9 +62,6 @@ const FinancesModule = () => {
                     <div className="flex items-center space-x-4">
                         <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
                             <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
-                        </button>
-                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-5 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-all duration-300 transform hover:scale-105">
-                            <Icon path={ICONS.ADD} className="mr-2 w-5 h-5"/>Log Transaction
                         </button>
                     </div>
                 </div>
@@ -106,7 +102,6 @@ const FinancesModule = () => {
             </div>
 
             {selectedStudent && <StudentPaymentDetailsModal isOpen={!!selectedStudent} onClose={() => setSelectedStudent(null)} student={selectedStudent} onUpdateStudent={setSelectedStudent} />}
-            <TransactionFormModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} />
 
             {/* Modals for each financial view */}
             <Modal isOpen={isStudentPaymentsModalOpen} onClose={() => setIsStudentPaymentsModalOpen(false)} title="Student Payments">
