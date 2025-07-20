@@ -3,9 +3,11 @@ import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormInput, FormSelect } from './Form';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAppContext } from '../contexts/AppContext';
 
 const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
     const { showNotification } = useNotification();
+    const { fetchData } = useAppContext();
     const [formData, setFormData] = useState({
         name: '',
         type: '',
@@ -34,6 +36,7 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
             const { error } = await supabase.from('documents').update({ name: formData.name, type: formData.type }).match({ id: documentToEdit.id });
             if (error) throw error;
             showNotification('Document updated successfully!', 'success');
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error updating document:", error);
