@@ -55,6 +55,7 @@ const AppProvider = ({ children }) => {
       setGroups(groupsData.map(g => {
         let parsedGroup = { ...g };
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
+        console.log("Parsed group in map:", parsedGroup);
         return parsedGroup;
       }));
       console.log("Groups after parsing and setting:", groups);
