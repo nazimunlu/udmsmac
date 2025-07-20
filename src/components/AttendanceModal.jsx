@@ -3,8 +3,10 @@ import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormSection } from './Form';
 import { ICONS, Icon } from './Icons';
+import { useAppContext } from '../contexts/AppContext';
 
 const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) => {
+    const { fetchData } = useAppContext();
     const [attendance, setAttendance] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,6 +40,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
         try {
             const { error } = await supabase.from('lessons').update({ attendance: attendance }).match({ id: lesson.id });
             if (error) throw error;
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving attendance: ", error);
