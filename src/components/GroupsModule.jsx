@@ -84,7 +84,10 @@ const GroupsModule = () => {
         return students.filter(s => s.groupId === groupId).length;
     };
 
-    const filteredGroups = groups.filter(group => showArchivedGroups ? group.isArchived : !group.isArchived);
+    const filteredGroups = groups.filter(group => {
+        console.log(`Group: ${group.groupName}, isArchived: ${group.isArchived}, Type: ${typeof group.isArchived}`);
+        return showArchivedGroups ? group.isArchived : !group.isArchived;
+    });
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
