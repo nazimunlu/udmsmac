@@ -111,6 +111,16 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
         await updateDoc(lessonDocRef, { status: newStatus });
     };
 
+    const handleTogglePaymentStatus = async (installmentNumber) => {
+        const updatedInstallments = student.installments.map(inst => 
+            inst.number === installmentNumber 
+                ? { ...inst, status: inst.status === 'Paid' ? 'Unpaid' : 'Paid' } 
+                : inst
+        );
+        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
+        await updateDoc(studentDocRef, { installments: updatedInstallments });
+    };
+
     const modalTitle = (
         <div>
             <h3 className="text-xl font-bold">{student.fullName}</h3>
@@ -201,11 +211,17 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-semibold text-gray-800">₺{inst.amount.toFixed(0)}</p>
-                                    {inst.status === 'Paid' ? (
-                                        <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Paid</span>
-                                    ) : (
-                                        <span className="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Unpaid</span>
-                                    )}
+                                    <div className="flex items-center justify-end space-x-2 mt-1">
+                                        {inst.status === 'Unpaid' && new Date(inst.dueDate.toDate()) < new Date() && (
+                                            <Icon path={ICONS.WARNING} className="w-4 h-4 text-yellow-500" title="Payment is overdue" />
+                                        )}
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${inst.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {inst.status}
+                                        </span>
+                                        <button onClick={() => handleTogglePaymentStatus(inst.number)} className="p-1.5 rounded-md hover:bg-gray-200">
+                                            <Icon path={ICONS.CHECK} className="w-4 h-4 text-gray-600" />
+                                        </button>
+                                    </div>
                                 </div>
                             </li>
                         ))}
