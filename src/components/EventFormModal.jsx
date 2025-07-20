@@ -5,9 +5,11 @@ import Modal from './Modal';
 import { FormInput, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
+import { useAppContext } from '../contexts/AppContext';
 
 const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
     const { showNotification } = useNotification();
+    const { fetchData } = useAppContext();
     
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
@@ -82,6 +84,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
                 if (error) throw error;
                 showNotification('Event logged successfully!', 'success');
             }
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving event:", error);
