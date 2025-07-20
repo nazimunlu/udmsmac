@@ -15,7 +15,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
         topic: '',
         startTime: '',
         endTime: '',
-        attendance: {},
         materialUrl: '',
         materialName: '',
     });
@@ -30,23 +29,12 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
     }
 
     useEffect(() => {
-        let initialAttendance = {};
-        if (group && students) {
-            initialAttendance = students.reduce((acc, s) => {
-                acc[s.id] = lessonToEdit?.attendance?.[s.id] || false;
-                return acc;
-            }, {});
-        } else if (student) {
-            initialAttendance[student.id] = lessonToEdit?.attendance?.[student.id] || false;
-        }
-
         if (lessonToEdit) {
             setFormData({
                 date: lessonToEdit.lessonDate.toDate().toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
                 startTime: lessonToEdit.startTime || '09:00',
                 endTime: lessonToEdit.endTime || '10:00',
-                attendance: initialAttendance,
                 materialUrl: lessonToEdit.materialUrl || '',
                 materialName: lessonToEdit.materialName || ''
             });
@@ -56,7 +44,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
                 topic: '',
                 startTime: group?.schedule?.startTime || '09:00',
                 endTime: group?.schedule?.endTime || '10:00',
-                attendance: initialAttendance,
                 materialUrl: '',
                 materialName: ''
             });
@@ -67,16 +54,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
         if (e.target.files[0]) {
             setFile(e.target.files[0]);
         }
-    };
-
-    const handleAttendanceChange = (studentId) => {
-        setFormData(prev => ({
-            ...prev,
-            attendance: {
-                ...prev.attendance,
-                [studentId]: !prev.attendance[studentId]
-            }
-        }));
     };
 
     const uploadFile = async (file, path) => {
@@ -121,11 +98,9 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
 
         if (group) {
             lessonData.groupId = group.id;
-            lessonData.attendance = formData.attendance;
         } else if (student) {
             lessonData.groupId = student.groupId;
             lessonData.studentId = student.id;
-            lessonData.attendance = { [student.id]: true }; // Mark tutoring student as present by default
         }
 
         try {
@@ -170,23 +145,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
                         </div>
                     </div>
                 </FormSection>
-                {group && students && (
-                    <FormSection title="Quick Attendance">
-                        <div className="sm:col-span-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {students.map(s => (
-                                <label key={s.id} className="flex items-center space-x-3 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={formData.attendance?.[s.id] || false}
-                                        onChange={() => handleAttendanceChange(s.id)}
-                                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-gray-700">{s.fullName}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </FormSection>
-                )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
                     <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Lesson'}</button>
