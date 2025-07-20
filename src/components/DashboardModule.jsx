@@ -31,13 +31,8 @@ const DashboardModule = ({ setActiveModule }) => {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
         
-        const weekStart = new Date(todayStart);
-        const dayOfWeek = weekStart.getDay();
-        const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
-        weekStart.setDate(diff);
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
+        const weekStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)));
+        const weekEnd = new Date(Date.UTC(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7));
 
         const allItems = [
             ...(lessons || []).map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
@@ -56,7 +51,6 @@ const DashboardModule = ({ setActiveModule }) => {
                 };
             })
         ];
-        console.log("All Items:", allItems);
 
         const eventsWithEndTimes = allItems.map(item => {
             let effectiveEndTime = item.startTime.getTime(); // Default to start time
@@ -71,7 +65,6 @@ const DashboardModule = ({ setActiveModule }) => {
             }
             return { ...item, effectiveEndTime };
         });
-        console.log("Events with End Times:", eventsWithEndTimes);
 
         setTodaysSchedule(eventsWithEndTimes.filter(item =>
             item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
@@ -81,7 +74,6 @@ const DashboardModule = ({ setActiveModule }) => {
         setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
         const filteredWeekEvents = eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay));
-        console.log("Filtered Week Events:", filteredWeekEvents);
         setWeekEvents(filteredWeekEvents);
 
         const paymentsDue = [];
