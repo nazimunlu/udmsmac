@@ -35,12 +35,12 @@ const AppProvider = ({ children }) => {
         supabase.from('settings').select('*'),
       ]);
 
-      if (studentsError) throw studentsError;
-      if (groupsError) throw groupsError;
-      if (lessonsError) throw lessonsError;
-      if (transactionsError) throw transactionsError;
-      if (documentsError) throw documentsError;
-      if (settingsError) throw settingsError;
+      if (studentsError) { console.error("Error fetching students:", studentsError); throw studentsError; }
+      if (groupsError) { console.error("Error fetching groups:", groupsError); throw groupsError; }
+      if (lessonsError) { console.error("Error fetching lessons:", lessonsError); throw lessonsError; }
+      if (transactionsError) { console.error("Error fetching transactions:", transactionsError); throw transactionsError; }
+      if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
+      if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
 
       setStudents(studentsData.map(s => {
         let parsedStudent = { ...s };
