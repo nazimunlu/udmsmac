@@ -3,24 +3,16 @@ import { supabase } from '../supabaseClient';
 import { formatDate } from '../utils/formatDate';
 import CustomDatePicker from './CustomDatePicker';
 import { FormSelect } from './Form';
+import { useAppContext } from '../contexts/AppContext';
 
 const FinancialReports = ({ formatCurrency }) => {
-    const [transactions, setTransactions] = useState([]);
+    const { transactions } = useAppContext();
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
         type: 'all',
         category: 'all',
     });
-
-    useEffect(() => {
-        const fetchTransactions = async () => {
-            const { data, error } = await supabase.from('transactions').select('*');
-            if (error) console.error('Error fetching transactions:', error);
-            else setTransactions(data || []);
-        };
-        fetchTransactions();
-    }, []);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
