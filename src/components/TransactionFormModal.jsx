@@ -3,8 +3,10 @@ import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
+import { useAppContext } from '../contexts/AppContext';
 
 const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCategory }) => {
+    const { fetchData } = useAppContext();
     const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
         type: 'income-group',
@@ -103,6 +105,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
                 const { error } = await supabase.from('transactions').insert([dataToSave]);
                 if (error) throw error;
             }
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving transaction:", error);
