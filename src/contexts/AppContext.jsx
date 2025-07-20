@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { supabase } from '../supabaseClient';
 
 const AppContext = createContext();
@@ -8,6 +7,7 @@ const AppProvider = ({ children }) => {
   const [students, setStudents] = useState([]);
   const [groups, setGroups] = useState([]);
   const [lessons, setLessons] = useState([]);
+  const [events, setEvents] = useState([]);
   const [payments, setPayments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -86,6 +86,7 @@ const AppProvider = ({ children }) => {
     students,
     groups,
     lessons,
+    events,
     payments,
     expenses,
     documents,
@@ -103,14 +104,7 @@ const AppProvider = ({ children }) => {
   );
 };
 
-import { useContext } from 'react';
-
 export const useAppContext = () => useContext(AppContext);
 
-export { AppContext, AppProvider };
+export { AppProvider, AppContext };
 
-import { useContext } from 'react';
-
-export const useAppContext = () => useContext(AppContext);
-
-export { AppContext, AppProvider };

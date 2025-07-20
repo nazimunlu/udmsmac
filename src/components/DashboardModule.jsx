@@ -42,14 +42,15 @@ const DashboardModule = ({ setActiveModule }) => {
             ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-                if (nextBirthday < todayStart) {
+                if (nextBirthday < now) {
                     nextBirthday.setFullYear(now.getFullYear() + 1);
                 }
                 return {
                     id: `bday-${s.id}`,
                     type: 'birthday',
                     eventName: `${s.fullName}'s Birthday`,
-                    startTime: nextBirthday
+                    startTime: nextBirthday,
+                    allDay: true,
                 };
             })
         ];
@@ -68,10 +69,13 @@ const DashboardModule = ({ setActiveModule }) => {
             return { ...item, effectiveEndTime };
         });
 
-        setTodaysSchedule(eventsWithEndTimes.filter(item =>
-            item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
-            item.startTime.getTime() <= todayEnd.getTime() // Event started before or at end of today
-        ).sort((a,b) => a.startTime.getTime() - b.startTime.getTime())); // Sort by start time
+        setTodaysSchedule(eventsWithEndTimes.filter(item => {
+            const isToday = item.startTime.getTime() >= todayStart.getTime() && item.startTime.getTime() <= todayEnd.getTime();
+            if (item.allDay) {
+                return isToday;
+            }
+            return item.effectiveEndTime >= now.getTime() && item.startTime.getTime() <= todayEnd.getTime();
+        }).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
         setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 

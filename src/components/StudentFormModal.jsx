@@ -7,11 +7,11 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import { Icon, ICONS } from './Icons';
-import { useAppContext } from '../contexts/AppContext';
+import { AppContext } from '../contexts/AppContext';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { showNotification } = useNotification();
-    const { fetchData } = useAppContext();
+    const { fetchData } = React.useContext(AppContext);
     const [groups, setGroups] = useState([]);
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
     

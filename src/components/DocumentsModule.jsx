@@ -57,37 +57,18 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
 );
 
 const DocumentsModule = () => {
-    const { showNotification } = useNotification();
     const { documents, fetchData } = useAppContext();
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [selectedCategoryDocuments, setSelectedCategoryDocuments] = useState([]);
+    const { showNotification } = useNotification();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [documentToEdit, setDocumentToEdit] = useState(null);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [documentToDelete, setDocumentToDelete] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
-    useEffect(() => {
-        const fetchDocuments = async () => {
-            const { data, error } = await supabase.from('documents').select('*');
-            if (error) console.error('Error fetching documents:', error);
-            else {
-                const docsData = data.map(doc => {
-                    if (doc.url && (doc.url.startsWith('student_documents/') || doc.url.startsWith('transactions/'))) {
-                        const originalFilePath = doc.url;
-                        const { publicURL, error } = supabase.storage.from('udms').getPublicUrl(originalFilePath);
-                        if (error) {
-                            console.error("Error getting public URL:", error);
-                            return { ...doc, url: '#', storagePath: originalFilePath };
-                        }
-                        return { ...doc, url: publicURL, storagePath: originalFilePath };
-                    }
-                    return { ...doc, storagePath: doc.url };
-                });
-                setDocuments(docsData);
-            }
-        };
-        fetchDocuments();
-    }, []);
+    const filteredDocuments = documents.filter(doc => {
+        const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
+        const matchesSearchTerm = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearchTerm;
+    });
 
     const documentCategories = [
         { name: 'National IDs', icon: ICONS.STUDENTS, color: '#3b82f6', filter: (doc) => doc.type === 'nationalId' },

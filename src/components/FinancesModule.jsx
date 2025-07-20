@@ -22,7 +22,7 @@ const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor 
 );
 
 const FinancesModule = () => {
-    const { transactions, students } = useAppContext();
+    const { payments, expenses, students } = useAppContext();
     const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
     const [isBusinessExpensesModalOpen, setIsBusinessExpensesModalOpen] = useState(false);
     const [isPersonalExpensesModalOpen, setIsPersonalExpensesModalOpen] = useState(false);
@@ -44,16 +44,16 @@ const FinancesModule = () => {
     };
 
     const totalIncome = useMemo(() => {
-        return transactions.filter(t => t.type.startsWith('income')).reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [transactions]);
+        return (payments || []).reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [payments]);
 
     const totalBusinessExpenses = useMemo(() => {
-        return transactions.filter(t => t.type === 'expense' && t.category === 'business').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [transactions]);
+        return (expenses || []).filter(t => t.category === 'business').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [expenses]);
 
     const totalPersonalExpenses = useMemo(() => {
-        return transactions.filter(t => t.type === 'expense' && t.category === 'personal').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [transactions]);
+        return (expenses || []).filter(t => t.category === 'personal').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    }, [expenses]);
 
     const netProfit = totalIncome - totalBusinessExpenses - totalPersonalExpenses;
 
@@ -103,7 +103,7 @@ const FinancesModule = () => {
                     />
                 </div>
 
-                <FinancialOverview transactions={transactions} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />
+                <FinancialOverview transactions={[...(payments || []), ...(expenses || [])]} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />
             </div>
 
             {selectedStudent && <StudentPaymentDetailsModal isOpen={!!selectedStudent} onClose={() => setSelectedStudent(null)} student={selectedStudent} onUpdateStudent={setSelectedStudent} />}
