@@ -23,6 +23,7 @@ const AppProvider = ({ children }) => {
         { data: studentsData, error: studentsError },
         { data: groupsData, error: groupsError },
         { data: lessonsData, error: lessonsError },
+        { data: eventsData, error: eventsError },
         { data: transactionsData, error: transactionsError },
         { data: documentsData, error: documentsError },
         { data: settingsData, error: settingsError },
@@ -30,6 +31,7 @@ const AppProvider = ({ children }) => {
         supabase.from('students').select('*'),
         supabase.from('groups').select('id, created_at, groupName, schedule, color, startDate, programLength, endDate, isArchived'),
         supabase.from('lessons').select('*'),
+        supabase.from('events').select('*'),
         supabase.from('transactions').select('*'),
         supabase.from('documents').select('*'),
         supabase.from('settings').select('*'),
@@ -38,6 +40,7 @@ const AppProvider = ({ children }) => {
       if (studentsError) { console.error("Error fetching students:", studentsError); throw studentsError; }
       if (groupsError) { console.error("Error fetching groups:", groupsError); throw groupsError; }
       if (lessonsError) { console.error("Error fetching lessons:", lessonsError); throw lessonsError; }
+      if (eventsError) { console.error("Error fetching events:", eventsError); throw eventsError; }
       if (transactionsError) { console.error("Error fetching transactions:", transactionsError); throw transactionsError; }
       if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
       if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
@@ -63,6 +66,7 @@ const AppProvider = ({ children }) => {
         try { parsedLesson.attendance = l.attendance ? JSON.parse(l.attendance) : {}; } catch (e) { console.error("Error parsing lesson attendance:", e); parsedLesson.attendance = {}; }
         return parsedLesson;
       }));
+      setEvents(eventsData);
       setPayments(transactionsData.filter(t => t.type.startsWith('income')));
       setExpenses(transactionsData.filter(t => t.type.startsWith('expense')));
       setDocuments(documentsData);
@@ -98,6 +102,12 @@ const AppProvider = ({ children }) => {
     </AppContext.Provider>
   );
 };
+
+import { useContext } from 'react';
+
+export const useAppContext = () => useContext(AppContext);
+
+export { AppContext, AppProvider };
 
 import { useContext } from 'react';
 
