@@ -4,8 +4,10 @@ import Modal from './Modal';
 import { FormInput } from './Form';
 import { formatDate } from '../utils/formatDate';
 import InvoiceGenerator from './InvoiceGenerator';
+import { useAppContext } from '../contexts/AppContext';
 
 const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent }) => {
+    const { fetchData } = useAppContext();
     const [hours, setHours] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingInstallment, setEditingInstallment] = useState(null);
@@ -43,11 +45,12 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
                 studentId: student.id,
                 studentName: student.fullName,
                 amount: installmentToLog.amount,
-                date: new Date().toISOString(), 
+                date: new new Date().toISOString(), 
                 type: 'income-group',
                 description: `Installment #${installmentNumber} for ${student.fullName}`,
                 installmentId: `${student.id}-${installmentNumber}`
             }]);
+            fetchData();
 
         } catch (error) {
             console.error("Error logging payment: ", error);
@@ -73,6 +76,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
             }
 
             await supabase.from('transactions').delete().match({ installmentId: `${student.id}-${installmentNumber}` });
+            fetchData();
 
         } catch (error) {
             console.error("Error undoing payment: ", error);
@@ -105,6 +109,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
             }
+            fetchData();
         } catch (error) {
             console.error("Error saving installment edit: ", error);
         }
@@ -132,6 +137,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
                 description: `Tutoring payment for ${numHours} hour(s).`
             }]);
             setHours(1);
+            fetchData();
         } catch (error) {
             console.error("Error logging tutoring payment: ", error);
         } finally {
