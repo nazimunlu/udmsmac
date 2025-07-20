@@ -155,7 +155,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
                         isOpen={isAttendanceModalOpen}
                         onClose={() => setIsAttendanceModalOpen(false)}
                         lesson={selectedLessonForAttendance}
-                        students={students}
+                        studentsInGroup={students}
                     />
                 )}
                 <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} students={students} />

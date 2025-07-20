@@ -283,6 +283,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                 <button onClick={() => setIsLessonFormModalOpen(true)} className="flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-purple-600 hover:bg-purple-700 text-sm shadow-sm mx-auto">
                                     <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
                                 </button>
+                                <button onClick={() => {
+                                    setSelectedLessonForAttendance(lesson);
+                                    setIsAttendanceModalOpen(true);
+                                }} className="flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm mx-auto mt-2">
+                                    <Icon path={ICONS.CHECK} className="w-4 h-4 mr-2"/>Log Attendance
+                                </button>
                             </div>
                         </div>
                     )}
@@ -322,6 +328,14 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             title="Delete Lesson"
             message="Are you sure you want to delete this lesson? This action cannot be undone."
         />
+        {selectedLessonForAttendance && (
+            <AttendanceModal
+                isOpen={isAttendanceModalOpen}
+                onClose={() => setIsAttendanceModalOpen(false)}
+                lesson={selectedLessonForAttendance}
+                student={currentStudent}
+            />
+        )}
         </>
     );
 };

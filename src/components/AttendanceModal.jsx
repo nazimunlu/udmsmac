@@ -1,59 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
-import { formatDate } from '../utils/formatDate';
-import { useNotification } from '../contexts/NotificationContext';
+import { FormSection } from './Form';
+import { ICONS, Icon } from './Icons';
 
-const AttendanceModal = ({ isOpen, onClose, lesson, students }) => {
+const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) => {
     const { db, userId, appId } = useAppContext();
-    const { showNotification } = useNotification();
-    const [attendance, setAttendance] = useState(lesson.attendance || {});
+    const [attendance, setAttendance] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleStatusChange = async (student, status) => {
-        const newAttendance = { ...attendance, [student.id]: status };
-        setAttendance(newAttendance);
-        
-        const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
+    useEffect(() => {
+        if (lesson?.attendance) {
+            setAttendance(lesson.attendance);
+        } else {
+            const initialAttendance = {};
+            if (studentsInGroup) {
+                studentsInGroup.forEach(s => {
+                    initialAttendance[s.id] = 'absent'; // Default to absent
+                });
+            } else if (student) {
+                initialAttendance[student.id] = 'absent';
+            }
+            setAttendance(initialAttendance);
+        }
+    }, [lesson, studentsInGroup, student]);
+
+    const handleAttendanceChange = (studentId, status) => {
+        setAttendance(prev => ({
+            ...prev,
+            [studentId]: status
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
         try {
-            await updateDoc(lessonDocRef, { attendance: newAttendance });
-            showNotification(`Attendance for ${student.fullName} marked as ${status}.`, 'success');
+            const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
+            await updateDoc(lessonDocRef, { attendance: attendance });
+            onClose();
         } catch (error) {
-            console.error("Error updating attendance:", error);
-            showNotification('Failed to update attendance.', 'error');
-        }
-
-        if (status === 'absent') {
-            // Send message to parent
-            console.log(`Sayın Velimiz, ${student.fullName} adlı öğrenciniz ${formatDate(lesson.lessonDate)} tarihindeki derse katılamamıştır.`);
+            console.error("Error saving attendance: ", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const getStatusColor = (status) => {
-        switch(status) {
-            case 'present': return 'bg-green-500 text-white';
-            case 'absent': return 'bg-red-500 text-white';
-            case 'late': return 'bg-yellow-500 text-white';
-            default: return 'bg-gray-200';
-        }
-    };
+    const studentsToDisplay = studentsInGroup || (student ? [student] : []);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance for ${lesson.topic} on ${formatDate(lesson.lessonDate)}`}>
-            <ul className="divide-y divide-gray-200">
-                {students.map(student => (
-                    <li key={student.id} className="py-4 flex items-center justify-between">
-                        <span className="font-medium text-gray-800">{student.fullName}</span>
-                        <div className="flex space-x-2">
-                            {['present', 'absent', 'late'].map(status => (
-                                <button key={status} onClick={() => handleStatusChange(student, status)} className={`px-3 py-1 text-sm rounded-full capitalize transition-colors ${attendance[student.id] === status ? getStatusColor(status) : 'bg-gray-200 hover:bg-gray-300'}`}>
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
-                    </li>
-                ))}
-            </ul>
+        <Modal isOpen={isOpen} onClose={onClose} title="Log Attendance">
+            <form onSubmit={handleSubmit}>
+                <FormSection title="Mark Attendance">
+                    <div className="sm:col-span-6 grid grid-cols-1 gap-4">
+                        {studentsToDisplay.length > 0 ? (
+                            studentsToDisplay.map(s => (
+                                <div key={s.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
+                                    <span className="font-medium text-gray-800">{s.fullName}</span>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAttendanceChange(s.id, 'present')}
+                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'present' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        >Present</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAttendanceChange(s.id, 'absent')}
+                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'absent' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        >Absent</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAttendanceChange(s.id, 'late')}
+                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'late' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        >Late</button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center text-gray-500">No students to display attendance for.</p>
+                        )}
+                    </div>
+                </FormSection>
+                <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
+                    <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Attendance'}</button>
+                </div>
+            </form>
         </Modal>
     );
 };
