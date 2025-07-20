@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Icon, ICONS } from './Icons';
 
 const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
     const COLORS = {
