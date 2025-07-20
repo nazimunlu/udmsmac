@@ -1,37 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { formatDate } from '../utils/formatDate';
+import { useAppContext } from '../contexts/AppContext';
 
 const StudentPaymentsView = ({ onStudentSelect }) => {
-    const [students, setStudents] = useState([]);
-    const [incomeTransactions, setIncomeTransactions] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { students, payments, loading } = useAppContext();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            const { data: transactionsData, error: transactionsError } = await supabase.from('transactions').select('*').in('type', ["income-group", "income-tutoring"]);
-            if (transactionsError) console.error('Error fetching transactions:', transactionsError);
-            else {
-                transactionsData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                setIncomeTransactions(transactionsData || []);
-            }
-
-            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
-            if (studentsError) console.error('Error fetching students:', studentsError);
-            else setStudents(studentsData.map(s => ({
-                ...s,
-                installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-            })) || []);
-            
-            setIsLoading(false);
-        };
-        fetchData();
-    }, []);
+    const incomeTransactions = payments.filter(t => t.type.startsWith("income"));
 
     const getStudentName = (studentId) => {
         const student = students.find(s => s.id === studentId);
