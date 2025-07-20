@@ -10,7 +10,15 @@ import { Icon, ICONS } from './Icons';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
     const { db, userId, appId } = useAppContext();
-    const [formData, setFormData] = useState({});
+        const [formData, setFormData] = useState({
+        date: '',
+        topic: '',
+        startTime: '',
+        endTime: '',
+        attendance: {},
+        materialUrl: '',
+        materialName: '',
+    });
     const [file, setFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
