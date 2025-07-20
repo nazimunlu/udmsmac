@@ -115,7 +115,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
             startTime: formData.startTime,
             endTime: formData.endTime,
             materialUrl,
-            materialName
+            materialName,
+            status: 'Incomplete'
         };
 
         if (group) {

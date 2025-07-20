@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
@@ -103,6 +103,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
             setLessonToDelete(null);
         }
         setIsConfirmModalOpen(false);
+    };
+
+    const handleToggleStatus = async (lesson) => {
+        const newStatus = lesson.status === 'Complete' ? 'Incomplete' : 'Complete';
+        const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
+        await updateDoc(lessonDocRef, { status: newStatus });
     };
 
     const modalTitle = (
@@ -269,6 +275,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.status === 'Complete' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        {lesson.status}
+                                    </span>
+                                    <button onClick={() => handleToggleStatus(lesson)} className="p-1.5 rounded-md hover:bg-gray-200">
+                                        <Icon path={ICONS.CHECK} className="w-4 h-4 text-gray-600" />
+                                    </button>
                                     <button onClick={() => handleEditLesson(lesson)} className="p-1.5 rounded-md hover:bg-gray-200">
                                         <Icon path={ICONS.EDIT} className="w-4 h-4 text-gray-600" />
                                     </button>
