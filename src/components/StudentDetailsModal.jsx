@@ -8,7 +8,7 @@ import LessonFormModal from './LessonFormModal';
 import { Icon, ICONS } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 
-const StudentDetailsModal = ({ isOpen, onClose, student }) => {
+const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const { db, userId, appId, groups } = useAppContext();
     const [activeTab, setActiveTab] = useState('general');
     const [lessons, setLessons] = useState([]);
@@ -17,9 +17,14 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     const [lessonToEdit, setLessonToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [lessonToDelete, setLessonToDelete] = useState(null);
+    const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
     useEffect(() => {
-        if (!student?.id) {
+        setCurrentStudent(initialStudent);
+    }, [initialStudent]);
+
+    useEffect(() => {
+        if (!currentStudent?.id) {
             setIsLoading(false);
             setLessons([]);
             return;
@@ -29,12 +34,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
         const lessonsCollection = collection(db, 'artifacts', appId, 'users', userId, 'lessons');
         let lessonsQuery;
 
-        if (student.isTutoring) {
+        if (currentStudent.isTutoring) {
             // For tutoring students, fetch lessons by studentId
-            lessonsQuery = query(lessonsCollection, where("studentId", "==", student.id));
-        } else if (student.groupId) {
+            lessonsQuery = query(lessonsCollection, where("studentId", "==", currentStudent.id));
+        } else if (currentStudent.groupId) {
             // For group students, fetch lessons by groupId
-            lessonsQuery = query(lessonsCollection, where("groupId", "==", student.groupId));
+            lessonsQuery = query(lessonsCollection, where("groupId", "==", currentStudent.groupId));
         } else {
             setIsLoading(false);
             setLessons([]);
@@ -49,32 +54,32 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
         });
 
         return unsubscribe;
-    }, [db, userId, appId, student]);
+    }, [db, userId, appId, currentStudent]);
 
     const paymentSummary = useMemo(() => {
-        if (!student.installments) return null;
-        const totalPaid = student.installments
+        if (!currentStudent.installments) return null;
+        const totalPaid = currentStudent.installments
             .filter(i => i.status === 'Paid')
             .reduce((sum, i) => sum + i.amount, 0);
-        const totalFee = parseFloat(student.feeDetails?.totalFee) || 0;
+        const totalFee = parseFloat(currentStudent.feeDetails?.totalFee) || 0;
         return { totalPaid, totalFee };
-    }, [student.installments, student.feeDetails]);
+    }, [currentStudent.installments, currentStudent.feeDetails]);
 
     const attendanceSummary = useMemo(() => {
-        if (student.isTutoring || lessons.length === 0) return null;
-        const presentCount = lessons.filter(l => l.attendance?.[student.id] === 'present').length;
+        if (currentStudent.isTutoring || lessons.length === 0) return null;
+        const presentCount = lessons.filter(l => l.attendance?.[currentStudent.id] === 'present').length;
         const totalLessons = lessons.length;
         return { presentCount, totalLessons };
-    }, [lessons, student.id]);
+    }, [lessons, currentStudent.id]);
 
     const tutoringSummary = useMemo(() => {
-        if (!student.isTutoring) return null;
+        if (!currentStudent.isTutoring) return null;
         const completedLessons = lessons.filter(l => l.status === 'Complete').length;
         const totalLessons = lessons.length;
         return { completedLessons, totalLessons };
-    }, [lessons, student.isTutoring]);
+    }, [lessons, currentStudent.isTutoring]);
     
-    const groupName = student.groupId ? groups.find(g => g.id === student.groupId)?.groupName : 'N/A';
+    const groupName = currentStudent.groupId ? groups.find(g => g.id === currentStudent.groupId)?.groupName : 'N/A';
     
     const getAttendanceStatus = (status) => {
         const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
@@ -112,18 +117,19 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     };
 
     const handleTogglePaymentStatus = async (installmentNumber) => {
-        const updatedInstallments = student.installments.map(inst => 
+        const updatedInstallments = currentStudent.installments.map(inst => 
             inst.number === installmentNumber 
                 ? { ...inst, status: inst.status === 'Paid' ? 'Unpaid' : 'Paid' } 
                 : inst
         );
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
+        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', currentStudent.id);
         await updateDoc(studentDocRef, { installments: updatedInstallments });
+        setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
     };
 
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{student.fullName}</h3>
+            <h3 className="text-xl font-bold">{currentStudent.fullName}</h3>
             <p className="text-sm text-white/80">Student Details</p>
         </div>
     );
@@ -135,7 +141,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                 <nav className="flex space-x-4" aria-label="Tabs">
                     <button onClick={() => setActiveTab('general')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>General Info</button>
                     <button onClick={() => setActiveTab('payments')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'payments' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Payments</button>
-                    {student.isTutoring ? (
+                    {currentStudent.isTutoring ? (
                         <button onClick={() => setActiveTab('tutoringSummary')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'tutoringSummary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Tutoring Summary</button>
                     ) : (
                         <button onClick={() => setActiveTab('attendance')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Attendance</button>
@@ -148,34 +154,34 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Student Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(student.studentContact)}</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.studentContact)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Parent Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(student.parentContact) || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parentContact) || 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Enrollment Date</p>
-                            <p className="text-sm text-gray-500">{formatDate(student.enrollmentDate)}</p>
+                            <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollmentDate)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Birth Date</p>
-                            <p className="text-sm text-gray-500">{student.birthDate ? formatDate(student.birthDate) : 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Student Type</p>
-                            <p className="text-sm text-gray-500">{student.isTutoring ? 'Tutoring' : 'Group'}</p>
+                            <p className="text-sm text-gray-500">{currentStudent.isTutoring ? 'Tutoring' : 'Group'}</p>
                         </div>
                     </li>
-                    {!student.isTutoring && (
+                    {!currentStudent.isTutoring && (
                         <li className="py-3 flex justify-between items-center">
                             <div>
                                 <p className="font-medium text-gray-800">Group</p>
@@ -203,7 +209,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                         </div>
                     )}
                     <ul className="divide-y divide-gray-200">
-                        {(student.installments || []).map(inst => (
+                        {(currentStudent.installments || []).map(inst => (
                             <li key={inst.number} className="py-3 flex justify-between items-center">
                                 <div>
                                     <p className="font-medium text-gray-800">Installment #{inst.number}</p>
@@ -222,12 +228,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                 </div>
                             </li>
                         ))}
-                        {(student.installments || []).length === 0 && <p className="text-center text-gray-500 py-4">No payment plan found for this student.</p>}
+                        {(currentStudent.installments || []).length === 0 && <p className="text-center text-gray-500 py-4">No payment plan found for this student.</p>}
                     </ul>
                 </div>
             )}
 
-            {activeTab === 'attendance' && !student.isTutoring && (
+            {activeTab === 'attendance' && !currentStudent.isTutoring && (
                  <div>
                     {attendanceSummary && (
                         <div className="p-4 bg-green-50 rounded-lg mb-4">
@@ -251,7 +257,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
-                                {getAttendanceStatus(lesson.attendance?.[student.id])}
+                                {getAttendanceStatus(lesson.attendance?.[currentStudent.id])}
                             </li>
                         ))}
                         {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student's group.</p>}
@@ -259,7 +265,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                 </div>
             )}
 
-            {activeTab === 'tutoringSummary' && student.isTutoring && (
+            {activeTab === 'tutoringSummary' && currentStudent.isTutoring && (
                 <div>
                     {tutoringSummary && (
                         <div className="p-4 bg-purple-50 rounded-lg mb-4">
@@ -311,7 +317,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
         {isLessonFormModalOpen && <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => {
             setIsLessonFormModalOpen(false);
             setLessonToEdit(null);
-        }} student={student} lessonToEdit={lessonToEdit} />}
+        }} student={currentStudent} lessonToEdit={lessonToEdit} />}
         <ConfirmationModal 
             isOpen={isConfirmModalOpen}
             onClose={() => setIsConfirmModalOpen(false)}
