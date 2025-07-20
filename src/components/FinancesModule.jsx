@@ -8,6 +8,7 @@ import { Icon, ICONS } from './Icons';
 import FinancialOverview from './FinancialOverview';
 import TransactionFormModal from './TransactionFormModal';
 import FinancialReports from './FinancialReports';
+import Modal from './Modal';
 
 const FinancialCard = ({ title, value, icon, onClick, isDataHidden }) => (
     <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105 hover:shadow-xl">
