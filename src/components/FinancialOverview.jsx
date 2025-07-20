@@ -12,12 +12,12 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
         darkGray: '#6B7280', // Gray 500
     };
 
-    PIE_COLORS: {
-            'income-group': COLORS.secondary,
-            'income-tutoring': COLORS.info,
-            'expense-business': COLORS.danger,
-            'expense-personal': COLORS.tertiary,
-        },
+    const PIE_COLORS = {
+        'income-group': COLORS.secondary,
+        'income-tutoring': COLORS.info,
+        'expense-business': COLORS.danger,
+        'expense-personal': COLORS.tertiary,
+    };
     
     const incomeSourceColors = [PIE_COLORS['income-group'], PIE_COLORS['income-tutoring']];
     const expenseBreakdownColors = [PIE_COLORS['expense-business'], PIE_COLORS['expense-personal']];
