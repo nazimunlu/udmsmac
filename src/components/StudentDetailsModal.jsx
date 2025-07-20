@@ -6,8 +6,10 @@ import formatPhoneNumber from '../utils/formatPhoneNumber';
 import LessonFormModal from './LessonFormModal';
 import { Icon, ICONS } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
+import { useAppContext } from '../contexts/AppContext';
 
 const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
+    const { fetchData } = useAppContext();
     const [activeTab, setActiveTab] = useState('general');
     const [lessons, setLessons] = useState([]);
     const [groups, setGroups] = useState([]);
@@ -135,6 +137,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             setLessonToDelete(null);
         }
         setIsConfirmModalOpen(false);
+        fetchData();
     };
 
     const handleToggleStatus = async (lesson) => {
@@ -142,6 +145,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         const { error } = await supabase.from('lessons').update({ status: newStatus }).match({ id: lesson.id });
         if (error) {
             console.error('Error updating lesson status:', error);
+        } else {
+            fetchData();
         }
     };
 
@@ -156,6 +161,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             console.error('Error updating payment status:', error);
         } else {
             setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+            fetchData();
         }
     };
 
@@ -173,6 +179,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         const { error } = await supabase.from('lessons').update({ attendance: updatedAttendance }).match({ id: lesson.id });
         if (error) {
             console.error('Error updating attendance:', error);
+        } else {
+            fetchData();
         }
     };
 
