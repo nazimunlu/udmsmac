@@ -17,10 +17,10 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
             const initialAttendance = {};
             if (studentsInGroup) {
                 studentsInGroup.forEach(s => {
-                    initialAttendance[s.id] = 'absent'; // Default to absent
+                    initialAttendance[s.id] = 'Absent'; // Default to absent
                 });
             } else if (student) {
-                initialAttendance[student.id] = 'absent';
+                initialAttendance[student.id] = 'Absent';
             }
             setAttendance(initialAttendance);
         }
@@ -62,19 +62,14 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
                                     <div className="flex space-x-2">
                                         <button
                                             type="button"
-                                            onClick={() => handleAttendanceChange(s.id, 'present')}
-                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'present' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                            onClick={() => handleAttendanceChange(s.id, 'Present')}
+                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'Present' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                                         >Present</button>
                                         <button
                                             type="button"
-                                            onClick={() => handleAttendanceChange(s.id, 'absent')}
-                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'absent' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                            onClick={() => handleAttendanceChange(s.id, 'Absent')}
+                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'Absent' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                                         >Absent</button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleAttendanceChange(s.id, 'late')}
-                                            className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'late' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                        >Late</button>
                                     </div>
                                 </div>
                             ))

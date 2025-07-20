@@ -67,7 +67,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const attendanceSummary = useMemo(() => {
         if (currentStudent.isTutoring || lessons.length === 0) return null;
-        const presentCount = lessons.filter(l => l.attendance?.[currentStudent.id] === 'present').length;
+        const presentCount = lessons.filter(l => l.attendance?.[currentStudent.id] === 'Present').length;
         const totalLessons = lessons.length;
         return { presentCount, totalLessons };
     }, [lessons, currentStudent.id]);
@@ -84,9 +84,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const getAttendanceStatus = (status) => {
         const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
         switch(status) {
-            case 'present': return <span className={`${baseClasses} bg-green-100 text-green-800`}>Present</span>;
-            case 'absent': return <span className={`${baseClasses} bg-red-100 text-red-800`}>Absent</span>;
-            case 'late': return <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Late</span>;
+            case 'Present': return <span className={`${baseClasses} bg-green-100 text-green-800`}>Present</span>;
+            case 'Absent': return <span className={`${baseClasses} bg-red-100 text-red-800`}>Absent</span>;
             default: return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>N/A</span>;
         }
     };
@@ -129,10 +128,9 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const handleAttendanceChange = async (lesson, studentId, currentStatus) => {
         const newStatus = {
-            'present': 'absent',
-            'absent': 'late',
-            'late': 'present'
-        }[currentStatus] || 'present';
+            'Present': 'Absent',
+            'Absent': 'Present'
+        }[currentStatus] || 'Present';
 
         const updatedAttendance = {
             ...lesson.attendance,
@@ -273,7 +271,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
-                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'present' ? 'bg-green-100 text-green-800' : lesson.attendance?.[currentStudent.id] === 'absent' ? 'bg-red-100 text-red-800' : lesson.attendance?.[currentStudent.id] === 'late' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                     {lesson.attendance?.[currentStudent.id] || 'N/A'}
                                 </button>
                             </li>
