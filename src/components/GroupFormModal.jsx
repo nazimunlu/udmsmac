@@ -37,6 +37,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
         startDate: groupToEdit?.startDate ? new Date(groupToEdit.startDate).toISOString().split('T')[0] : '',
         programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
+        isArchived: groupToEdit?.isArchived || false,
     }), [groupToEdit]);
 
     const [formData, setFormData] = useState(getInitialData());
