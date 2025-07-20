@@ -10,7 +10,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const GroupsModule = () => {
     const { showNotification } = useNotification();
-    const { groups, students, fetchData } = useAppContext();
+    const { groups, students, fetchData, loading } = useAppContext();
     const [isLoading, setIsLoading] = useState(true);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState(null);
@@ -20,13 +20,7 @@ const GroupsModule = () => {
     const [groupToDelete, setGroupToDelete] = useState(null);
     const [showArchivedGroups, setShowArchivedGroups] = useState(false);
 
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        if (groups.length > 0 || students.length > 0) {
-            setIsLoading(false);
-        }
-    }, [groups, students]);
+    
 
     const openAddModal = () => {
         setGroupToEdit(null);
