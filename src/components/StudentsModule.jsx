@@ -11,7 +11,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const StudentsModule = () => {
     const { showNotification } = useNotification();
-    const { students, groups, fetchData, loading } = useAppContext();
+    const { students, archivedStudents, groups, fetchData, loading } = useAppContext();
     
     const [activeStudentType, setActiveStudentType] = useState('all'); // 'all', 'group', 'tutoring', 'archived'
     const [searchQuery, setSearchQuery] = useState('');
@@ -22,35 +22,34 @@ const StudentsModule = () => {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [studentToView, setStudentToView] = useState(null);
 
-    useEffect(() => {
-        if (students.length > 0 || groups.length > 0) {
-            // setIsLoading(false);
-        }
-    }, [students, groups]);
-
-    const groupStudents = students.filter(s => !s.isTutoring && !s.isArchived);
-    const tutoringStudents = students.filter(s => s.isTutoring && !s.isArchived);
-    const archivedStudents = students.filter(s => s.isArchived);
+    const groupStudents = useMemo(() => students.filter(s => !s.isTutoring), [students]);
+    const tutoringStudents = useMemo(() => students.filter(s => s.isTutoring), [students]);
 
     const filteredStudents = useMemo(() => {
-        let filtered = students;
-        if (activeStudentType === 'group') {
-            filtered = filtered.filter(s => !s.isTutoring && !s.isArchived);
-        } else if (activeStudentType === 'tutoring') {
-            filtered = filtered.filter(s => s.isTutoring && !s.isArchived);
-        } else if (activeStudentType === 'archived') {
-            filtered = filtered.filter(s => s.isArchived);
+        let sourceStudents;
+        switch (activeStudentType) {
+            case 'group':
+                sourceStudents = groupStudents;
+                break;
+            case 'tutoring':
+                sourceStudents = tutoringStudents;
+                break;
+            case 'archived':
+                sourceStudents = archivedStudents;
+                break;
+            default:
+                sourceStudents = students;
         }
 
         if (searchQuery) {
-            filtered = filtered.filter(s =>
+            return sourceStudents.filter(s =>
                 s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.studentContact.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.parentContact?.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        return filtered;
-    }, [students, activeStudentType, searchQuery]);
+        return sourceStudents;
+    }, [students, archivedStudents, activeStudentType, searchQuery, groupStudents, tutoringStudents]);
     
     const openDeleteConfirmation = (student) => {
         setStudentToDelete(student);

@@ -5,7 +5,9 @@ const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
   const [students, setStudents] = useState([]);
+  const [archivedStudents, setArchivedStudents] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [archivedGroups, setArchivedGroups] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [events, setEvents] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -45,22 +47,28 @@ const AppProvider = ({ children }) => {
       if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
       if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
 
-      setStudents(studentsData.map(s => {
+      const allStudents = studentsData.map(s => {
         let parsedStudent = { ...s };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
         try { parsedStudent.feeDetails = s.feeDetails ? JSON.parse(s.feeDetails) : {}; } catch (e) { console.error("Error parsing student feeDetails:", e); parsedStudent.feeDetails = {}; }
         try { parsedStudent.tutoringDetails = s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {}; } catch (e) { console.error("Error parsing student tutoringDetails:", e); parsedStudent.tutoringDetails = {}; }
         try { parsedStudent.documents = s.documents ? JSON.parse(s.documents) : {}; } catch (e) { console.error("Error parsing student documents:", e); parsedStudent.documents = {}; }
         try { parsedStudent.documentNames = s.documentNames ? JSON.parse(s.documentNames) : {}; } catch (e) { console.error("Error parsing student documentNames:", e); parsedStudent.documentNames = {}; }
+        parsedStudent.isArchived = !!s.isArchived;
         return parsedStudent;
-      }));
-      setGroups(groupsData.map(g => {
+      });
+      setStudents(allStudents.filter(s => !s.isArchived));
+      setArchivedStudents(allStudents.filter(s => s.isArchived));
+
+      const allGroups = groupsData.map(g => {
         let parsedGroup = { ...g };
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
         parsedGroup.isArchived = !!g.isArchived; // Explicitly convert to boolean
         return parsedGroup;
-      }));
-      console.log("Groups after parsing and setting:", groups);
+      });
+      setGroups(allGroups.filter(g => !g.isArchived));
+      setArchivedGroups(allGroups.filter(g => g.isArchived));
+
       setLessons(lessonsData.map(l => {
         let parsedLesson = { ...l };
         try { parsedLesson.attendance = l.attendance ? JSON.parse(l.attendance) : {}; } catch (e) { console.error("Error parsing lesson attendance:", e); parsedLesson.attendance = {}; }
@@ -84,7 +92,9 @@ const AppProvider = ({ children }) => {
 
   const contextValue = {
     students,
+    archivedStudents,
     groups,
+    archivedGroups,
     lessons,
     events,
     payments,

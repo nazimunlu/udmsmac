@@ -10,7 +10,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const GroupsModule = () => {
     const { showNotification } = useNotification();
-    const { groups, students, fetchData, loading } = useAppContext();
+    const { groups, archivedGroups, students, fetchData, loading } = useAppContext();
     
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState(null);
@@ -84,7 +84,7 @@ const GroupsModule = () => {
         return students.filter(s => s.groupId === groupId).length;
     };
 
-    const filteredGroups = groups.filter(group => showArchivedGroups ? group.isArchived : !group.isArchived);
+    const filteredGroups = showArchivedGroups ? archivedGroups : groups;
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
@@ -94,8 +94,8 @@ const GroupsModule = () => {
             </div>
             <div className="mb-4 border-b border-gray-200">
                 <nav className="flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => setShowArchivedGroups(false)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${!showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Active Groups</button>
-                    <button onClick={() => setShowArchivedGroups(true)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Archived Groups</button>
+                    <button onClick={() => setShowArchivedGroups(false)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${!showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Active Groups ({groups.length})</button>
+                    <button onClick={() => setShowArchivedGroups(true)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Archived Groups ({archivedGroups.length})</button>
                 </nav>
             </div>
             {loading ? (

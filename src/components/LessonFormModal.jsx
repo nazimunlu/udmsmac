@@ -6,9 +6,11 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
     const { fetchData } = useAppContext();
+    const { showNotification } = useNotification();
     const [formData, setFormData] = useState({
         date: '',
         topic: '',

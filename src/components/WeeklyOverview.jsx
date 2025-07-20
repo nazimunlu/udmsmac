@@ -32,7 +32,7 @@ const WeeklyOverview = ({ events }) => {
                 {weekDates.map((date, i) => (
                     <div key={i} className={`text-center font-semibold p-2 border-l border-gray-200 ${i === todayIndex ? 'text-blue-600' : 'text-gray-600'}`}>
                         <div>{new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date)}</div>
-                        <div className="text-xs font-normal">{formatDate(date)}</div>
+                        <div className="text-xs font-normal">{formatDate(date, { format: 'short' })}</div>
                     </div>
                 ))}
             

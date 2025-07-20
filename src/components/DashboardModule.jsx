@@ -221,7 +221,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         <EventIcon type={item.type} />
                                         <div>
                                             <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                            <p className="text-sm text-gray-500">{item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                            <p className="text-sm text-gray-500">{item.allDay ? 'All Day' : item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Istanbul'})}</p>
                                         </div>
                                     </div>
                                     {item.type === 'event' && (

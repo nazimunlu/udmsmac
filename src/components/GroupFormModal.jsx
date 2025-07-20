@@ -5,9 +5,11 @@ import { FormInput, FormSelect } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import { useAppContext } from '../contexts/AppContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const { fetchData } = useAppContext();
+    const { showNotification } = useNotification();
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
         timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
@@ -124,11 +126,13 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             } else {
                 const { error } = await supabase.from('groups').insert([dataToSave]);
                 if (error) throw error;
+                showNotification('Group added successfully!', 'success');
             }
             fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving group:", error);
+            showNotification('Failed to save group.', 'error');
         } finally {
             setIsSubmitting(false);
         }
