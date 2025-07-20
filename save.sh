@@ -1,24 +1,17 @@
 #!/bin/bash
 
 # This script simplifies saving your work to GitHub.
-# It will stage all your changes, ask you for a commit message,
+# It will stage all your changes, use an automated commit message,
 # and then push the changes to your remote repository.
 
 echo "✅ Staging all changes for commit..."
 git add .
 
-# Use the first argument as the commit message, or ask the user if it's not provided
+# Use the first argument as the commit message, or use a default message
 if [ -n "$1" ]; then
   commit_message="$1"
 else
-  echo "💬 Please enter a commit message (and press Enter):"
-  read commit_message
-fi
-
-# Check if the commit message is empty
-if [ -z "$commit_message" ]; then
-  echo "❌ Commit message cannot be empty. Aborting."
-  exit 1
+  commit_message="Automated commit by Gemini CLI"
 fi
 
 echo "📦 Committing with message: '$commit_message'..."

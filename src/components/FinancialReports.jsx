@@ -1,17 +1,26 @@
-import React, { useState, useMemo } from 'react';
-import { useAppContext } from '../contexts/AppContext';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import { formatDate } from '../utils/formatDate';
 import CustomDatePicker from './CustomDatePicker';
 import { FormSelect } from './Form';
 
 const FinancialReports = ({ formatCurrency }) => {
-    const { transactions } = useAppContext();
+    const [transactions, setTransactions] = useState([]);
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
         type: 'all',
         category: 'all',
     });
+
+    useEffect(() => {
+        const fetchTransactions = async () => {
+            const { data, error } = await supabase.from('transactions').select('*');
+            if (error) console.error('Error fetching transactions:', error);
+            else setTransactions(data || []);
+        };
+        fetchTransactions();
+    }, []);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -20,7 +29,7 @@ const FinancialReports = ({ formatCurrency }) => {
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
-            const transactionDate = t.date.toDate();
+            const transactionDate = new Date(t.date);
             const start = filters.startDate ? new Date(filters.startDate) : null;
             const end = filters.endDate ? new Date(filters.endDate) : null;
 
@@ -30,7 +39,7 @@ const FinancialReports = ({ formatCurrency }) => {
             if (filters.category !== 'all' && t.category !== filters.category) return false;
 
             return true;
-        }).sort((a, b) => b.date.toMillis() - a.date.toMillis());
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [transactions, filters]);
 
     const totalIncome = filteredTransactions

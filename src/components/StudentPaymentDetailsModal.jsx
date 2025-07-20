@@ -1,33 +1,30 @@
 import React, { useState, useMemo } from 'react';
-import { doc, updateDoc, addDoc, collection, Timestamp, deleteDoc, query, where, getDocs } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormInput } from './Form';
 import { formatDate } from '../utils/formatDate';
 import InvoiceGenerator from './InvoiceGenerator';
 
 const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent }) => {
-    const { db, userId, appId, transactions } = useAppContext();
     const [hours, setHours] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingInstallment, setEditingInstallment] = useState(null);
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [selectedPaymentForInvoice, setSelectedPaymentForInvoice] = useState(null);
+    const [transactions, setTransactions] = useState([]);
 
     if (!student) return null;
 
     const tutoringPayments = useMemo(() => {
         return transactions
             .filter(t => t.type === 'income-tutoring' && t.studentId === student.id)
-            .sort((a,b) => b.date.toMillis() - a.date.toMillis());
+            .sort((a,b) => new Date(b.date) - new Date(a.date));
     }, [transactions, student.id]);
 
     const handleLogInstallmentPayment = async (installmentNumber) => {
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
-        
         const updatedInstallments = student.installments.map(inst => {
             if (inst.number === installmentNumber) {
-                return { ...inst, status: 'Paid', paymentDate: Timestamp.now() };
+                return { ...inst, status: 'Paid', paymentDate: new Date().toISOString() };
             }
             return inst;
         });
@@ -35,24 +32,22 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         const installmentToLog = student.installments.find(inst => inst.number === installmentNumber);
 
         try {
-            await updateDoc(studentDocRef, {
-                installments: updatedInstallments
-            });
+            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
+            if (error) throw error;
 
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
             }
 
-            const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-            await addDoc(transactionsCollectionPath, {
+            await supabase.from('transactions').insert([{
                 studentId: student.id,
                 studentName: student.fullName,
                 amount: installmentToLog.amount,
-                date: Timestamp.now(), 
+                date: new Date().toISOString(), 
                 type: 'income-group',
                 description: `Installment #${installmentNumber} for ${student.fullName}`,
-                installmentId: `${student.id}-${installmentNumber}` // Unique ID for this installment payment transaction
-            });
+                installmentId: `${student.id}-${installmentNumber}`
+            }]);
 
         } catch (error) {
             console.error("Error logging payment: ", error);
@@ -60,8 +55,6 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
     };
 
     const handleUndoInstallmentPayment = async (installmentNumber) => {
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
-
         const updatedInstallments = student.installments.map(inst => {
             if (inst.number === installmentNumber) {
                 const newInst = { ...inst };
@@ -72,20 +65,14 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         });
 
         try {
-            await updateDoc(studentDocRef, {
-                installments: updatedInstallments
-            });
+            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
+            if (error) throw error;
 
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
             }
 
-            // Delete the corresponding transaction
-            const q = query(collection(db, 'artifacts', appId, 'users', userId, 'transactions'), where("installmentId", "==", `${student.id}-${installmentNumber}`));
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach(async (d) => {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'transactions', d.id));
-            });
+            await supabase.from('transactions').delete().match({ installmentId: `${student.id}-${installmentNumber}` });
 
         } catch (error) {
             console.error("Error undoing payment: ", error);
@@ -93,29 +80,27 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
     };
 
     const handleEditInstallment = (installment) => {
-        setEditingInstallment({ ...installment, dueDate: installment.dueDate.toDate().toISOString().split('T')[0] });
+        setEditingInstallment({ ...installment, dueDate: new Date(installment.dueDate).toISOString().split('T')[0] });
     };
 
     const handleSaveInstallmentEdit = async (e) => {
         e.preventDefault();
         if (!editingInstallment) return;
 
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
         const updatedInstallments = student.installments.map(inst => {
             if (inst.number === editingInstallment.number) {
                 return {
                     ...inst,
                     amount: parseFloat(editingInstallment.amount),
-                    dueDate: Timestamp.fromDate(new Date(editingInstallment.dueDate.replace(/-/g, '/'))),
+                    dueDate: new Date(editingInstallment.dueDate).toISOString(),
                 };
             }
             return inst;
         });
 
         try {
-            await updateDoc(studentDocRef, {
-                installments: updatedInstallments
-            });
+            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
+            if (error) throw error;
             setEditingInstallment(null);
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
@@ -138,16 +123,15 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         const totalAmount = hourlyRate * numHours;
 
         try {
-            const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-            await addDoc(transactionsCollectionPath, {
+            await supabase.from('transactions').insert([{
                 studentId: student.id,
                 studentName: student.fullName,
                 amount: totalAmount,
-                date: Timestamp.now(),
+                date: new Date().toISOString(),
                 type: 'income-tutoring',
                 description: `Tutoring payment for ${numHours} hour(s).`
-            });
-            setHours(1); // Reset hours input
+            }]);
+            setHours(1);
         } catch (error) {
             console.error("Error logging tutoring payment: ", error);
         } finally {

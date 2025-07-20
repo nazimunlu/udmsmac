@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { supabase } from '../supabaseClient';
-import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
 import Modal from './Modal';
 import DocumentEditModal from './DocumentEditModal';
+import ConfirmationModal from './ConfirmationModal';
+import { useNotification } from '../contexts/NotificationContext';
 
 const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCategory }) => (
     <div 
@@ -20,7 +20,7 @@ const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCatego
     </div>
 );
 
-const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocument }) => (
+const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocument, onDeleteDocument }) => (
     <Modal isOpen={isOpen} onClose={onClose} title={`${category} Documents`}>
         <div className="space-y-4">
             {documents.length > 0 ? (
@@ -29,7 +29,7 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                         <li key={doc.id} className="py-3 flex justify-between items-center">
                             <div>
                                 <p className="font-medium text-gray-800">{doc.name}</p>
-                                <p className="text-sm text-gray-500">Uploaded: {doc.uploadDate ? new Date(doc.uploadDate.toDate()).toLocaleDateString() : 'N/A'}</p>
+                                <p className="text-sm text-gray-500">Uploaded: {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : 'N/A'}</p>
                             </div>
                             <div className="flex space-x-2">
                                 <a href={doc.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700">
@@ -40,6 +40,9 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                                 </a>
                                 <button onClick={() => onEditDocument(doc)} className="px-3 py-1 text-sm rounded-lg text-white bg-yellow-600 hover:bg-yellow-700">
                                     Edit
+                                </button>
+                                <button onClick={() => onDeleteDocument(doc)} className="px-3 py-1 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700">
+                                    Delete
                                 </button>
                             </div>
                         </li>
@@ -53,34 +56,37 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
 );
 
 const DocumentsModule = () => {
-    const { db, userId, appId } = useAppContext();
+    const { showNotification } = useNotification();
     const [documents, setDocuments] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedCategoryDocuments, setSelectedCategoryDocuments] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [documentToEdit, setDocumentToEdit] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [documentToDelete, setDocumentToDelete] = useState(null);
 
     useEffect(() => {
-        if (!userId || !appId) return;
-        const q = collection(db, 'artifacts', appId, 'users', userId, 'documents');
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const docsData = snapshot.docs.map(doc => {
-                const data = doc.data();
-                // Generate public URL for Supabase stored files
-                if (data.url && data.url.startsWith('student_documents/') || data.url.startsWith('transactions/')) {
-                    const { publicURL, error } = supabase.storage.from('udms').getPublicUrl(data.url);
-                    if (error) {
-                        console.error("Error getting public URL:", error);
-                        return { id: doc.id, ...data, url: '#' }; // Fallback
+        const fetchDocuments = async () => {
+            const { data, error } = await supabase.from('documents').select('*');
+            if (error) console.error('Error fetching documents:', error);
+            else {
+                const docsData = data.map(doc => {
+                    if (doc.url && (doc.url.startsWith('student_documents/') || doc.url.startsWith('transactions/'))) {
+                        const originalFilePath = doc.url;
+                        const { publicURL, error } = supabase.storage.from('udms').getPublicUrl(originalFilePath);
+                        if (error) {
+                            console.error("Error getting public URL:", error);
+                            return { ...doc, url: '#', storagePath: originalFilePath };
+                        }
+                        return { ...doc, url: publicURL, storagePath: originalFilePath };
                     }
-                    return { id: doc.id, ...data, url: publicURL };
-                }
-                return { id: doc.id, ...data };
-            });
-            setDocuments(docsData);
-        });
-        return () => unsubscribe();
-    }, [db, userId, appId]);
+                    return { ...doc, storagePath: doc.url };
+                });
+                setDocuments(docsData);
+            }
+        };
+        fetchDocuments();
+    }, []);
 
     const documentCategories = [
         { name: 'National IDs', icon: ICONS.STUDENTS, color: '#3b82f6', filter: (doc) => doc.type === 'nationalId' },
@@ -99,10 +105,41 @@ const DocumentsModule = () => {
         setIsEditModalOpen(true);
     };
 
+    const handleDeleteDocument = (doc) => {
+        setDocumentToDelete(doc);
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmDeleteDocument = async () => {
+        if (!documentToDelete) return;
+
+        try {
+            const { error: dbError } = await supabase.from('documents').delete().match({ id: documentToDelete.id });
+            if (dbError) throw dbError;
+
+            if (documentToDelete.storagePath) {
+                const { error: storageError } = await supabase.storage.from('udms').remove([documentToDelete.storagePath]);
+                if (storageError) {
+                    console.error("Error deleting file from Supabase:", storageError);
+                    showNotification('Failed to delete file from storage.', 'error');
+                }
+            }
+            showNotification('Document deleted successfully!', 'success');
+            setSelectedCategory(null); // Close the document list modal
+        } catch (error) {
+            console.error("Error deleting document:", error);
+            showNotification('Failed to delete document.', 'error');
+        } finally {
+            setIsConfirmModalOpen(false);
+            setDocumentToDelete(null);
+        }
+    };
+
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
                 <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.DOCUMENTS} className="w-8 h-8 mr-3"/>Documents</h2>
+                <button onClick={() => setIsEditModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Document</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {documentCategories.map(category => (
@@ -123,6 +160,16 @@ const DocumentsModule = () => {
                     category={selectedCategory}
                     documents={selectedCategoryDocuments}
                     onEditDocument={handleEditDocument}
+                    onDeleteDocument={handleDeleteDocument}
+                />
+            )}
+            {documentToDelete && (
+                <ConfirmationModal
+                    isOpen={isConfirmModalOpen}
+                    onClose={() => setIsConfirmModalOpen(false)}
+                    onConfirm={confirmDeleteDocument}
+                    title="Delete Document"
+                    message={`Are you sure you want to delete the document "${documentToDelete.name}"? This action cannot be undone.`}
                 />
             )}
             {documentToEdit && (

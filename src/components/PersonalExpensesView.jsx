@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import TransactionFormModal from './TransactionFormModal';
 
 import { formatDate } from '../utils/formatDate';
 
 const PersonalExpensesView = () => {
-    const { db, userId, appId } = useAppContext();
     const [expenses, setExpenses] = useState([]);
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
     useEffect(() => {
-        if (!userId || !appId) return;
-        const q = query(collection(db, 'artifacts', appId, 'users', userId, 'transactions'), where("type", "==", "expense-personal"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            expensesData.sort((a, b) => b.date.toMillis() - a.date.toMillis());
-            setExpenses(expensesData);
-        });
-        return () => unsubscribe();
-    }, [db, userId, appId]);
+        const fetchExpenses = async () => {
+            const { data, error } = await supabase.from('transactions').select('*').eq('type', 'expense-personal');
+            if (error) console.error('Error fetching expenses:', error);
+            else {
+                data.sort((a, b) => new Date(b.date) - new Date(a.date));
+                setExpenses(data || []);
+            }
+        };
+        fetchExpenses();
+    }, []);
 
     return (
         <div className="space-y-6">

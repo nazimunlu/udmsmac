@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where, Timestamp, doc, deleteDoc } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
 import EventFormModal from './EventFormModal';
@@ -11,8 +10,9 @@ import WeeklyOverview from './WeeklyOverview';
 import NotificationCard from './NotificationCard';
 
 const DashboardModule = ({ setActiveModule }) => {
-    const { students, groups, db, userId, appId } = useAppContext();
     const { showNotification } = useNotification();
+    const [students, setStudents] = useState([]);
+    const [groups, setGroups] = useState([]);
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState(null);
@@ -25,61 +25,71 @@ const DashboardModule = ({ setActiveModule }) => {
     const [duePayments, setDuePayments] = useState([]);
 
     useEffect(() => {
-        if (!userId || !appId) return;
+        const fetchData = async () => {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
+            if (studentsError) console.error('Error fetching students:', studentsError);
+            else {
+                const parsedStudentsData = studentsData.map(s => ({
+                    ...s,
+                    installments: s.installments ? JSON.parse(s.installments) : [],
+                    feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                    tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                    documents: s.documents ? JSON.parse(s.documents) : {},
+                    documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+                }));
+                setStudents(parsedStudentsData);
 
-        // Calculate due payments
-        const payments = [];
-        students.forEach(student => {
-            student.installments?.forEach(installment => {
-                if (installment.status === 'Unpaid' && installment.dueDate.toDate() <= now) {
-                    payments.push({
-                        id: `${student.id}-${installment.number}`,
-                        message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
-                        type: 'warning',
-                        studentId: student.id,
-                        installmentNumber: installment.number
+                const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');
+                if (groupsError) console.error('Error fetching groups:', groupsError);
+                else setGroups(groupsData);
+
+                const { data: lessonsData, error: lessonsError } = await supabase.from('lessons').select('*').gte('lessonDate', todayStart.toISOString());
+                if (lessonsError) console.error('Error fetching lessons:', lessonsError);
+                else setAllEvents(prev => ({ ...prev, lessons: lessonsData.map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})) }));
+
+                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*').gte('startTime', todayStart.toISOString());
+                if (eventsError) console.error('Error fetching events:', eventsError);
+                else setAllEvents(prev => ({ ...prev, events: eventsData.map(e => ({...e, type: 'event', startTime: new Date(e.startTime)})) }));
+
+                const currentYear = new Date().getFullYear();
+                const birthdays = parsedStudentsData.filter(s => s.birthDate).map(s => {
+                    const birthDate = new Date(s.birthDate);
+                    let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
+                    if (nextBirthday < todayStart) {
+                        nextBirthday.setFullYear(currentYear + 1);
+                    }
+                    return {
+                        id: `bday-${s.id}`,
+                        type: 'birthday',
+                        eventName: `${s.fullName}'s Birthday`,
+                        startTime: nextBirthday
+                    };
+                });
+                setAllEvents(prev => ({ ...prev, birthdays }));
+
+                const payments = [];
+                parsedStudentsData.forEach(student => {
+                    student.installments?.forEach(installment => {
+                        if (installment.status === 'Unpaid' && new Date(installment.dueDate) <= now) {
+                            payments.push({
+                                id: `${student.id}-${installment.number}`,
+                                message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
+                                type: 'warning',
+                                studentId: student.id,
+                                installmentNumber: installment.number
+                            });
+                        }
                     });
-                }
-            });
-        });
-        setDuePayments(payments);
-
-        const unsubLessons = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("lessonDate", ">=", todayStart)), (snapshot) => {
-            const lessons = snapshot.docs.map(doc => ({id: doc.id, type: 'lesson', eventName: doc.data().topic, startTime: doc.data().lessonDate }));
-            setAllEvents(prev => ({ ...prev, lessons }));
-        });
-
-        const unsubEvents = onSnapshot(query(collection(db, 'artifacts', appId, 'users', userId, 'events'), where("startTime", ">=", todayStart)), (snapshot) => {
-            const events = snapshot.docs.map(doc => ({id: doc.id, type: 'event', ...doc.data()}));
-            setAllEvents(prev => ({ ...prev, events }));
-        });
-        
-        const currentYear = new Date().getFullYear();
-        const birthdays = students.filter(s => s.birthDate).map(s => {
-            const birthDate = s.birthDate.toDate();
-            let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-            if (nextBirthday < todayStart) {
-                nextBirthday.setFullYear(currentYear + 1);
+                });
+                setDuePayments(payments);
             }
-            return {
-                id: `bday-${s.id}`,
-                type: 'birthday',
-                eventName: `${s.fullName}'s Birthday`,
-                startTime: Timestamp.fromDate(nextBirthday)
-            };
-        });
-        setAllEvents(prev => ({ ...prev, birthdays }));
+        };
 
-
-        return () => {
-            unsubLessons();
-            unsubEvents();
-        }
-
-    }, [db, userId, appId, students]);
+        fetchData();
+    }, []);
 
     useEffect(() => {
         const now = new Date();
@@ -94,31 +104,31 @@ const DashboardModule = ({ setActiveModule }) => {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
 
-        const getSortableTime = (item) => (item.startTime)?.toMillis() || 0;
+        const getSortableTime = (item) => (item.startTime)?.getTime() || 0;
 
         const processAllEvents = () => {
             const allItems = [...allEvents.lessons, ...allEvents.events, ...allEvents.birthdays];
 
             const eventsWithEndTimes = allItems.map(item => {
-                let effectiveEndTime = item.startTime.toMillis(); // Default to start time
+                let effectiveEndTime = item.startTime.getTime(); // Default to start time
                 if (item.type === 'lesson') {
-                    effectiveEndTime = item.startTime.toMillis() + 2 * 60 * 60 * 1000; // 2 hours for lessons
+                    effectiveEndTime = item.startTime.getTime() + 2 * 60 * 60 * 1000; // 2 hours for lessons
                 } else if (item.type === 'event' && item.endTime) {
-                    effectiveEndTime = item.endTime.toMillis();
+                    effectiveEndTime = new Date(item.endTime).getTime();
                 } else if (item.type === 'event') { // Default 1 hour for events if no endTime
-                    effectiveEndTime = item.startTime.toMillis() + 1 * 60 * 60 * 1000;
+                    effectiveEndTime = item.startTime.getTime() + 1 * 60 * 60 * 1000;
                 }
                 return { ...item, effectiveEndTime };
             });
 
             setTodaysSchedule(eventsWithEndTimes.filter(item =>
                 item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
-                item.startTime.toMillis() <= todayEnd.getTime() // Event started before or at end of today
-            ).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis())); // Sort by start time
+                item.startTime.getTime() <= todayEnd.getTime() // Event started before or at end of today
+            ).sort((a,b) => a.startTime.getTime() - b.startTime.getTime())); // Sort by start time
 
-            setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.toMillis() >= now.getTime() && item.startTime.toMillis() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis()));
+            setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
-            setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.toMillis() >= weekStart.getTime() && item.startTime.toMillis() < weekEnd.getTime()));
+            setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime()));
         };
 
         processAllEvents();
@@ -136,7 +146,7 @@ const DashboardModule = ({ setActiveModule }) => {
 
     const getTimeRemaining = (item) => {
         const now = Date.now();
-        const startTime = item.startTime.toMillis();
+        const startTime = item.startTime.getTime();
         const endTime = item.effectiveEndTime;
 
         if (item.type === 'birthday') {
@@ -184,8 +194,8 @@ const DashboardModule = ({ setActiveModule }) => {
     const handleDeleteEvent = async () => {
         if (!eventToDelete) return;
         try {
-            const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToDelete.id);
-            await deleteDoc(eventDocRef);
+            const { error } = await supabase.from('events').delete().match({ id: eventToDelete.id });
+            if (error) throw error;
             showNotification('Event deleted successfully!', 'success');
         } catch (error) {
             console.error("Error deleting event:", error);
@@ -244,7 +254,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         <EventIcon type={item.type} />
                                         <div>
                                             <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                            <p className="text-sm text-gray-500">{item.startTime.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                            <p className="text-sm text-gray-500">{item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                         </div>
                                     </div>
                                     {item.type === 'event' && (
@@ -270,7 +280,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         <EventIcon type={item.type} />
                                         <div>
                                             <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                            <p className="text-sm text-gray-500">{formatDate(item.startTime.toDate())}</p>
+                                            <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>
                                         </div>
                                      </div>
                                      {item.type === 'event' && (

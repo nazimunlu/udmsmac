@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { supabase } from '../supabaseClient';
-import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
+import { Icon, ICONS } from './Icons';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
-    const { db, userId, appId, groups } = useAppContext();
     const { showNotification } = useNotification();
+    const [groups, setGroups] = useState([]);
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
     
     const timeOptions = [];
@@ -20,11 +19,26 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
     }
 
+    useEffect(() => {
+        const fetchGroups = async () => {
+            const { data, error } = await supabase.from('groups').select('*');
+            if (error) {
+                console.error('Error fetching groups:', error);
+            } else {
+                setGroups(data.map(g => ({
+                    ...g,
+                    schedule: g.schedule ? JSON.parse(g.schedule) : {},
+                })));
+            }
+        };
+
+        fetchGroups();
+    }, []);
+
     const getInitialFormData = useCallback(() => {
         const getSafeDateString = (dateSource) => {
             if (!dateSource) return '';
-            const date = dateSource.toDate ? dateSource.toDate() : new Date(dateSource);
-            // Add timezone offset to prevent date from shifting
+            const date = new Date(dateSource);
             const offset = date.getTimezoneOffset();
             const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
             return adjustedDate.toISOString().split('T')[0];
@@ -47,7 +61,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     endDate: '',
                     schedule: { days: [], startTime: '09:00', endTime: '10:00' }
                 },
-            installments: studentToEdit?.installments || []
+            installments: studentToEdit?.installments || [],
+            isArchived: studentToEdit?.isArchived || false
         };
     }, [studentToEdit]);
 
@@ -124,7 +139,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
 
         setIsSubmitting(true);
-        setStatusMessage(null);
         let dataToSave = { ...formData };
 
         const getSafeDateString = (dateSource) => {
@@ -178,7 +192,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     return {
                         number: i + 1,
                         amount: installmentAmount,
-                        dueDate: Timestamp.fromDate(dueDate),
+                        dueDate: dueDate.toISOString(),
                         status: 'Unpaid'
                     };
                 });
@@ -200,7 +214,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                         if (scheduledDays.includes(currentLessonDate.getDay())) {
                             const dueDate = new Date(currentLessonDate);
                             dueDate.setHours(startHour, startMinute, 0, 0);
-                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: Timestamp.fromDate(dueDate), status: 'Unpaid' });
+                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: dueDate.toISOString(), status: 'Unpaid' });
                             lessonCount++;
                         }
                         currentLessonDate.setDate(currentLessonDate.getDate() + 1);
@@ -208,13 +222,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     if(lessonCount > 0) {
                        currentLessonDate.setDate(currentLessonDate.getDate() - 1);
                     }
-                    dataToSave.tutoringDetails.endDate = Timestamp.fromDate(currentLessonDate);
+                    dataToSave.tutoringDetails.endDate = currentLessonDate.toISOString();
                 } else if (tutoringEndDate) {
                     while (currentLessonDate <= tutoringEndDate) {
                         if (scheduledDays.includes(currentLessonDate.getDay())) {
                             const dueDate = new Date(currentLessonDate);
                             dueDate.setHours(startHour, startMinute, 0, 0);
-                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: Timestamp.fromDate(dueDate), status: 'Unpaid' });
+                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: dueDate.toISOString(), status: 'Unpaid' });
                             lessonCount++;
                         }
                         currentLessonDate.setDate(currentLessonDate.getDate() + 1);
@@ -225,69 +239,32 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
 
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                showNotification('You must be logged in to perform this action.', 'error');
+                setIsSubmitting(false);
+                return;
+            }
+            const userId = user.id;
+
             const nationalIdPath = `student_documents/${userId}/${Date.now()}_nationalId_${files.nationalId?.name}`;
             const agreementPath = `student_documents/${userId}/${Date.now()}_agreement_${files.agreement?.name}`;
 
             if (files.nationalId) {
                 dataToSave.documents.nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: files.nationalId.name,
-                    url: dataToSave.documents.nationalIdUrl,
-                    type: 'nationalId',
-                    uploadDate: Timestamp.now(),
-                    studentId: studentToEdit?.id || null,
-                });
-            } else if (studentToEdit?.documents?.nationalIdUrl) {
-                dataToSave.documents.nationalIdUrl = studentToEdit.documents.nationalIdUrl;
             }
 
             if (files.agreement) {
                 dataToSave.documents.agreementUrl = await uploadFile(files.agreement, agreementPath);
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: files.agreement.name,
-                    url: dataToSave.documents.agreementUrl,
-                    type: 'agreement',
-                    uploadDate: Timestamp.now(),
-                    studentId: studentToEdit?.id || null,
-                });
-            } else if (studentToEdit?.documents?.agreementUrl) {
-                dataToSave.documents.agreementUrl = studentToEdit.documents.agreementUrl;
             }
             
-            const toTimestamp = (dateString) => {
-                if (!dateString || typeof dateString !== 'string') return null;
-                // Create date in UTC to avoid timezone shifts
-                const date = new Date(`${dateString}T00:00:00Z`);
-                if (isNaN(date.getTime())) return null;
-                return Timestamp.fromDate(date);
-            };
-
-            dataToSave.enrollmentDate = toTimestamp(dataToSave.enrollmentDate);
-            dataToSave.birthDate = toTimestamp(dataToSave.birthDate);
-            if (dataToSave.tutoringDetails.endDate && typeof dataToSave.tutoringDetails.endDate === 'string') {
-                 dataToSave.tutoringDetails.endDate = toTimestamp(dataToSave.tutoringDetails.endDate);
-            } else if (!dataToSave.tutoringDetails.endDate) {
-                 dataToSave.tutoringDetails.endDate = null;
-            }
-
-
-            if (formData.isTutoring) {
-                 if (dataToSave.tutoringDetails.hourlyRate && dataToSave.tutoringDetails.numberOfLessons) {
-                    dataToSave.feeDetails = {
-                        totalFee: (parseFloat(dataToSave.tutoringDetails.hourlyRate) * parseInt(dataToSave.tutoringDetails.numberOfLessons, 10)).toString(),
-                        numberOfInstallments: dataToSave.tutoringDetails.numberOfLessons.toString()
-                    };
-                }
-            }
-
-
             if (studentToEdit) {
-                const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToEdit.id);
-                await setDoc(studentDocRef, dataToSave, { merge: true });
+                const { error } = await supabase.from('students').update(dataToSave).match({ id: studentToEdit.id });
+                if (error) throw error;
                 showNotification('Student updated successfully!', 'success');
             } else {
-                const studentCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'students');
-                await addDoc(studentCollectionPath, dataToSave);
+                const { error } = await supabase.from('students').insert([dataToSave]);
+                if (error) throw error;
                 showNotification('Student enrolled successfully!', 'success');
             }
             onClose();
@@ -355,10 +332,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                            <div className="sm:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">National ID</label>
                                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                    <div className="space-y-1 text-center">
-                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>{files.nationalId ? files.nationalId.name : 'Upload a file'}</span><input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} /></label>
+                                    <div className="space-y-1 text-center w-full">
+                                        <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
+                                        <div className="flex text-sm text-gray-600 justify-center">
+                                            <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                                <span>{files.nationalId ? files.nationalId.name : 'Upload a file'}</span>
+                                                <input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} />
+                                            </label>
                                             {!files.nationalId && <p className="pl-1">or drag and drop</p>}
                                         </div>
                                         <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
@@ -368,10 +348,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                            <div className="sm:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Agreement</label>
                                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                    <div className="space-y-1 text-center">
-                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"><span>{files.agreement ? files.agreement.name : 'Upload a file'}</span><input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} /></label>
+                                    <div className="space-y-1 text-center w-full">
+                                        <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
+                                        <div className="flex text-sm text-gray-600 justify-center">
+                                            <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                                <span>{files.agreement ? files.agreement.name : 'Upload a file'}</span>
+                                                <input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} />
+                                            </label>
                                             {!files.agreement && <p className="pl-1">or drag and drop</p>}
                                         </div>
                                         <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>

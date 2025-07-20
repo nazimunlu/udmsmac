@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
@@ -9,9 +8,9 @@ import { Icon, ICONS } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 
 const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
-    const { db, userId, appId, groups } = useAppContext();
     const [activeTab, setActiveTab] = useState('general');
     const [lessons, setLessons] = useState([]);
+    const [groups, setGroups] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLessonFormModalOpen, setIsLessonFormModalOpen] = useState(false);
     const [lessonToEdit, setLessonToEdit] = useState(null);
@@ -20,7 +19,14 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
     useEffect(() => {
-        setCurrentStudent(initialStudent);
+        setCurrentStudent({
+            ...initialStudent,
+            installments: initialStudent?.installments ? JSON.parse(initialStudent.installments) : [],
+            feeDetails: initialStudent?.feeDetails ? JSON.parse(initialStudent.feeDetails) : {},
+            tutoringDetails: initialStudent?.tutoringDetails ? JSON.parse(initialStudent.tutoringDetails) : {},
+            documents: initialStudent?.documents ? JSON.parse(initialStudent.documents) : {},
+            documentNames: initialStudent?.documentNames ? JSON.parse(initialStudent.documentNames) : {},
+        });
         if (isOpen) {
             setActiveTab('general'); // Always set General Info tab as active when modal opens
         }
@@ -34,30 +40,45 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         }
         setIsLoading(true);
 
-        const lessonsCollection = collection(db, 'artifacts', appId, 'users', userId, 'lessons');
-        let lessonsQuery;
+        const fetchLessons = async () => {
+            let query = supabase.from('lessons');
 
-        if (currentStudent.isTutoring) {
-            // For tutoring students, fetch lessons by studentId
-            lessonsQuery = query(lessonsCollection, where("studentId", "==", currentStudent.id));
-        } else if (currentStudent.groupId) {
-            // For group students, fetch lessons by groupId
-            lessonsQuery = query(lessonsCollection, where("groupId", "==", currentStudent.groupId));
-        } else {
+            if (currentStudent.isTutoring) {
+                query = query.select('*').eq('studentId', currentStudent.id);
+            } else if (currentStudent.groupId) {
+                query = query.select('*').eq('groupId', currentStudent.groupId);
+            } else {
+                setIsLoading(false);
+                setLessons([]);
+                return;
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching lessons:', error);
+            } else {
+                data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
+                setLessons(data.map(l => ({
+                    ...l,
+                    attendance: l.attendance ? JSON.parse(l.attendance) : {},
+                })));
+            }
             setIsLoading(false);
-            setLessons([]);
-            return;
-        }
+        };
 
-        const unsubscribe = onSnapshot(lessonsQuery, (snapshot) => {
-            const lessonsData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            lessonsData.sort((a,b) => a.lessonDate.toMillis() - b.lessonDate.toMillis());
-            setLessons(lessonsData);
-            setIsLoading(false);
-        });
+        const fetchGroups = async () => {
+            const { data, error } = await supabase.from('groups').select('*');
+            if (error) {
+                console.error('Error fetching groups:', error);
+            } else {
+                setGroups(data);
+            }
+        };
 
-        return unsubscribe;
-    }, [db, userId, appId, currentStudent]);
+        fetchLessons();
+        fetchGroups();
+    }, [currentStudent]);
 
     const paymentSummary = useMemo(() => {
         if (!currentStudent.installments) return null;
@@ -105,8 +126,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const confirmDelete = async () => {
         if (lessonToDelete) {
-            const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lessonToDelete.id);
-            await deleteDoc(lessonDocRef);
+            const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
+            if (error) {
+                console.error('Error deleting lesson:', error);
+            } else {
+                setLessons(lessons.filter(l => l.id !== lessonToDelete.id));
+            }
             setLessonToDelete(null);
         }
         setIsConfirmModalOpen(false);
@@ -114,8 +139,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const handleToggleStatus = async (lesson) => {
         const newStatus = lesson.status === 'Complete' ? 'Incomplete' : 'Complete';
-        const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
-        await updateDoc(lessonDocRef, { status: newStatus });
+        const { error } = await supabase.from('lessons').update({ status: newStatus }).match({ id: lesson.id });
+        if (error) {
+            console.error('Error updating lesson status:', error);
+        }
     };
 
     const handleTogglePaymentStatus = async (installmentNumber) => {
@@ -124,9 +151,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                 ? { ...inst, status: inst.status === 'Paid' ? 'Unpaid' : 'Paid' } 
                 : inst
         );
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', currentStudent.id);
-        await updateDoc(studentDocRef, { installments: updatedInstallments });
-        setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+        const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: currentStudent.id });
+        if (error) {
+            console.error('Error updating payment status:', error);
+        } else {
+            setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+        }
     };
 
     const handleAttendanceChange = async (lesson, studentId, currentStatus) => {
@@ -140,8 +170,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             [studentId]: newStatus
         };
 
-        const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
-        await updateDoc(lessonDocRef, { attendance: updatedAttendance });
+        const { error } = await supabase.from('lessons').update({ attendance: updatedAttendance }).match({ id: lesson.id });
+        if (error) {
+            console.error('Error updating attendance:', error);
+        }
     };
 
     const modalTitle = (
@@ -235,7 +267,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                 <div className="text-right">
                                     <p className="font-semibold text-gray-800">₺{inst.amount.toFixed(0)}</p>
                                     <div className="flex items-center justify-end space-x-2 mt-1">
-                                        {inst.status === 'Unpaid' && new Date(inst.dueDate.toDate()) < new Date() && (
+                                        {inst.status === 'Unpaid' && new Date(inst.dueDate) < new Date() && (
                                             <Icon path={ICONS.WARNING} className="w-4 h-4 text-yellow-500" title="Payment is overdue" />
                                         )}
                                         <button onClick={() => handleTogglePaymentStatus(inst.number)} className={`px-2 py-1 text-xs font-semibold rounded-full ${inst.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

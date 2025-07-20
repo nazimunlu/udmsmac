@@ -6,8 +6,8 @@ const InvoiceGenerator = ({ student, payment }) => {
     if (!student || !payment) return <p>No invoice data available.</p>;
 
     const invoiceDate = new Date();
-    const dueDate = payment.dueDate ? payment.dueDate.toDate() : null;
-    const paymentDate = payment.paymentDate ? payment.paymentDate.toDate() : null;
+    const dueDate = payment.dueDate ? new Date(payment.dueDate) : null;
+    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : null;
 
     return (
         <div className="p-6 bg-white rounded-lg shadow-md print:shadow-none print:p-0">

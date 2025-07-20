@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from './Modal';
 import { FormInput, FormSection } from './Form';
@@ -8,7 +7,6 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 
 const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
-    const { db, userId, appId } = useAppContext();
     const { showNotification } = useNotification();
     
     const timeOptions = [];
@@ -19,15 +17,15 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
     const getInitialFormData = useCallback(() => {
         const getSafeDateString = (dateSource) => {
-            if (dateSource && typeof dateSource.toDate === 'function') {
-                return dateSource.toDate().toISOString().split('T')[0];
+            if (dateSource) {
+                return new Date(dateSource).toISOString().split('T')[0];
             }
             return new Date().toISOString().split('T')[0];
         };
 
         const getSafeTimeString = (dateSource) => {
-            if (dateSource && typeof dateSource.toDate === 'function') {
-                return dateSource.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            if (dateSource) {
+                return new Date(dateSource).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
             }
             return '09:00';
         };
@@ -69,22 +67,19 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
         const dataToSave = {
             eventName,
-            startTime: Timestamp.fromDate(startDateTime),
-            endTime: Timestamp.fromDate(endDateTime),
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
             isAllDay,
         };
 
         try {
             if (eventToEdit) {
-                console.log("Editing event with ID:", eventToEdit.id);
-                const { description, ...dataToLog } = dataToSave;
-                console.log("Data to save:", dataToLog);
-                const eventDocRef = doc(db, 'artifacts', appId, 'users', userId, 'events', eventToEdit.id);
-                await setDoc(eventDocRef, dataToSave, { merge: true });
+                const { error } = await supabase.from('events').update(dataToSave).match({ id: eventToEdit.id });
+                if (error) throw error;
                 showNotification('Event updated successfully!', 'success');
             } else {
-                const eventCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'events');
-                await addDoc(eventCollectionPath, dataToSave);
+                const { error } = await supabase.from('events').insert([dataToSave]);
+                if (error) throw error;
                 showNotification('Event logged successfully!', 'success');
             }
             onClose();
@@ -94,16 +89,31 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             setIsSubmitting(false);
         }
     };
-    
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={eventToEdit ? "Edit Event" : "Log New Event"}>
             <form onSubmit={handleSubmit}>
                 <FormSection title="Event Details">
-                    <div className="sm:col-span-6"><FormInput label="Event Name" name="eventName" value={formData.eventName} onChange={handleChange} required /></div>
-                    
-                    <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={handleChange} /></div>
-                    {!formData.isAllDay && <><div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={handleChange} options={timeOptions}/></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={handleChange} options={timeOptions}/></div></>} 
+                    <div className="sm:col-span-6">
+                        <FormInput label="Event Name" name="eventName" value={formData.eventName} onChange={handleChange} required />
+                    </div>
+                    <div className="sm:col-span-3">
+                        <CustomDatePicker label="Date" name="date" value={formData.date} onChange={handleChange} />
+                    </div>
+                    <div className="sm:col-span-3 flex items-center pt-7">
+                        <input type="checkbox" id="isAllDay" name="isAllDay" checked={formData.isAllDay} onChange={handleChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                        <label htmlFor="isAllDay" className="ml-2 block text-sm text-gray-900">All-day event</label>
+                    </div>
+                    {!formData.isAllDay && (
+                        <>
+                            <div className="sm:col-span-3">
+                                <CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={handleChange} options={timeOptions} />
+                            </div>
+                            <div className="sm:col-span-3">
+                                <CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={handleChange} options={timeOptions} />
+                            </div>
+                        </>
+                    )}
                 </FormSection>
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>

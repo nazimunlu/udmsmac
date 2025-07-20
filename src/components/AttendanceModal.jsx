@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormSection } from './Form';
 import { ICONS, Icon } from './Icons';
 
 const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) => {
-    const { db, userId, appId } = useAppContext();
     const [attendance, setAttendance] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,8 +36,8 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
         setIsSubmitting(true);
 
         try {
-            const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
-            await updateDoc(lessonDocRef, { attendance: attendance });
+            const { error } = await supabase.from('lessons').update({ attendance: attendance }).match({ id: lesson.id });
+            if (error) throw error;
             onClose();
         } catch (error) {
             console.error("Error saving attendance: ", error);

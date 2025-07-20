@@ -1,10 +1,6 @@
 export const formatDate = (date) => {
   if (!date) return '';
-  let d = date;
-  if (date.toDate && typeof date.toDate === 'function') {
-    d = date.toDate();
-  }
-  d = new Date(d);
+  let d = new Date(date);
 
   // Adjust for timezone offset to prevent date shifts
   const offset = d.getTimezoneOffset();

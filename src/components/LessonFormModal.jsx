@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { supabase } from '../supabaseClient';
-import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
@@ -9,8 +7,7 @@ import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
-    const { db, userId, appId, students } = useAppContext();
-        const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState({
         date: '',
         topic: '',
         startTime: '',
@@ -31,7 +28,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
     useEffect(() => {
         if (lessonToEdit) {
             setFormData({
-                date: lessonToEdit.lessonDate.toDate().toISOString().split('T')[0],
+                date: new Date(lessonToEdit.lessonDate).toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
                 startTime: lessonToEdit.startTime || '09:00',
                 endTime: lessonToEdit.endTime || '10:00',
@@ -73,22 +70,22 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
 
         if (file) {
             const groupId = group?.id || student?.groupId;
-            const materialPath = `lesson_materials/${userId}/${groupId}/${Date.now()}_${file.name}`;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                // Assuming useNotification is available in this component's scope
+                // If not, you might need to import it and get showNotification
+                showNotification('You must be logged in to upload materials.', 'error');
+                setIsSubmitting(false);
+                return;
+            }
+            const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${file.name}`;
             materialUrl = await uploadFile(file, materialPath);
             materialName = file.name;
-            // Add to documents collection for centralized management
-            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                name: materialName,
-                url: materialUrl,
-                type: 'lessonMaterial',
-                uploadDate: Timestamp.now(),
-                groupId: groupId,
-            });
         }
 
         const lessonData = {
             topic: formData.topic,
-            lessonDate: Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/'))),
+            lessonDate: new Date(formData.date).toISOString(),
             startTime: formData.startTime,
             endTime: formData.endTime,
             materialUrl,
@@ -105,11 +102,11 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
 
         try {
             if (lessonToEdit) {
-                const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lessonToEdit.id);
-                await setDoc(lessonDocRef, lessonData, { merge: true });
+                const { error } = await supabase.from('lessons').update(lessonData).match({ id: lessonToEdit.id });
+                if (error) throw error;
             } else {
-                const lessonsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'lessons');
-                await addDoc(lessonsCollectionPath, lessonData);
+                const { error } = await supabase.from('lessons').insert([lessonData]);
+                if (error) throw error;
             }
             onClose();
         } catch (error) {

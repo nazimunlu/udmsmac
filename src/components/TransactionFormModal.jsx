@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { supabase } from '../supabaseClient';
-import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 
 const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCategory }) => {
-    const { db, userId, appId } = useAppContext();
     const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
         type: 'income-group',
@@ -27,7 +24,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
             setFormData({
                 type: transactionToEdit.type || '',
                 amount: transactionToEdit.amount || '',
-                date: transactionToEdit.date.toDate().toISOString().split('T')[0],
+                date: new Date(transactionToEdit.date).toISOString().split('T')[0],
                 description: transactionToEdit.description || '',
                 category: transactionToEdit.category || '',
                 invoiceUrl: transactionToEdit.invoiceUrl || '',
@@ -84,34 +81,27 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
         let dataToSave = { ...formData };
 
         try {
-            if (invoiceFile) {
-                const invoicePath = `transactions/${userId}/${Date.now()}_${invoiceFile.name}`;
-                dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
-
-                const { id: newDocId } = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'documents'), {
-                    name: invoiceFile.name,
-                    url: dataToSave.invoiceUrl,
-                    type: 'invoice',
-                    uploadDate: Timestamp.now(),
-                    transactionId: null, // Will be updated after transaction is saved
-                });
-                dataToSave.documentId = newDocId;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                setStatusMessage({ type: 'error', text: 'You must be logged in to upload invoices.' });
+                setIsSubmitting(false);
+                return;
             }
 
-            dataToSave.date = Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/')));
+            if (invoiceFile) {
+                const invoicePath = `transactions/${user.id}/${Date.now()}_${invoiceFile.name}`;
+                dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
+            }
+
+            dataToSave.date = new Date(formData.date).toISOString();
             dataToSave.amount = parseFloat(formData.amount);
 
             if (transactionToEdit) {
-                const transactionDocRef = doc(db, 'artifacts', appId, 'users', userId, 'transactions', transactionToEdit.id);
-                await setDoc(transactionDocRef, dataToSave, { merge: true });
+                const { error } = await supabase.from('transactions').update(dataToSave).match({ id: transactionToEdit.id });
+                if (error) throw error;
             } else {
-                const transactionsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'transactions');
-                const newTransactionRef = await addDoc(transactionsCollectionPath, dataToSave);
-                if (dataToSave.documentId) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'documents', dataToSave.documentId), {
-                        transactionId: newTransactionRef.id,
-                    });
-                }
+                const { error } = await supabase.from('transactions').insert([dataToSave]);
+                if (error) throw error;
             }
             onClose();
         } catch (error) {

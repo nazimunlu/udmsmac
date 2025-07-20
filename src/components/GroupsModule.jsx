@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import GroupFormModal from './GroupFormModal';
 import GroupDetailsModal from './GroupDetailsModal';
@@ -9,8 +8,10 @@ import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
 
 const GroupsModule = () => {
-    const { groups, students, isLoading, db, userId, appId } = useAppContext();
     const { showNotification } = useNotification();
+    const [groups, setGroups] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -18,6 +19,32 @@ const GroupsModule = () => {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [groupToDelete, setGroupToDelete] = useState(null);
     const [showArchivedGroups, setShowArchivedGroups] = useState(false);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');
+            if (groupsError) console.error('Error fetching groups:', groupsError);
+            else setGroups(groupsData.map(g => ({
+                ...g,
+                schedule: g.schedule ? JSON.parse(g.schedule) : {},
+            })) || []);
+
+            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
+            if (studentsError) console.error('Error fetching students:', studentsError);
+            else setStudents(studentsData.map(s => ({
+                ...s,
+                installments: s.installments ? JSON.parse(s.installments) : [],
+                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                documents: s.documents ? JSON.parse(s.documents) : {},
+                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+            })) || []);
+            
+            setIsLoading(false);
+        };
+        fetchData();
+    }, []);
 
     const openAddModal = () => {
         setGroupToEdit(null);
@@ -42,20 +69,19 @@ const GroupsModule = () => {
     const handleDeleteGroup = async () => {
         if (!groupToDelete) return;
         try {
-            const groupDocRef = doc(db, 'artifacts', appId, 'users', userId, 'groups', groupToDelete.id);
             if (showArchivedGroups) {
-                await deleteDoc(groupDocRef); // Permanently delete if from archived
+                const { error } = await supabase.from('groups').delete().match({ id: groupToDelete.id });
+                if (error) throw error;
                 showNotification('Group permanently deleted!', 'success');
             } else {
-                await updateDoc(groupDocRef, { isArchived: true }); // Archive if from active lists
+                const { error } = await supabase.from('groups').update({ isArchived: true }).match({ id: groupToDelete.id });
+                if (error) throw error;
                 showNotification('Group archived successfully!', 'success');
             }
             // Unassign students from this group
-            const studentsInGroup = students.filter(s => s.groupId === groupToDelete.id);
-            for (const student of studentsInGroup) {
-                const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
-                await updateDoc(studentDocRef, { groupId: null });
-            }
+            const { error: updateError } = await supabase.from('students').update({ groupId: null }).eq('groupId', groupToDelete.id);
+            if (updateError) throw updateError;
+
         } catch (error) {
             console.error("Error deleting/archiving group:", error);
             showNotification('Error processing group deletion/archiving.', 'error');
@@ -67,8 +93,8 @@ const GroupsModule = () => {
 
     const handleUnarchiveGroup = async (group) => {
         try {
-            const groupDocRef = doc(db, 'artifacts', appId, 'users', userId, 'groups', group.id);
-            await updateDoc(groupDocRef, { isArchived: false });
+            const { error } = await supabase.from('groups').update({ isArchived: false }).match({ id: group.id });
+            if (error) throw error;
             showNotification('Group unarchived successfully!', 'success');
         } catch (error) {
             console.error("Error unarchiving group:", error);

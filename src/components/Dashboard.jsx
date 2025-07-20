@@ -8,7 +8,7 @@ import DashboardModule from './DashboardModule';
 import DocumentsModule from './DocumentsModule';
 import SettingsModule from './SettingsModule';
 import LoadingSpinner from './LoadingSpinner';
-
+import { supabase } from '../supabaseClient';
 
 const Sidebar = ({ activeModule, setActiveModule }) => {
     const navItems = [
@@ -20,6 +20,11 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
     ];
 
     const settingsItem = { id: 'settings', label: 'Settings', icon: ICONS.SETTINGS };
+
+    const handleLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) console.error('Error logging out:', error.message);
+    };
 
     return (
         <aside className="w-48 bg-gray-800 text-white flex flex-col">
@@ -56,6 +61,13 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
                     <Icon path={settingsItem.icon} className="w-6 h-6 mr-3" />
                     {settingsItem.label}
                 </a>
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors w-full text-left mt-2 text-gray-300 hover:bg-gray-700 hover:text-white"
+                >
+                    <Icon path={ICONS.LOGOUT} className="w-6 h-6 mr-3" />
+                    Logout
+                </button>
             </div>
         </aside>
     );

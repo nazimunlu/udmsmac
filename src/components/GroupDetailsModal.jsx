@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
 import AttendanceModal from './AttendanceModal';
@@ -13,8 +12,8 @@ import { Icon, ICONS } from './Icons';
 
 import { formatDate } from '../utils/formatDate';
 
-const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
-    const { db, userId, appId, students: allStudents } = useAppContext();
+const GroupDetailsModal = ({ isOpen, onClose, group }) => {
+    const [students, setStudents] = useState([]);
     const [studentToRemove, setStudentToRemove] = useState(null);
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
     const [studentToView, setStudentToView] = useState(null);
@@ -27,14 +26,35 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
 
     useEffect(() => {
         if (!group?.id) return;
-        const lessonsQuery = query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("groupId", "==", group.id));
-        const unsubscribe = onSnapshot(lessonsQuery, (snapshot) => {
-            const lessonsData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            lessonsData.sort((a,b) => a.lessonDate.toMillis() - b.lessonDate.toMillis());
-            setLessons(lessonsData);
-        });
-        return unsubscribe;
-    }, [db, userId, appId, group?.id]);
+
+        const fetchLessons = async () => {
+            const { data, error } = await supabase.from('lessons').select('*').eq('groupId', group.id);
+            if (error) console.error('Error fetching lessons:', error);
+            else {
+                data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
+                setLessons(data.map(l => ({
+                    ...l,
+                    attendance: l.attendance ? JSON.parse(l.attendance) : {},
+                })) || []);
+            }
+        };
+
+        const fetchStudents = async () => {
+            const { data, error } = await supabase.from('students').select('*').eq('groupId', group.id);
+            if (error) console.error('Error fetching students:', error);
+            else setStudents(data.map(s => ({
+                ...s,
+                installments: s.installments ? JSON.parse(s.installments) : [],
+                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                documents: s.documents ? JSON.parse(s.documents) : {},
+                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+            })) || []);
+        };
+
+        fetchLessons();
+        fetchStudents();
+    }, [group.id]);
 
     const openStudentDetailsModal = (student) => {
         setStudentToView(student);
@@ -46,9 +66,9 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
 
     const handleRemoveStudent = async () => {
         if (!studentToRemove) return;
-        const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToRemove.id);
         try {
-            await updateDoc(studentDocRef, { groupId: null });
+            const { error } = await supabase.from('students').update({ groupId: null }).match({ id: studentToRemove.id });
+            if (error) throw error;
             setStudentToRemove(null);
         } catch (error) {
             console.error("Error removing student from group: ", error);
@@ -63,8 +83,8 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
     const handleDeleteLesson = async () => {
         if (!lessonToDelete) return;
         try {
-            const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lessonToDelete.id);
-            await deleteDoc(lessonDocRef);
+            const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
+            if (error) throw error;
             setLessonToDelete(null);
         } catch (error) {
             console.error("Error deleting lesson: ", error);
@@ -78,7 +98,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
 
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{group.groupName}</h3>
+            <h3 className="text-xl font-bold">{group?.groupName}</h3>
             <p className="text-sm text-white/80">Group Details</p>
         </div>
     );

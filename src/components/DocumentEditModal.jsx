@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormInput, FormSelect } from './Form';
 import { useNotification } from '../contexts/NotificationContext';
 
 const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
-    const { db, userId, appId } = useAppContext();
     const { showNotification } = useNotification();
     const [formData, setFormData] = useState({
         name: '',
@@ -33,11 +31,8 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
         setIsSubmitting(true);
 
         try {
-            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'documents', documentToEdit.id);
-            await updateDoc(docRef, {
-                name: formData.name,
-                type: formData.type,
-            });
+            const { error } = await supabase.from('documents').update({ name: formData.name, type: formData.type }).match({ id: documentToEdit.id });
+            if (error) throw error;
             showNotification('Document updated successfully!', 'success');
             onClose();
         } catch (error) {

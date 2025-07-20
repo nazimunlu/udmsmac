@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useAppContext } from '../contexts/AppContext';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import StudentPaymentDetailsModal from './StudentPaymentDetailsModal';
 import StudentPaymentsView from './StudentPaymentsView';
 import BusinessExpensesView from './BusinessExpensesView';
@@ -21,13 +21,34 @@ const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor 
 );
 
 const FinancesModule = () => {
-    const { transactions, students } = useAppContext();
+    const [transactions, setTransactions] = useState([]);
+    const [students, setStudents] = useState([]);
     const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
     const [isBusinessExpensesModalOpen, setIsBusinessExpensesModalOpen] = useState(false);
     const [isPersonalExpensesModalOpen, setIsPersonalExpensesModalOpen] = useState(false);
     const [isFinancialReportsModalOpen, setIsFinancialReportsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isDataHidden, setIsDataHidden] = useState(false);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: transactionsData, error: transactionsError } = await supabase.from('transactions').select('*');
+            if (transactionsError) console.error('Error fetching transactions:', transactionsError);
+            else setTransactions(transactionsData || []);
+
+            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
+            if (studentsError) console.error('Error fetching students:', studentsError);
+            else setStudents(studentsData.map(s => ({
+                ...s,
+                installments: s.installments ? JSON.parse(s.installments) : [],
+                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                documents: s.documents ? JSON.parse(s.documents) : {},
+                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+            })) || []);
+        };
+        fetchData();
+    }, []);
 
     const formatCurrency = (value) => {
         if (isDataHidden) return '₺•••,••';
@@ -58,7 +79,7 @@ const FinancesModule = () => {
         <>
             <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
                 <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                    <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3"/>Financial Dashboard</h2>
+                    <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3"/>Finances</h2>
                     <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
                         <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
                     </button>

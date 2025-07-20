@@ -1,5 +1,4 @@
 import React from 'react';
-import { Timestamp } from 'firebase/firestore';
 import { formatDate } from '../utils/formatDate';
 
 const WeeklyOverview = ({ events }) => {
@@ -35,7 +34,7 @@ const WeeklyOverview = ({ events }) => {
                 {weekDates.map((date, i) => (
                     <div key={i} className={`text-center font-semibold p-2 border-l border-gray-200 ${i === todayIndex ? 'text-blue-600' : 'text-gray-600'}`}>
                         <div>{new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date)}</div>
-                        <div className="text-xs font-normal">{formatDate(Timestamp.fromDate(date))}</div>
+                        <div className="text-xs font-normal">{formatDate(date)}</div>
                     </div>
                 ))}
             
@@ -52,10 +51,10 @@ const WeeklyOverview = ({ events }) => {
                     ))}
 
                     {events.map(event => {
-                        const startTime = event.startTime.toDate();
+                        const startTime = new Date(event.startTime);
                         const endTime = event.type === 'lesson' 
                             ? new Date(startTime.getTime() + 2 * 60 * 60 * 1000)
-                            : (event.endTime ? event.endTime.toDate() : new Date(startTime.getTime() + 1 * 60 * 60 * 1000));
+                            : (event.endTime ? new Date(event.endTime) : new Date(startTime.getTime() + 1 * 60 * 60 * 1000));
                         
                         const dayIndex = getDayIndex(startTime);
                         

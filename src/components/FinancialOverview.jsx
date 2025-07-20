@@ -32,7 +32,7 @@ const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
 
         transactions.forEach(t => {
             const amount = t.amount || 0;
-            const month = t.date.toDate().toLocaleString('en-US', { month: 'short', year: 'numeric' });
+            const month = new Date(t.date).toLocaleString('en-US', { month: 'short', year: 'numeric' });
             
             if (!monthlySummary[month]) {
                 monthlySummary[month] = { name: month, income: 0, expenses: 0 };

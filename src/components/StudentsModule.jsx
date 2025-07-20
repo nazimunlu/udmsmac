@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../supabaseClient';
 import { useNotification } from '../contexts/NotificationContext';
-import { useAppContext } from '../contexts/AppContext';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -10,8 +9,9 @@ import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 
 const StudentsModule = () => {
-    const { db, userId, appId, students, groups } = useAppContext();
     const { showNotification } = useNotification();
+    const [students, setStudents] = useState([]);
+    const [groups, setGroups] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeStudentType, setActiveStudentType] = useState('all'); // 'all', 'group', 'tutoring', 'archived'
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,10 +23,38 @@ const StudentsModule = () => {
     const [studentToView, setStudentToView] = useState(null);
 
     useEffect(() => {
-        if (students) {
+        const fetchStudents = async () => {
+            const { data, error } = await supabase.from('students').select('*');
+            if (error) {
+                console.error('Error fetching students:', error);
+            } else {
+                setStudents(data.map(s => ({
+                    ...s,
+                    installments: s.installments ? JSON.parse(s.installments) : [],
+                    feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                    tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                    documents: s.documents ? JSON.parse(s.documents) : {},
+                    documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+                })));
+            }
             setIsLoading(false);
-        }
-    }, [students]);
+        };
+
+        const fetchGroups = async () => {
+            const { data, error } = await supabase.from('groups').select('*');
+            if (error) {
+                console.error('Error fetching groups:', error);
+            } else {
+                setGroups(data.map(g => ({
+                    ...g,
+                    schedule: g.schedule ? JSON.parse(g.schedule) : {},
+                })));
+            }
+        };
+
+        fetchStudents();
+        fetchGroups();
+    }, []);
 
     const groupStudents = students.filter(s => !s.isTutoring && !s.isArchived);
     const tutoringStudents = students.filter(s => s.isTutoring && !s.isArchived);
@@ -59,14 +87,14 @@ const StudentsModule = () => {
 
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
-        console.log("Attempting to delete/archive student:", studentToDelete.id, "Active student type:", activeStudentType);
         try {
-            const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', studentToDelete.id);
             if (activeStudentType === 'archived') {
-                await deleteDoc(studentDocRef); // Permanently delete if from archived
+                const { error } = await supabase.from('students').delete().match({ id: studentToDelete.id });
+                if (error) throw error;
                 showNotification('Student permanently deleted!', 'success');
             } else {
-                await updateDoc(studentDocRef, { isArchived: true }); // Archive if from active lists
+                const { error } = await supabase.from('students').update({ isArchived: true }).match({ id: studentToDelete.id });
+                if (error) throw error;
                 showNotification('Student archived successfully!', 'success');
             }
         } catch (error) {
@@ -80,8 +108,8 @@ const StudentsModule = () => {
 
     const handleUnarchiveStudent = async (student) => {
         try {
-            const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', student.id);
-            await updateDoc(studentDocRef, { isArchived: false });
+            const { error } = await supabase.from('students').update({ isArchived: false }).match({ id: student.id });
+            if (error) throw error;
             showNotification('Student unarchived successfully!', 'success');
         } catch (error) {
             console.error("Error unarchiving student:", error);

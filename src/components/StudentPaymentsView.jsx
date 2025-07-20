@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import { formatDate } from '../utils/formatDate';
 
 const StudentPaymentsView = ({ onStudentSelect }) => {
-    const { db, userId, appId, students } = useAppContext();
+    const [students, setStudents] = useState([]);
     const [incomeTransactions, setIncomeTransactions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!userId || !appId) return;
-        const q = query(collection(db, 'artifacts', appId, 'users', userId, 'transactions'), where("type", "in", ["income-group", "income-tutoring"]));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const transactionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            transactionsData.sort((a, b) => b.date.toMillis() - a.date.toMillis());
-            setIncomeTransactions(transactionsData);
+        const fetchData = async () => {
+            setIsLoading(true);
+            const { data: transactionsData, error: transactionsError } = await supabase.from('transactions').select('*').in('type', ["income-group", "income-tutoring"]);
+            if (transactionsError) console.error('Error fetching transactions:', transactionsError);
+            else {
+                transactionsData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                setIncomeTransactions(transactionsData || []);
+            }
+
+            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
+            if (studentsError) console.error('Error fetching students:', studentsError);
+            else setStudents(studentsData.map(s => ({
+                ...s,
+                installments: s.installments ? JSON.parse(s.installments) : [],
+                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                documents: s.documents ? JSON.parse(s.documents) : {},
+                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+            })) || []);
+            
             setIsLoading(false);
-        });
-        return () => unsubscribe();
-    }, [db, userId, appId]);
+        };
+        fetchData();
+    }, []);
 
     const getStudentName = (studentId) => {
         const student = students.find(s => s.id === studentId);

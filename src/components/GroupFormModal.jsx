@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { useAppContext } from '../contexts/AppContext';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { FormInput, FormSelect } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 
 const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
-    const { db, userId, appId } = useAppContext();
     const timeOptions = [];
     for (let h = 9; h <= 23; h++) {
         timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
@@ -37,7 +35,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         groupName: groupToEdit?.groupName || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
         color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
-        startDate: groupToEdit?.startDate ? groupToEdit.startDate.toDate().toISOString().split('T')[0] : '',
+        startDate: groupToEdit?.startDate ? new Date(groupToEdit.startDate).toISOString().split('T')[0] : '',
         programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
     }), [groupToEdit]);
 
@@ -110,17 +108,18 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
 
         const dataToSave = {
             ...formData,
-            startDate: formData.startDate ? Timestamp.fromDate(new Date(formData.startDate)) : null,
-            endDate: calculatedEndDate ? Timestamp.fromDate(calculatedEndDate) : null,
+            schedule: JSON.stringify(formData.schedule),
+            startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+            endDate: calculatedEndDate ? calculatedEndDate.toISOString() : null,
         };
 
         try {
             if (groupToEdit) {
-                const groupDocRef = doc(db, 'artifacts', appId, 'users', userId, 'groups', groupToEdit.id);
-                await setDoc(groupDocRef, dataToSave, { merge: true });
+                const { error } = await supabase.from('groups').update(dataToSave).match({ id: groupToEdit.id });
+                if (error) throw error;
             } else {
-                const groupsCollectionPath = collection(db, 'artifacts', appId, 'users', userId, 'groups');
-                await addDoc(groupsCollectionPath, dataToSave);
+                const { error } = await supabase.from('groups').insert([dataToSave]);
+                if (error) throw error;
             }
             onClose();
         } catch (error) {

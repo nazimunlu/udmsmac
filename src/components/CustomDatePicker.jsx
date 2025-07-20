@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timestamp } from 'firebase/firestore';
+
 import { useClickOutside } from '../hooks/useClickOutside';
 import { formatDate } from '../utils/formatDate';
 import { FormInput } from './Form';
