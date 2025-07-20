@@ -5,6 +5,7 @@ import Modal from './Modal';
 import DocumentEditModal from './DocumentEditModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAppContext } from '../contexts/AppContext';
 
 const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCategory }) => (
     <div 
@@ -57,7 +58,7 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
 
 const DocumentsModule = () => {
     const { showNotification } = useNotification();
-    const [documents, setDocuments] = useState([]);
+    const { documents, fetchData } = useAppContext();
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedCategoryDocuments, setSelectedCategoryDocuments] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -125,6 +126,7 @@ const DocumentsModule = () => {
                 }
             }
             showNotification('Document deleted successfully!', 'success');
+            fetchData();
             setSelectedCategory(null); // Close the document list modal
         } catch (error) {
             console.error("Error deleting document:", error);
