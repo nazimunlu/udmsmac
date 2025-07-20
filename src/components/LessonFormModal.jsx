@@ -5,8 +5,10 @@ import { FormInput, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
+import { useAppContext } from '../contexts/AppContext';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
+    const { fetchData } = useAppContext();
     const [formData, setFormData] = useState({
         date: '',
         topic: '',
@@ -108,6 +110,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
                 const { error } = await supabase.from('lessons').insert([lessonData]);
                 if (error) throw error;
             }
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving lesson: ", error);
