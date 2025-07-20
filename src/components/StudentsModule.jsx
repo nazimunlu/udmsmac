@@ -7,12 +7,12 @@ import ConfirmationModal from './ConfirmationModal';
 import StudentDetailsModal from './StudentDetailsModal';
 import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
+import { useAppContext } from '../contexts/AppContext';
 
 const StudentsModule = () => {
     const { showNotification } = useNotification();
-    const [students, setStudents] = useState([]);
-    const [groups, setGroups] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { students, groups, fetchData, loading } = useAppContext();
+    
     const [activeStudentType, setActiveStudentType] = useState('all'); // 'all', 'group', 'tutoring', 'archived'
     const [searchQuery, setSearchQuery] = useState('');
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -23,38 +23,10 @@ const StudentsModule = () => {
     const [studentToView, setStudentToView] = useState(null);
 
     useEffect(() => {
-        const fetchStudents = async () => {
-            const { data, error } = await supabase.from('students').select('*');
-            if (error) {
-                console.error('Error fetching students:', error);
-            } else {
-                setStudents(data.map(s => ({
-                    ...s,
-                    installments: s.installments ? JSON.parse(s.installments) : [],
-                    feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                    tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                    documents: s.documents ? JSON.parse(s.documents) : {},
-                    documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-                })));
-            }
-            setIsLoading(false);
-        };
-
-        const fetchGroups = async () => {
-            const { data, error } = await supabase.from('groups').select('*');
-            if (error) {
-                console.error('Error fetching groups:', error);
-            } else {
-                setGroups(data.map(g => ({
-                    ...g,
-                    schedule: g.schedule ? JSON.parse(g.schedule) : {},
-                })));
-            }
-        };
-
-        fetchStudents();
-        fetchGroups();
-    }, []);
+        if (students.length > 0 || groups.length > 0) {
+            // setIsLoading(false);
+        }
+    }, [students, groups]);
 
     const groupStudents = students.filter(s => !s.isTutoring && !s.isArchived);
     const tutoringStudents = students.filter(s => s.isTutoring && !s.isArchived);
@@ -97,6 +69,7 @@ const StudentsModule = () => {
                 if (error) throw error;
                 showNotification('Student archived successfully!', 'success');
             }
+            fetchData();
         } catch (error) {
             console.error("Error deleting/archiving student:", error);
             showNotification('Error processing student deletion/archiving.', 'error');
@@ -111,6 +84,7 @@ const StudentsModule = () => {
             const { error } = await supabase.from('students').update({ isArchived: false }).match({ id: student.id });
             if (error) throw error;
             showNotification('Student unarchived successfully!', 'success');
+            fetchData();
         } catch (error) {
             console.error("Error unarchiving student:", error);
             showNotification('Error unarchiving student.', 'error');
