@@ -10,12 +10,12 @@ import TransactionFormModal from './TransactionFormModal';
 import FinancialReports from './FinancialReports';
 
 const FinancialCard = ({ title, value, icon, onClick, isDataHidden }) => (
-    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105">
-        <div className="bg-gray-100 text-blue-600 rounded-full p-3 mb-4 flex items-center justify-center">
-            <Icon path={icon} className="w-8 h-8" />
+    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105 hover:shadow-xl">
+        <div className="bg-blue-100 text-blue-600 rounded-full p-4 mb-4 flex items-center justify-center shadow-md">
+            <Icon path={icon} className="w-10 h-10" />
         </div>
-        <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-        <p className="text-gray-500 text-sm">{isDataHidden ? '₺•••,••' : value}</p>
+        <h3 className="text-xl font-semibold text-gray-800 mb-1">{title}</h3>
+        <p className="text-2xl font-bold text-gray-900">{isDataHidden ? '₺•••,••' : value}</p>
     </div>
 );
 
@@ -54,14 +54,14 @@ const FinancesModule = () => {
     return (
         <>
             <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-                <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                    <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3"/>Finances</h2>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-6 border-b border-gray-200">
+                    <h2 className="text-4xl font-extrabold text-gray-900 flex items-center mb-4 md:mb-0"><Icon path={ICONS.FINANCES} className="w-10 h-10 mr-4 text-blue-600"/>Financial Dashboard</h2>
                     <div className="flex items-center space-x-4">
-                        <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200">
-                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600" />
+                        <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
+                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
                         </button>
-                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow">
-                            <Icon path={ICONS.ADD} className="mr-2"/>Log Transaction
+                        <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-5 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-all duration-300 transform hover:scale-105">
+                            <Icon path={ICONS.ADD} className="mr-2 w-5 h-5"/>Log Transaction
                         </button>
                     </div>
                 </div>
@@ -99,12 +99,12 @@ const FinancesModule = () => {
                     </div>
                 ) : (
                     <div className="mb-4 border-b border-gray-200">
-                        <nav className="flex space-x-4" aria-label="Tabs">
-                            <button onClick={() => setActiveView('overview')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'overview' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Overview</button>
-                            <button onClick={() => setActiveView('studentPayments')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'studentPayments' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Student Payments</button>
-                            <button onClick={() => setActiveView('businessExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'businessExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Business Expenses</button>
-                            <button onClick={() => setActiveView('personalExpenses')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'personalExpenses' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Personal Expenses</button>
-                            <button onClick={() => setActiveView('reports')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeView === 'reports' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Reports</button>
+                        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button onClick={() => setActiveView('overview')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Overview</button>
+                            <button onClick={() => setActiveView('studentPayments')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'studentPayments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Student Payments</button>
+                            <button onClick={() => setActiveView('businessExpenses')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'businessExpenses' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Business Expenses</button>
+                            <button onClick={() => setActiveView('personalExpenses')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'personalExpenses' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Personal Expenses</button>
+                            <button onClick={() => setActiveView('reports')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Reports</button>
                         </nav>
                     </div>
                 )}
