@@ -9,10 +9,12 @@ import AddStudentToGroupModal from './AddStudentToGroupModal';
 import StudentDetailsModal from './StudentDetailsModal';
 import { FormSection } from './Form';
 import { Icon, ICONS } from './Icons';
+import { useAppContext } from '../contexts/AppContext';
 
 import { formatDate } from '../utils/formatDate';
 
 const GroupDetailsModal = ({ isOpen, onClose, group }) => {
+    const { fetchData } = useAppContext();
     const [students, setStudents] = useState([]);
     const [studentToRemove, setStudentToRemove] = useState(null);
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -70,6 +72,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
             const { error } = await supabase.from('students').update({ groupId: null }).match({ id: studentToRemove.id });
             if (error) throw error;
             setStudentToRemove(null);
+            fetchData();
         } catch (error) {
             console.error("Error removing student from group: ", error);
         }
@@ -86,6 +89,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
             const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
             if (error) throw error;
             setLessonToDelete(null);
+            fetchData();
         } catch (error) {
             console.error("Error deleting lesson: ", error);
         }
