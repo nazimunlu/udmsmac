@@ -42,6 +42,7 @@ const AppProvider = ({ children }) => {
       if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
       if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
 
+      console.log("Fetched groupsData:", groupsData);
       setStudents(studentsData.map(s => {
         let parsedStudent = { ...s };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
@@ -56,6 +57,7 @@ const AppProvider = ({ children }) => {
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
         return parsedGroup;
       }));
+      console.log("Groups after parsing and setting:", groups);
       setLessons(lessonsData.map(l => {
         let parsedLesson = { ...l };
         try { parsedLesson.attendance = l.attendance ? JSON.parse(l.attendance) : {}; } catch (e) { console.error("Error parsing lesson attendance:", e); parsedLesson.attendance = {}; }
