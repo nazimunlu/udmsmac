@@ -7,6 +7,7 @@ import AttendanceModal from './AttendanceModal';
 import LessonFormModal from './LessonFormModal';
 import CustomDatePicker from './CustomDatePicker';
 import AddStudentToGroupModal from './AddStudentToGroupModal';
+import StudentDetailsModal from './StudentDetailsModal';
 import { FormSection } from './Form';
 import { Icon, ICONS } from './Icons';
 
@@ -37,6 +38,10 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
 
     const openStudentDetailsModal = (student) => {
         setStudentToView(student);
+    };
+
+    const openRemoveConfirmation = (student) => {
+        setStudentToRemove(student);
     };
 
     const handleRemoveStudent = async () => {
@@ -82,13 +87,12 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
                 <div className="space-y-6">
-                     <FormSection title="Lessons Log">
-                        <div className="absolute top-0 right-0 mt-4 mr-4">
-                            <button onClick={() => openLessonFormModal(null)} className="flex items-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm">
-                                <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
-                            </button>
-                        </div>
-                        <div className="sm:col-span-6 mt-4">
+                     <FormSection title="Lessons Log" titleRightContent={
+                        <button onClick={() => openLessonFormModal(null)} className="flex items-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm">
+                            <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
+                        </button>
+                    }>
+                        <div className="sm:col-span-6">
                              {lessons.length > 0 ? (
                                 <ul className="divide-y divide-gray-200">
                                     {lessons.map(lesson => (
@@ -128,34 +132,47 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
                         </div>
                     </FormSection>
                 </div>
+                {studentToRemove && (
+                    <ConfirmationModal
+                        isOpen={!!studentToRemove}
+                        onClose={() => setStudentToRemove(null)}
+                        onConfirm={handleRemoveStudent}
+                        title="Remove Student"
+                        message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`}
+                    />
+                )}
+                {lessonToDelete && (
+                     <ConfirmationModal
+                        isOpen={!!lessonToDelete}
+                        onClose={() => setLessonToDelete(null)}
+                        onConfirm={handleDeleteLesson}
+                        title="Delete Lesson"
+                        message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"?`}
+                    />
+                )}
+                {selectedLessonForAttendance && (
+                    <AttendanceModal
+                        isOpen={isAttendanceModalOpen}
+                        onClose={() => setIsAttendanceModalOpen(false)}
+                        lesson={selectedLessonForAttendance}
+                        students={students}
+                    />
+                )}
+                <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} students={students} />
+                <AddStudentToGroupModal
+                    isOpen={isAddStudentModalOpen}
+                    onClose={() => setIsAddStudentModalOpen(false)}
+                    group={group}
+                    currentStudents={students}
+                />
             </Modal>
-            {studentToRemove && (
-                <ConfirmationModal 
-                    isOpen={!!studentToRemove}
-                    onClose={() => setStudentToRemove(null)}
-                    onConfirm={handleRemoveStudent}
-                    title="Remove Student"
-                    message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`}
+            {studentToView && (
+                <StudentDetailsModal
+                    isOpen={!!studentToView}
+                    onClose={() => setStudentToView(null)}
+                    student={studentToView}
                 />
             )}
-            {lessonToDelete && (
-                 <ConfirmationModal 
-                    isOpen={!!lessonToDelete}
-                    onClose={() => setLessonToDelete(null)}
-                    onConfirm={handleDeleteLesson}
-                    title="Delete Lesson"
-                    message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"?`}
-                />
-            )}
-            {selectedLessonForAttendance && (
-                <AttendanceModal 
-                    isOpen={isAttendanceModalOpen} 
-                    onClose={() => setIsAttendanceModalOpen(false)} 
-                    lesson={selectedLessonForAttendance} 
-                    students={students}
-                />
-            )}
-            <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} students={students} />
         </>
     );
 };

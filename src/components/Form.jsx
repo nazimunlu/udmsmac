@@ -20,9 +20,12 @@ export const FormSelect = ({ label, children, ...props }) => (
     </div>
 );
 
-export const FormSection = ({ title, children }) => (
-    <fieldset className="mt-6 border-t border-gray-200 pt-6">
-        <legend className="text-lg font-medium text-gray-900">{title}</legend>
+export const FormSection = ({ title, children, titleRightContent }) => (
+    <fieldset className="mt-6">
+        <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-6">
+            <legend className="text-lg font-medium text-gray-900">{title}</legend>
+            {titleRightContent}
+        </div>
         <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">{children}</div>
     </fieldset>
 );

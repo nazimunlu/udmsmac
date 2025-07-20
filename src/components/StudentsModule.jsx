@@ -7,6 +7,7 @@ import StudentFormModal from './StudentFormModal';
 import ConfirmationModal from './ConfirmationModal';
 import StudentDetailsModal from './StudentDetailsModal';
 import { formatDate } from '../utils/formatDate';
+import formatPhoneNumber from '../utils/formatPhoneNumber';
 
 const StudentsModule = () => {
     const { db, userId, appId, students, groups } = useAppContext();
@@ -146,7 +147,7 @@ const StudentsModule = () => {
                                 {filteredStudents.map(student => (
                                     <tr key={student.id} className="hover:bg-gray-50">
                                         <td className="p-4 text-gray-800">{student.fullName}</td>
-                                        <td className="p-4 text-gray-600">{student.studentContact}</td>
+                                        <td className="p-4 text-gray-600">{formatPhoneNumber(student.studentContact)}</td>
                                         <td className="p-4 text-gray-600">
                                             {student.isTutoring ? (
                                                 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-500 text-white">Tutoring</span>

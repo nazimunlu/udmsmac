@@ -3,12 +3,17 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
+import formatPhoneNumber from '../utils/formatPhoneNumber';
+import LessonFormModal from './LessonFormModal';
+import { Icon, ICONS } from './Icons';
 
 const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     const { db, userId, appId, groups } = useAppContext();
     const [activeTab, setActiveTab] = useState('general');
     const [lessons, setLessons] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLessonFormModalOpen, setIsLessonFormModalOpen] = useState(false);
+    const [lessonToEdit, setLessonToEdit] = useState(null);
 
     useEffect(() => {
         if (!student?.groupId) {
@@ -28,7 +33,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     }, [db, userId, appId, student?.groupId]);
 
     const paymentSummary = useMemo(() => {
-        if (student.isTutoring || !student.installments) return null;
+        if (!student.installments) return null;
         const totalPaid = student.installments
             .filter(i => i.status === 'Paid')
             .reduce((sum, i) => sum + i.amount, 0);
@@ -42,6 +47,13 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
         const totalLessons = lessons.length;
         return { presentCount, totalLessons };
     }, [lessons, student.id]);
+
+    const tutoringSummary = useMemo(() => {
+        if (!student.isTutoring || !student.installments) return null;
+        const completedLessons = student.installments.filter(i => i.status === 'Paid').length;
+        const totalLessons = student.installments.length;
+        return { completedLessons, totalLessons };
+    }, [student]);
     
     const groupName = student.groupId ? groups.find(g => g.id === student.groupId)?.groupName : 'N/A';
     
@@ -63,33 +75,77 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     );
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+        <>
+            <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
             <div className="mb-4 border-b border-gray-200">
                 <nav className="flex space-x-4" aria-label="Tabs">
                     <button onClick={() => setActiveTab('general')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>General Info</button>
                     <button onClick={() => setActiveTab('payments')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'payments' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Payments</button>
-                    <button onClick={() => setActiveTab('attendance')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Attendance</button>
+                    {student.isTutoring ? (
+                        <button onClick={() => setActiveTab('tutoringSummary')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'tutoringSummary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Tutoring Summary</button>
+                    ) : (
+                        <button onClick={() => setActiveTab('attendance')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Attendance</button>
+                    )}
                 </nav>
             </div>
             
             {activeTab === 'general' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="font-medium text-gray-500">Student Contact:</div><div className="text-gray-800">{student.studentContact}</div>
-                    <div className="font-medium text-gray-500">Parent Contact:</div><div className="text-gray-800">{student.parentContact || 'N/A'}</div>
-                    <div className="font-medium text-gray-500">Enrollment Date:</div><div className="text-gray-800">{formatDate(student.enrollmentDate)}</div>
-                    <div className="font-medium text-gray-500">Birth Date:</div><div className="text-gray-800">{student.birthDate ? formatDate(student.birthDate) : 'N/A'}</div>
-                    <div className="font-medium text-gray-500">Student Type:</div><div className="text-gray-800">{student.isTutoring ? 'Tutoring' : 'Group'}</div>
-                    {!student.isTutoring && <><div className="font-medium text-gray-500">Group:</div><div className="text-gray-800">{groupName}</div></>}
-                </div>
+                <ul className="divide-y divide-gray-200">
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800">Student Contact</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(student.studentContact)}</p>
+                        </div>
+                    </li>
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800">Parent Contact</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(student.parentContact) || 'N/A'}</p>
+                        </div>
+                    </li>
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800">Enrollment Date</p>
+                            <p className="text-sm text-gray-500">{formatDate(student.enrollmentDate)}</p>
+                        </div>
+                    </li>
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800">Birth Date</p>
+                            <p className="text-sm text-gray-500">{student.birthDate ? formatDate(student.birthDate) : 'N/A'}</p>
+                        </div>
+                    </li>
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800">Student Type</p>
+                            <p className="text-sm text-gray-500">{student.isTutoring ? 'Tutoring' : 'Group'}</p>
+                        </div>
+                    </li>
+                    {!student.isTutoring && (
+                        <li className="py-3 flex justify-between items-center">
+                            <div>
+                                <p className="font-medium text-gray-800">Group</p>
+                                <p className="text-sm text-gray-500">{groupName}</p>
+                            </div>
+                        </li>
+                    )}
+                </ul>
             )}
 
             {activeTab === 'payments' && (
                 <div>
                     {paymentSummary && (
-                        <div className="p-4 bg-blue-50 rounded-lg mb-4 text-center">
-                            <p className="font-semibold text-blue-800">
-                                Total Paid: ₺{paymentSummary.totalPaid.toFixed(2)} / ₺{paymentSummary.totalFee.toFixed(2)}
-                            </p>
+                        <div className="p-4 bg-blue-50 rounded-lg mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="font-semibold text-blue-800">Payment Summary</p>
+                                <span className="font-semibold text-blue-800">{paymentSummary.totalFee > 0 ? `${((paymentSummary.totalPaid / paymentSummary.totalFee) * 100).toFixed(0)}%` : '0%'}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                                <div className="bg-blue-600 h-4 rounded-full"
+                                     style={{ width: `${(paymentSummary.totalPaid / paymentSummary.totalFee) * 100}%` }}>
+                                </div>
+                            </div>
+                            <p className="text-center text-blue-800 mt-2">₺{paymentSummary.totalPaid.toFixed(0)} paid out of ₺{paymentSummary.totalFee.toFixed(0)}</p>
                         </div>
                     )}
                     <ul className="divide-y divide-gray-200">
@@ -100,7 +156,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                                     <p className="text-sm text-gray-500">Due: {formatDate(inst.dueDate)}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-semibold text-gray-800">₺{inst.amount.toFixed(2)}</p>
+                                    <p className="font-semibold text-gray-800">₺{inst.amount.toFixed(0)}</p>
                                     {inst.status === 'Paid' ? (
                                         <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Paid</span>
                                     ) : (
@@ -114,13 +170,20 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                 </div>
             )}
 
-            {activeTab === 'attendance' && (
+            {activeTab === 'attendance' && !student.isTutoring && (
                  <div>
                     {attendanceSummary && (
-                        <div className="p-4 bg-green-50 rounded-lg mb-4 text-center">
-                            <p className="font-semibold text-green-800">
-                                Attendance: {attendanceSummary.presentCount} / {attendanceSummary.totalLessons} lessons present
-                            </p>
+                        <div className="p-4 bg-green-50 rounded-lg mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="font-semibold text-green-800">Attendance Summary</p>
+                                <span className="font-semibold text-green-800">{attendanceSummary.totalLessons > 0 ? `${((attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100).toFixed(0)}%` : '0%'}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                                <div className="bg-green-600 h-4 rounded-full"
+                                     style={{ width: `${(attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100}%` }}>
+                                </div>
+                            </div>
+                            <p className="text-center text-green-800 mt-2">{attendanceSummary.presentCount} out of {attendanceSummary.totalLessons} lessons present</p>
                         </div>
                     )}
                     {isLoading ? <p>Loading attendance...</p> :
@@ -138,7 +201,34 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                     </ul>}
                 </div>
             )}
+
+            {activeTab === 'tutoringSummary' && student.isTutoring && (
+                <div>
+                    {tutoringSummary && (
+                        <div className="p-4 bg-purple-50 rounded-lg mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="font-semibold text-purple-800">Tutoring Progress</p>
+                                <span className="font-semibold text-purple-800">{tutoringSummary.totalLessons > 0 ? `${((tutoringSummary.completedLessons / tutoringSummary.totalLessons) * 100).toFixed(0)}%` : '0%'}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                                <div className="bg-purple-600 h-4 rounded-full"
+                                     style={{ width: `${(tutoringSummary.completedLessons / tutoringSummary.totalLessons) * 100}%` }}>
+                                </div>
+                            </div>
+                            <p className="text-center text-purple-800 mt-2">{tutoringSummary.completedLessons} out of {tutoringSummary.totalLessons} lessons completed</p>
+                            <div className="text-center mt-4">
+                                <button onClick={() => setIsLessonFormModalOpen(true)} className="flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-purple-600 hover:bg-purple-700 text-sm shadow-sm mx-auto">
+                                    <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-center text-gray-500 py-4">Detailed tutoring lesson log coming soon.</p>
+                </div>
+            )}
         </Modal>
+        {isLessonFormModalOpen && <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} student={student} />}
+        </>
     );
 };
 

@@ -7,6 +7,7 @@ import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
+import formatPhoneNumber from '../utils/formatPhoneNumber';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { db, userId, appId, groups } = useAppContext();
@@ -39,7 +40,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             groupId: studentToEdit?.groupId || null,
             documents: studentToEdit?.documents || { nationalIdUrl: '', agreementUrl: '' },
             documentNames: studentToEdit?.documentNames || { nationalId: '', agreement: '' },
-            feeDetails: studentToEdit?.feeDetails || { totalFee: '', numberOfInstallments: '' },
+            feeDetails: studentToEdit?.feeDetails || { totalFee: '12000', numberOfInstallments: '3' },
             tutoringDetails: studentToEdit?.tutoringDetails || {
                     hourlyRate: '',
                     numberOfLessons: '',
@@ -64,7 +65,11 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        if (name === 'studentContact' || name === 'parentContact') {
+            setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        }
     };
     
     const handleFeeChange = (e) => {

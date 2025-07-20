@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatDate } from '../utils/formatDate';
+import formatPhoneNumber from '../utils/formatPhoneNumber';
 
 const InvoiceGenerator = ({ student, payment }) => {
     if (!student || !payment) return <p>No invoice data available.</p>;
@@ -27,8 +28,8 @@ const InvoiceGenerator = ({ student, payment }) => {
             <div className="mb-8">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Bill To:</h3>
                 <p className="font-medium text-gray-800">{student.fullName}</p>
-                <p className="text-sm text-gray-600">Contact: {student.studentContact}</p>
-                {student.parentContact && <p className="text-sm text-gray-600">Parent: {student.parentContact}</p>}
+                <p className="text-sm text-gray-600">Contact: {formatPhoneNumber(student.studentContact)}</p>
+                {student.parentContact && <p className="text-sm text-gray-600">Parent: {formatPhoneNumber(student.parentContact)}</p>}
             </div>
 
             <div className="overflow-x-auto mb-8">

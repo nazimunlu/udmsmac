@@ -10,8 +10,8 @@ const AttendanceModal = ({ isOpen, onClose, lesson, students }) => {
     const { showNotification } = useNotification();
     const [attendance, setAttendance] = useState(lesson.attendance || {});
 
-    const handleStatusChange = async (studentId, status) => {
-        const newAttendance = { ...attendance, [studentId]: status };
+    const handleStatusChange = async (student, status) => {
+        const newAttendance = { ...attendance, [student.id]: status };
         setAttendance(newAttendance);
         
         const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
@@ -46,7 +46,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, students }) => {
                         <span className="font-medium text-gray-800">{student.fullName}</span>
                         <div className="flex space-x-2">
                             {['present', 'absent', 'late'].map(status => (
-                                <button key={status} onClick={() => handleStatusChange(student.id, status)} className={`px-3 py-1 text-sm rounded-full capitalize transition-colors ${attendance[student.id] === status ? getStatusColor(status) : 'bg-gray-200 hover:bg-gray-300'}`}>
+                                <button key={status} onClick={() => handleStatusChange(student, status)} className={`px-3 py-1 text-sm rounded-full capitalize transition-colors ${attendance[student.id] === status ? getStatusColor(status) : 'bg-gray-200 hover:bg-gray-300'}`}>
                                     {status}
                                 </button>
                             ))}

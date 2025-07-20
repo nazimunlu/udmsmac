@@ -8,7 +8,7 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
 
-const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => {
+const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
     const { db, userId, appId } = useAppContext();
     const [formData, setFormData] = useState({});
     const [file, setFile] = useState(null);
@@ -22,10 +22,15 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => 
     }
 
     useEffect(() => {
-        const initialAttendance = students.reduce((acc, student) => {
-            acc[student.id] = lessonToEdit?.attendance?.[student.id] || false;
-            return acc;
-        }, {});
+        let initialAttendance = {};
+        if (group && students) {
+            initialAttendance = students.reduce((acc, s) => {
+                acc[s.id] = lessonToEdit?.attendance?.[s.id] || false;
+                return acc;
+            }, {});
+        } else if (student) {
+            initialAttendance[student.id] = lessonToEdit?.attendance?.[student.id] || false;
+        }
 
         if (lessonToEdit) {
             setFormData({
@@ -48,7 +53,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => 
                 materialName: ''
             });
         }
-    }, [lessonToEdit, isOpen, students, group]);
+    }, [lessonToEdit, isOpen, group, student]);
 
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
@@ -82,7 +87,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => 
         let materialName = lessonToEdit?.materialName || '';
 
         if (file) {
-            const materialPath = `lesson_materials/${userId}/${group.id}/${Date.now()}_${file.name}`;
+            const groupId = group?.id || student?.groupId;
+            const materialPath = `lesson_materials/${userId}/${groupId}/${Date.now()}_${file.name}`;
             materialUrl = await uploadFile(file, materialPath);
             materialName = file.name;
             // Add to documents collection for centralized management
@@ -91,20 +97,26 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => 
                 url: materialUrl,
                 type: 'lessonMaterial',
                 uploadDate: Timestamp.now(),
-                groupId: group.id,
+                groupId: groupId,
             });
         }
 
         const lessonData = {
             topic: formData.topic,
-            groupId: group.id,
             lessonDate: Timestamp.fromDate(new Date(formData.date.replace(/-/g, '/'))),
             startTime: formData.startTime,
             endTime: formData.endTime,
-            attendance: formData.attendance,
             materialUrl,
             materialName
         };
+
+        if (group) {
+            lessonData.groupId = group.id;
+            lessonData.attendance = formData.attendance;
+        } else if (student) {
+            lessonData.studentId = student.id;
+            lessonData.attendance = { [student.id]: true }; // Mark tutoring student as present by default
+        }
 
         try {
             if (lessonToEdit) {
@@ -148,21 +160,23 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, students }) => 
                         </div>
                     </div>
                 </FormSection>
-                <FormSection title="Quick Attendance">
-                    <div className="sm:col-span-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {students.map(student => (
-                            <label key={student.id} className="flex items-center space-x-3 cursor-pointer">
-                                <input 
-                                    type="checkbox" 
-                                    checked={formData.attendance?.[student.id] || false}
-                                    onChange={() => handleAttendanceChange(student.id)}
-                                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-gray-700">{student.fullName}</span>
-                            </label>
-                        ))}
-                    </div>
-                </FormSection>
+                {group && students && (
+                    <FormSection title="Quick Attendance">
+                        <div className="sm:col-span-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {students.map(s => (
+                                <label key={s.id} className="flex items-center space-x-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.attendance?.[s.id] || false}
+                                        onChange={() => handleAttendanceChange(s.id)}
+                                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-gray-700">{s.fullName}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </FormSection>
+                )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
                     <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Lesson'}</button>
