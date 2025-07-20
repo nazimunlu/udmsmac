@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
+import { Icon, ICONS } from './Icons';
+import TransactionFormModal from './TransactionFormModal';
 
 import { formatDate } from '../utils/formatDate';
 
 const PersonalExpensesView = () => {
     const { db, userId, appId } = useAppContext();
     const [expenses, setExpenses] = useState([]);
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
     useEffect(() => {
         if (!userId || !appId) return;
@@ -21,8 +24,13 @@ const PersonalExpensesView = () => {
 
     return (
         <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-xl text-gray-800">Logged Personal Expenses</h3>
+                <button onClick={() => setIsTransactionModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow">
+                    <Icon path={ICONS.ADD} className="mr-2"/>Log Expense
+                </button>
+            </div>
             <div className="bg-white rounded-lg shadow-md">
-                <h3 className="font-semibold text-xl p-6 border-b border-gray-200">Logged Personal Expenses</h3>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50">
@@ -50,6 +58,7 @@ const PersonalExpensesView = () => {
                     </table>
                 </div>
             </div>
+            <TransactionFormModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} defaultCategory="personal" />
         </div>
     );
 };

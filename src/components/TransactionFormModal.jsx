@@ -6,7 +6,7 @@ import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 
-const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
+const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCategory }) => {
     const { db, userId, appId } = useAppContext();
     const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
@@ -35,18 +35,18 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }) => {
             });
         } else {
             setFormData({
-                type: 'income-group',
+                type: defaultCategory ? (defaultCategory.includes('business') ? 'expense-business' : 'expense-personal') : 'income-group',
                 amount: '',
                 date: new Date().toISOString().split('T')[0],
                 description: '',
-                category: '',
+                category: defaultCategory || '',
                 invoiceUrl: '',
                 invoiceName: '',
             });
         }
         setInvoiceFile(null);
         setStatusMessage(null);
-    }, [transactionToEdit, isOpen]);
+    }, [transactionToEdit, isOpen, defaultCategory]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
