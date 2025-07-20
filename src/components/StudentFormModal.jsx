@@ -7,9 +7,11 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import { Icon, ICONS } from './Icons';
+import { useAppContext } from '../contexts/AppContext';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { showNotification } = useNotification();
+    const { fetchData } = useAppContext();
     const [groups, setGroups] = useState([]);
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
     
@@ -267,6 +269,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 if (error) throw error;
                 showNotification('Student enrolled successfully!', 'success');
             }
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error saving student:", error);
