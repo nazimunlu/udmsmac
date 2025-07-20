@@ -23,11 +23,11 @@ const Notification = () => {
 
     return (
         <div
-            className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg text-white flex items-center space-x-3 z-50 ${bgColor}`}
+            className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg text-white flex items-center space-x-3 z-50 max-w-xs ${bgColor}`}
             role="alert"
         >
             <Icon path={iconType} className="w-6 h-6" />
-            <p>{notification.message}</p>
+            <p className="text-wrap">{notification.message}</p>
             <button onClick={hideNotification} className="ml-auto p-1 rounded-full hover:bg-white hover:bg-opacity-20">
                 <Icon path={ICONS.CLOSE} className="w-5 h-5" />
             </button>
