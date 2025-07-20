@@ -56,6 +56,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 };
             })
         ];
+        console.log("All Items:", allItems);
 
         const eventsWithEndTimes = allItems.map(item => {
             let effectiveEndTime = item.startTime.getTime(); // Default to start time
@@ -70,6 +71,7 @@ const DashboardModule = ({ setActiveModule }) => {
             }
             return { ...item, effectiveEndTime };
         });
+        console.log("Events with End Times:", eventsWithEndTimes);
 
         setTodaysSchedule(eventsWithEndTimes.filter(item =>
             item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
@@ -78,7 +80,9 @@ const DashboardModule = ({ setActiveModule }) => {
 
         setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
-        setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay)));
+        const filteredWeekEvents = eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay));
+        console.log("Filtered Week Events:", filteredWeekEvents);
+        setWeekEvents(filteredWeekEvents);
 
         const paymentsDue = [];
         (students || []).forEach(student => {
