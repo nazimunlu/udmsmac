@@ -7,12 +7,12 @@ import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
 import WeeklyOverview from './WeeklyOverview';
-import NotificationCard from './NotificationCard';
+import NotificationCard from '././NotificationCard';
+import { useAppContext } from '../contexts/AppContext';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
-    const [students, setStudents] = useState([]);
-    const [groups, setGroups] = useState([]);
+    const { students, groups, lessons, events, fetchData } = useAppContext();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState(null);
@@ -24,72 +24,7 @@ const DashboardModule = ({ setActiveModule }) => {
     const [allEvents, setAllEvents] = useState({ lessons: [], events: [], birthdays: [] });
     const [duePayments, setDuePayments] = useState([]);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
-            if (studentsError) console.error('Error fetching students:', studentsError);
-            else {
-                const parsedStudentsData = studentsData.map(s => ({
-                    ...s,
-                    installments: s.installments ? JSON.parse(s.installments) : [],
-                    feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                    tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                    documents: s.documents ? JSON.parse(s.documents) : {},
-                    documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-                }));
-                setStudents(parsedStudentsData);
-
-                const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');
-                if (groupsError) console.error('Error fetching groups:', groupsError);
-                else setGroups(groupsData);
-
-                const { data: lessonsData, error: lessonsError } = await supabase.from('lessons').select('*').gte('lessonDate', todayStart.toISOString());
-                if (lessonsError) console.error('Error fetching lessons:', lessonsError);
-                else setAllEvents(prev => ({ ...prev, lessons: lessonsData.map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})) }));
-
-                const { data: eventsData, error: eventsError } = await supabase.from('events').select('*').gte('startTime', todayStart.toISOString());
-                if (eventsError) console.error('Error fetching events:', eventsError);
-                else setAllEvents(prev => ({ ...prev, events: eventsData.map(e => ({...e, type: 'event', startTime: new Date(e.startTime)})) }));
-
-                const currentYear = new Date().getFullYear();
-                const birthdays = parsedStudentsData.filter(s => s.birthDate).map(s => {
-                    const birthDate = new Date(s.birthDate);
-                    let nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-                    if (nextBirthday < todayStart) {
-                        nextBirthday.setFullYear(currentYear + 1);
-                    }
-                    return {
-                        id: `bday-${s.id}`,
-                        type: 'birthday',
-                        eventName: `${s.fullName}'s Birthday`,
-                        startTime: nextBirthday
-                    };
-                });
-                setAllEvents(prev => ({ ...prev, birthdays }));
-
-                const payments = [];
-                parsedStudentsData.forEach(student => {
-                    student.installments?.forEach(installment => {
-                        if (installment.status === 'Unpaid' && new Date(installment.dueDate) <= now) {
-                            payments.push({
-                                id: `${student.id}-${installment.number}`,
-                                message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
-                                type: 'warning',
-                                studentId: student.id,
-                                installmentNumber: installment.number
-                            });
-                        }
-                    });
-                });
-                setDuePayments(payments);
-            }
-        };
-
-        fetchData();
-    }, []);
+    
 
     useEffect(() => {
         const now = new Date();
@@ -197,6 +132,7 @@ const DashboardModule = ({ setActiveModule }) => {
             const { error } = await supabase.from('events').delete().match({ id: eventToDelete.id });
             if (error) throw error;
             showNotification('Event deleted successfully!', 'success');
+            fetchData();
         } catch (error) {
             console.error("Error deleting event:", error);
             showNotification('Failed to delete event.', 'error');
