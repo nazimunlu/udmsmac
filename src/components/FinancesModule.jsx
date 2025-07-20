@@ -41,7 +41,7 @@ const FinancesModule = () => {
     };
 
     const totalIncome = useMemo(() => {
-        return transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        return transactions.filter(t => t.type.startsWith('income')).reduce((sum, t) => sum + parseFloat(t.amount), 0);
     }, [transactions]);
 
     const totalBusinessExpenses = useMemo(() => {
