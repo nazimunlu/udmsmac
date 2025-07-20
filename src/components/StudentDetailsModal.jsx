@@ -17,8 +17,6 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const [lessonToEdit, setLessonToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [lessonToDelete, setLessonToDelete] = useState(null);
-    const [selectedLessonForAttendance, setSelectedLessonForAttendance] = useState(null);
-    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
     useEffect(() => {
@@ -127,6 +125,22 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         const studentDocRef = doc(db, 'artifacts', appId, 'users', userId, 'students', currentStudent.id);
         await updateDoc(studentDocRef, { installments: updatedInstallments });
         setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+    };
+
+    const handleAttendanceChange = async (lesson, studentId, currentStatus) => {
+        const newStatus = {
+            'present': 'absent',
+            'absent': 'late',
+            'late': 'present'
+        }[currentStatus] || 'present';
+
+        const updatedAttendance = {
+            ...lesson.attendance,
+            [studentId]: newStatus
+        };
+
+        const lessonDocRef = doc(db, 'artifacts', appId, 'users', userId, 'lessons', lesson.id);
+        await updateDoc(lessonDocRef, { attendance: updatedAttendance });
     };
 
     const modalTitle = (
@@ -259,7 +273,9 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
-                                {getAttendanceStatus(lesson.attendance?.[currentStudent.id])}
+                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`${baseClasses} ${lesson.attendance?.[currentStudent.id] === 'present' ? 'bg-green-100 text-green-800' : lesson.attendance?.[currentStudent.id] === 'absent' ? 'bg-red-100 text-red-800' : lesson.attendance?.[currentStudent.id] === 'late' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    {lesson.attendance?.[currentStudent.id] || 'N/A'}
+                                </button>
                             </li>
                         ))}
                         {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student's group.</p>}
@@ -284,12 +300,6 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                             <div className="text-center mt-4">
                                 <button onClick={() => setIsLessonFormModalOpen(true)} className="flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-purple-600 hover:bg-purple-700 text-sm shadow-sm mx-auto">
                                     <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
-                                </button>
-                                <button onClick={() => {
-                                    setSelectedLessonForAttendance(lesson);
-                                    setIsAttendanceModalOpen(true);
-                                }} className="flex items-center justify-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm mx-auto mt-2">
-                                    <Icon path={ICONS.CHECK} className="w-4 h-4 mr-2"/>Log Attendance
                                 </button>
                             </div>
                         </div>
@@ -330,14 +340,6 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             title="Delete Lesson"
             message="Are you sure you want to delete this lesson? This action cannot be undone."
         />
-        {selectedLessonForAttendance && (
-            <AttendanceModal
-                isOpen={isAttendanceModalOpen}
-                onClose={() => setIsAttendanceModalOpen(false)}
-                lesson={selectedLessonForAttendance}
-                student={currentStudent}
-            />
-        )}
         </>
     );
 };
