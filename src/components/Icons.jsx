@@ -28,7 +28,11 @@ import {
     faBookOpen,
     faSave,
     faCheck,
-    faExclamationTriangle
+    faExclamationTriangle,
+    faMoneyBillWave,
+    faBriefcase,
+    faUtensils,
+    faChartLine
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
@@ -64,4 +68,8 @@ export const ICONS = {
     SAVE: faSave,
     CHECK: faCheck,
     EXCLAMATION: faExclamationTriangle,
+    INCOME: faMoneyBillWave,
+    BUSINESS_EXPENSE: faBriefcase,
+    PERSONAL_EXPENSE: faUtensils,
+    PROFIT: faChartLine,
 };

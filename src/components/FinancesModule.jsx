@@ -10,9 +10,9 @@ import TransactionFormModal from './TransactionFormModal';
 import FinancialReports from './FinancialReports';
 import Modal from './Modal';
 
-const FinancialCard = ({ title, value, icon, onClick, isDataHidden }) => (
-    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105 hover:shadow-xl">
-        <div className="bg-blue-100 text-blue-600 rounded-full p-4 mb-4 flex items-center justify-center shadow-md">
+const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor }) => (
+    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105" style={{ borderTop: `4px solid ${borderColor}` }}>
+        <div className={`rounded-full p-4 mb-4 flex items-center justify-center shadow-md`} style={{ backgroundColor: borderColor, color: 'white' }}>
             <Icon path={icon} className="w-10 h-10" />
         </div>
         <h3 className="text-xl font-semibold text-gray-800 mb-1">{title}</h3>
@@ -74,6 +74,7 @@ const FinancesModule = () => {
                         icon={ICONS.INCOME}
                         onClick={() => setIsStudentPaymentsModalOpen(true)}
                         isDataHidden={isDataHidden}
+                        borderColor="#10B981" // Green for Income
                     />
                     <FinancialCard
                         title="Business Expenses"
@@ -81,6 +82,7 @@ const FinancesModule = () => {
                         icon={ICONS.BUSINESS_EXPENSE}
                         onClick={() => setIsBusinessExpensesModalOpen(true)}
                         isDataHidden={isDataHidden}
+                        borderColor="#EF4444" // Red for Business Expenses
                     />
                     <FinancialCard
                         title="Personal Expenses"
@@ -88,6 +90,7 @@ const FinancesModule = () => {
                         icon={ICONS.PERSONAL_EXPENSE}
                         onClick={() => setIsPersonalExpensesModalOpen(true)}
                         isDataHidden={isDataHidden}
+                        borderColor="#F59E0B" // Orange for Personal Expenses
                     />
                     <FinancialCard
                         title="Net Profit"
@@ -95,6 +98,7 @@ const FinancesModule = () => {
                         icon={ICONS.PROFIT}
                         onClick={() => setIsFinancialReportsModalOpen(true)}
                         isDataHidden={isDataHidden}
+                        borderColor="#3B82F6" // Blue for Net Profit
                     />
                 </div>
 
