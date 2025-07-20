@@ -12,7 +12,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
-    const { students, groups, lessons, events, fetchData } = useAppContext();
+    const { students, groups, lessons, events, payments, fetchData } = useAppContext();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState(null);
@@ -39,35 +39,64 @@ const DashboardModule = ({ setActiveModule }) => {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
 
-        const getSortableTime = (item) => (item.startTime)?.getTime() || 0;
-
-        const processAllEvents = () => {
-            const allItems = [...allEvents.lessons, ...allEvents.events, ...allEvents.birthdays];
-
-            const eventsWithEndTimes = allItems.map(item => {
-                let effectiveEndTime = item.startTime.getTime(); // Default to start time
-                if (item.type === 'lesson') {
-                    effectiveEndTime = item.startTime.getTime() + 2 * 60 * 60 * 1000; // 2 hours for lessons
-                } else if (item.type === 'event' && item.endTime) {
-                    effectiveEndTime = new Date(item.endTime).getTime();
-                } else if (item.type === 'event') { // Default 1 hour for events if no endTime
-                    effectiveEndTime = item.startTime.getTime() + 1 * 60 * 60 * 1000;
+        const allItems = [
+            ...lessons.map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
+            ...events.map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay})),
+            ...students.filter(s => s.birthDate).map(s => {
+                const birthDate = new Date(s.birthDate);
+                let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+                if (nextBirthday < todayStart) {
+                    nextBirthday.setFullYear(now.getFullYear() + 1);
                 }
-                return { ...item, effectiveEndTime };
+                return {
+                    id: `bday-${s.id}`,
+                    type: 'birthday',
+                    eventName: `${s.fullName}'s Birthday`,
+                    startTime: nextBirthday
+                };
+            })
+        ];
+
+        const eventsWithEndTimes = allItems.map(item => {
+            let effectiveEndTime = item.startTime.getTime(); // Default to start time
+            if (item.type === 'lesson') {
+                effectiveEndTime = item.startTime.getTime() + 2 * 60 * 60 * 1000; // 2 hours for lessons
+            } else if (item.type === 'event' && item.endTime) {
+                effectiveEndTime = new Date(item.endTime).getTime();
+            } else if (item.type === 'event' && !item.endTime) { // Default 1 hour for events if no endTime
+                effectiveEndTime = item.startTime.getTime() + 1 * 60 * 60 * 1000;
+            } else if (item.type === 'birthday') {
+                effectiveEndTime = item.startTime.getTime() + 24 * 60 * 60 * 1000; // Birthdays are all day
+            }
+            return { ...item, effectiveEndTime };
+        });
+
+        setTodaysSchedule(eventsWithEndTimes.filter(item =>
+            item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
+            item.startTime.getTime() <= todayEnd.getTime() // Event started before or at end of today
+        ).sort((a,b) => a.startTime.getTime() - b.startTime.getTime())); // Sort by start time
+
+        setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
+
+        setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay)));
+
+        const paymentsDue = [];
+        students.forEach(student => {
+            student.installments?.forEach(installment => {
+                if (installment.status === 'Unpaid' && new Date(installment.dueDate) <= now) {
+                    paymentsDue.push({
+                        id: `${student.id}-${installment.number}`,
+                        message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
+                        type: 'warning',
+                        studentId: student.id,
+                        installmentNumber: installment.number
+                    });
+                }
             });
+        });
+        setDuePayments(paymentsDue);
 
-            setTodaysSchedule(eventsWithEndTimes.filter(item =>
-                item.effectiveEndTime >= now.getTime() && // Event ends after or at current time
-                item.startTime.getTime() <= todayEnd.getTime() // Event started before or at end of today
-            ).sort((a,b) => a.startTime.getTime() - b.startTime.getTime())); // Sort by start time
-
-            setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
-
-            setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime()));
-        };
-
-        processAllEvents();
-    }, [allEvents]);
+    }, [students, groups, lessons, events, payments]);
     
     const EventIcon = ({type}) => {
         const iconMap = {
