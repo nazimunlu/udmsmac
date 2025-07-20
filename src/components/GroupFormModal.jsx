@@ -111,6 +111,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
 
         const dataToSave = {
             ...formData,
+            isArchived: formData.isArchived || false,
             schedule: JSON.stringify(formData.schedule),
             startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
             endDate: calculatedEndDate ? calculatedEndDate.toISOString() : null,
