@@ -21,7 +21,10 @@ const FinancialCard = ({ title, value, icon, onClick, isDataHidden }) => (
 
 const FinancesModule = () => {
     const { transactions, students } = useAppContext();
-    const [activeView, setActiveView] = useState('overview'); // 'overview', 'studentPayments', 'businessExpenses', 'personalExpenses', 'reports'
+    const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
+    const [isBusinessExpensesModalOpen, setIsBusinessExpensesModalOpen] = useState(false);
+    const [isPersonalExpensesModalOpen, setIsPersonalExpensesModalOpen] = useState(false);
+    const [isFinancialReportsModalOpen, setIsFinancialReportsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isDataHidden, setIsDataHidden] = useState(false);
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -66,60 +69,60 @@ const FinancesModule = () => {
                     </div>
                 </div>
 
-                {activeView === 'overview' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <FinancialCard
-                            title="Total Income"
-                            value={formatCurrency(totalIncome)}
-                            icon={ICONS.INCOME}
-                            onClick={() => setActiveView('studentPayments')}
-                            isDataHidden={isDataHidden}
-                        />
-                        <FinancialCard
-                            title="Business Expenses"
-                            value={formatCurrency(totalBusinessExpenses)}
-                            icon={ICONS.BUSINESS_EXPENSE}
-                            onClick={() => setActiveView('businessExpenses')}
-                            isDataHidden={isDataHidden}
-                        />
-                        <FinancialCard
-                            title="Personal Expenses"
-                            value={formatCurrency(totalPersonalExpenses)}
-                            icon={ICONS.PERSONAL_EXPENSE}
-                            onClick={() => setActiveView('personalExpenses')}
-                            isDataHidden={isDataHidden}
-                        />
-                        <FinancialCard
-                            title="Net Profit"
-                            value={formatCurrency(netProfit)}
-                            icon={ICONS.PROFIT}
-                            onClick={() => setActiveView('reports')}
-                            isDataHidden={isDataHidden}
-                        />
-                    </div>
-                ) : (
-                    <div className="mb-4 border-b border-gray-200">
-                        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                            <button onClick={() => setActiveView('overview')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Overview</button>
-                            <button onClick={() => setActiveView('studentPayments')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'studentPayments' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Student Payments</button>
-                            <button onClick={() => setActiveView('businessExpenses')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'businessExpenses' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Business Expenses</button>
-                            <button onClick={() => setActiveView('personalExpenses')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'personalExpenses' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Personal Expenses</button>
-                            <button onClick={() => setActiveView('reports')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeView === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Reports</button>
-                        </nav>
-                    </div>
-                )}
-
-                <div>
-                    {activeView === 'overview' && <FinancialOverview transactions={transactions} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />}
-                    {activeView === 'studentPayments' && <StudentPaymentsView onStudentSelect={setSelectedStudent} />}
-                    {activeView === 'businessExpenses' && <BusinessExpensesView />}
-                    {activeView === 'personalExpenses' && <PersonalExpensesView />}
-                    {activeView === 'reports' && <FinancialReports formatCurrency={formatCurrency} />}
+                {/* Financial Cards for Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <FinancialCard
+                        title="Total Income"
+                        value={formatCurrency(totalIncome)}
+                        icon={ICONS.INCOME}
+                        onClick={() => setIsStudentPaymentsModalOpen(true)}
+                        isDataHidden={isDataHidden}
+                    />
+                    <FinancialCard
+                        title="Business Expenses"
+                        value={formatCurrency(totalBusinessExpenses)}
+                        icon={ICONS.BUSINESS_EXPENSE}
+                        onClick={() => setIsBusinessExpensesModalOpen(true)}
+                        isDataHidden={isDataHidden}
+                    />
+                    <FinancialCard
+                        title="Personal Expenses"
+                        value={formatCurrency(totalPersonalExpenses)}
+                        icon={ICONS.PERSONAL_EXPENSE}
+                        onClick={() => setIsPersonalExpensesModalOpen(true)}
+                        isDataHidden={isDataHidden}
+                    />
+                    <FinancialCard
+                        title="Net Profit"
+                        value={formatCurrency(netProfit)}
+                        icon={ICONS.PROFIT}
+                        onClick={() => setIsFinancialReportsModalOpen(true)}
+                        isDataHidden={isDataHidden}
+                    />
                 </div>
+
+                <FinancialOverview transactions={transactions} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />
             </div>
 
             {selectedStudent && <StudentPaymentDetailsModal isOpen={!!selectedStudent} onClose={() => setSelectedStudent(null)} student={selectedStudent} />}
             <TransactionFormModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} />
+
+            {/* Modals for each financial view */}
+            <Modal isOpen={isStudentPaymentsModalOpen} onClose={() => setIsStudentPaymentsModalOpen(false)} title="Student Payments">
+                <StudentPaymentsView onStudentSelect={setSelectedStudent} />
+            </Modal>
+
+            <Modal isOpen={isBusinessExpensesModalOpen} onClose={() => setIsBusinessExpensesModalOpen(false)} title="Business Expenses">
+                <BusinessExpensesView />
+            </Modal>
+
+            <Modal isOpen={isPersonalExpensesModalOpen} onClose={() => setIsPersonalExpensesModalOpen(false)} title="Personal Expenses">
+                <PersonalExpensesView />
+            </Modal>
+
+            <Modal isOpen={isFinancialReportsModalOpen} onClose={() => setIsFinancialReportsModalOpen(false)} title="Financial Reports">
+                <FinancialReports formatCurrency={formatCurrency} />
+            </Modal>
         </>
     );
 };
