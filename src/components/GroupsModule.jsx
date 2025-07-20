@@ -11,7 +11,7 @@ import { useAppContext } from '../contexts/AppContext';
 const GroupsModule = () => {
     const { showNotification } = useNotification();
     const { groups, students, fetchData, loading } = useAppContext();
-    const [isLoading, setIsLoading] = useState(true);
+    
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
