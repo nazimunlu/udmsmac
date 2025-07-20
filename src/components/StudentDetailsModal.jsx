@@ -273,7 +273,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
                                     <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
-                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`${baseClasses} ${lesson.attendance?.[currentStudent.id] === 'present' ? 'bg-green-100 text-green-800' : lesson.attendance?.[currentStudent.id] === 'absent' ? 'bg-red-100 text-red-800' : lesson.attendance?.[currentStudent.id] === 'late' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'present' ? 'bg-green-100 text-green-800' : lesson.attendance?.[currentStudent.id] === 'absent' ? 'bg-red-100 text-red-800' : lesson.attendance?.[currentStudent.id] === 'late' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
                                     {lesson.attendance?.[currentStudent.id] || 'N/A'}
                                 </button>
                             </li>
