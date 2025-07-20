@@ -121,8 +121,11 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
                                 <ul className="divide-y divide-gray-200">
                                     {students.map(student => (
                                         <li key={student.id} className="py-3 flex items-center justify-between">
-                                            <span className="text-gray-800 cursor-pointer hover:text-blue-600" onClick={() => openStudentDetailsModal(student)}>{student.fullName}</span>
-                                            <button onClick={() => openRemoveConfirmation(student)} className="text-sm text-red-600 hover:text-red-800">Remove</button>
+                                            <span className="text-gray-800">{student.fullName}</span>
+                                            <div className="flex space-x-2">
+                                                <button onClick={() => openStudentDetailsModal(student)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
+                                                <button onClick={() => openRemoveConfirmation(student)} className="text-sm text-red-600 hover:text-red-800">Remove</button>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
