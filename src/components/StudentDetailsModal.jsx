@@ -68,11 +68,11 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     }, [lessons, student.id]);
 
     const tutoringSummary = useMemo(() => {
-        if (!student.isTutoring || !student.installments) return null;
-        const completedLessons = student.installments.filter(i => i.status === 'Paid').length;
-        const totalLessons = student.installments.length;
+        if (!student.isTutoring) return null;
+        const completedLessons = lessons.filter(l => l.status === 'Complete').length;
+        const totalLessons = lessons.length;
         return { completedLessons, totalLessons };
-    }, [student]);
+    }, [lessons, student.isTutoring]);
     
     const groupName = student.groupId ? groups.find(g => g.id === student.groupId)?.groupName : 'N/A';
     
