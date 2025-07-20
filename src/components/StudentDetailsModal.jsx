@@ -21,7 +21,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     useEffect(() => {
         setCurrentStudent(initialStudent);
-    }, [initialStudent]);
+        if (isOpen) {
+            setActiveTab('general'); // Always set General Info tab as active when modal opens
+        }
+    }, [initialStudent, isOpen]);
 
     useEffect(() => {
         if (!currentStudent?.id) {
