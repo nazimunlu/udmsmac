@@ -31,8 +31,10 @@ const DashboardModule = ({ setActiveModule }) => {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
         
-        const weekStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)));
-        const weekEnd = new Date(Date.UTC(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7));
+        const weekStart = new Date(todayStart);
+        const dayOfWeek = weekStart.getDay();
+        const weekStartUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)));
+        const weekEnd = new Date(Date.UTC(weekStartUTC.getFullYear(), weekStartUTC.getMonth(), weekStartUTC.getDate() + 7));
 
         const allItems = [
             ...(lessons || []).map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
