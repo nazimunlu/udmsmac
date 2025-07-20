@@ -57,13 +57,11 @@ const FinancesModule = () => {
     return (
         <>
             <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-6 border-b border-gray-200">
-                    <h2 className="text-4xl font-extrabold text-gray-900 flex items-center mb-4 md:mb-0"><Icon path={ICONS.FINANCES} className="w-10 h-10 mr-4 text-blue-600"/>Financial Dashboard</h2>
-                    <div className="flex items-center space-x-4">
-                        <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
-                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
-                        </button>
-                    </div>
+                <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
+                    <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3"/>Financial Dashboard</h2>
+                    <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
+                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
+                    </button>
                 </div>
 
                 {/* Financial Cards for Overview */}
