@@ -5,9 +5,7 @@ const WeeklyOverview = ({ events }) => {
     const hours = Array.from({ length: 16 }, (_, i) => i + 8); 
     
     const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); 
-    startOfWeek.setHours(0,0,0,0);
+    const startOfWeek = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)));
     
     const weekDates = Array.from({length: 7}).map((_, i) => {
         const date = new Date(startOfWeek);
