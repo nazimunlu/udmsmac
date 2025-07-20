@@ -122,6 +122,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
             lessonData.groupId = group.id;
             lessonData.attendance = formData.attendance;
         } else if (student) {
+            lessonData.groupId = student.groupId;
             lessonData.studentId = student.id;
             lessonData.attendance = { [student.id]: true }; // Mark tutoring student as present by default
         }

@@ -223,7 +223,17 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
                             </div>
                         </div>
                     )}
-                    <p className="text-center text-gray-500 py-4">Detailed tutoring lesson log coming soon.</p>
+                                        <ul className="divide-y divide-gray-200">
+                        {lessons.map(lesson => (
+                            <li key={lesson.id} className="py-3 flex justify-between items-center">
+                                <div>
+                                    <p className="font-medium text-gray-800">{lesson.topic}</p>
+                                    <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
+                                </div>
+                            </li>
+                        ))}
+                        {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student.</p>}
+                    </ul>
                 </div>
             )}
         </Modal>
