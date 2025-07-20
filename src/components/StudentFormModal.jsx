@@ -53,13 +53,11 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
     const [formData, setFormData] = useState(getInitialFormData());
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [statusMessage, setStatusMessage] = useState(null);
     
     useEffect(() => {
         if (isOpen) {
             setFormData(getInitialFormData());
             setFiles({ nationalId: null, agreement: null });
-            setStatusMessage(null);
         }
     }, [isOpen, getInitialFormData]);
 
@@ -120,7 +118,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         e.preventDefault();
 
         if (!formData.isTutoring && (!files.nationalId && !studentToEdit?.documents?.nationalIdUrl || !files.agreement && !studentToEdit?.documents?.agreementUrl)) {
-            setStatusMessage({ type: 'error', text: 'National ID and Agreement are mandatory for group students.' });
+            showNotification('National ID and Agreement are mandatory for group students.', 'error');
+            setIsSubmitting(false);
             return;
         }
 
@@ -294,7 +293,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             onClose();
         } catch (error) {
             console.error("Error saving student:", error);
-            setStatusMessage({ type: 'error', text: 'Failed to save student. Please check console for details.' });
+            showNotification('Failed to save student. Please check console for details.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -386,7 +385,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
                     <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">Save Student</button>
                 </div>
-                {statusMessage && <p className={`mt-4 text-center text-sm ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>{statusMessage.text}</p>}
             </form>
         </Modal>
     );
