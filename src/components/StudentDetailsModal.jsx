@@ -17,6 +17,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const [lessonToEdit, setLessonToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [lessonToDelete, setLessonToDelete] = useState(null);
+    const [selectedLessonForAttendance, setSelectedLessonForAttendance] = useState(null);
+    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
     useEffect(() => {
