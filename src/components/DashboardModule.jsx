@@ -40,9 +40,9 @@ const DashboardModule = ({ setActiveModule }) => {
         weekEnd.setDate(weekStart.getDate() + 7);
 
         const allItems = [
-            ...lessons.map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
-            ...events.map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay})),
-            ...students.filter(s => s.birthDate).map(s => {
+            ...(lessons || []).map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
+            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay})),
+            ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
                 if (nextBirthday < todayStart) {
@@ -81,7 +81,7 @@ const DashboardModule = ({ setActiveModule }) => {
         setWeekEvents(eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay)));
 
         const paymentsDue = [];
-        students.forEach(student => {
+        (students || []).forEach(student => {
             student.installments?.forEach(installment => {
                 if (installment.status === 'Unpaid' && new Date(installment.dueDate) <= now) {
                     paymentsDue.push({
