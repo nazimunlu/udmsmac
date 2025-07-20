@@ -16,21 +16,37 @@ const StudentDetailsModal = ({ isOpen, onClose, student }) => {
     const [lessonToEdit, setLessonToEdit] = useState(null);
 
     useEffect(() => {
-        if (!student?.groupId) {
+        if (!student?.id) {
             setIsLoading(false);
             setLessons([]);
             return;
         }
         setIsLoading(true);
-        const lessonsQuery = query(collection(db, 'artifacts', appId, 'users', userId, 'lessons'), where("groupId", "==", student.groupId));
+
+        const lessonsCollection = collection(db, 'artifacts', appId, 'users', userId, 'lessons');
+        let lessonsQuery;
+
+        if (student.isTutoring) {
+            // For tutoring students, fetch lessons by studentId
+            lessonsQuery = query(lessonsCollection, where("studentId", "==", student.id));
+        } else if (student.groupId) {
+            // For group students, fetch lessons by groupId
+            lessonsQuery = query(lessonsCollection, where("groupId", "==", student.groupId));
+        } else {
+            setIsLoading(false);
+            setLessons([]);
+            return;
+        }
+
         const unsubscribe = onSnapshot(lessonsQuery, (snapshot) => {
             const lessonsData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
             lessonsData.sort((a,b) => a.lessonDate.toMillis() - b.lessonDate.toMillis());
             setLessons(lessonsData);
             setIsLoading(false);
         });
+
         return unsubscribe;
-    }, [db, userId, appId, student?.groupId]);
+    }, [db, userId, appId, student]);
 
     const paymentSummary = useMemo(() => {
         if (!student.installments) return null;
