@@ -3,8 +3,10 @@ import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
+import { useAppContext } from '../contexts/AppContext';
 
 const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => {
+    const { fetchData } = useAppContext();
     const [allStudents, setAllStudents] = useState([]);
     const [unassignedStudents, setUnassignedStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +52,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
             const { error } = await supabase.from('students').update({ groupId: group.id }).match({ id: studentId });
             if (error) throw error;
             setSearchTerm(''); // Clear search after adding
+            fetchData();
             onClose();
         } catch (error) {
             console.error("Error adding student to group: ", error);
