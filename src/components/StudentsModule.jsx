@@ -130,7 +130,7 @@ const StudentsModule = () => {
                 </div>
             </div>
 
-            {isLoading ? (
+            {loading ? (
                 <p className="text-center text-gray-500">Loading students...</p>
             ) : filteredStudents.length > 0 ? (
                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
