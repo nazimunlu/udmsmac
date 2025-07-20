@@ -122,7 +122,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group, students }) => {
                                     {students.map(student => (
                                         <li key={student.id} className="py-3 flex items-center justify-between">
                                             <span className="text-gray-800">{student.fullName}</span>
-                                            <div className="flex space-x-2">
+                                            <div className="flex items-center space-x-2">
                                                 <button onClick={() => openStudentDetailsModal(student)} className="text-sm text-blue-600 hover:text-blue-800">Details</button>
                                                 <button onClick={() => openRemoveConfirmation(student)} className="text-sm text-red-600 hover:text-red-800">Remove</button>
                                             </div>
