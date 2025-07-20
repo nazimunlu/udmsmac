@@ -2,24 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import TransactionFormModal from './TransactionFormModal';
+import { useAppContext } from '../contexts/AppContext';
 
 import { formatDate } from '../utils/formatDate';
 
 const PersonalExpensesView = () => {
-    const [expenses, setExpenses] = useState([]);
+    const { expenses } = useAppContext();
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchExpenses = async () => {
-            const { data, error } = await supabase.from('transactions').select('*').eq('type', 'expense-personal');
-            if (error) console.error('Error fetching expenses:', error);
-            else {
-                data.sort((a, b) => new Date(b.date) - new Date(a.date));
-                setExpenses(data || []);
-            }
-        };
-        fetchExpenses();
-    }, []);
 
     return (
         <div className="space-y-6">
