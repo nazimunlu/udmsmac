@@ -21,11 +21,11 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     useEffect(() => {
         setCurrentStudent({
             ...initialStudent,
-            installments: initialStudent?.installments ? JSON.parse(initialStudent.installments) : [],
-            feeDetails: initialStudent?.feeDetails ? JSON.parse(initialStudent.feeDetails) : {},
-            tutoringDetails: initialStudent?.tutoringDetails ? JSON.parse(initialStudent.tutoringDetails) : {},
-            documents: initialStudent?.documents ? JSON.parse(initialStudent.documents) : {},
-            documentNames: initialStudent?.documentNames ? JSON.parse(initialStudent.documentNames) : {},
+            installments: initialStudent?.installments || [],
+            feeDetails: initialStudent?.feeDetails || {},
+            tutoringDetails: initialStudent?.tutoringDetails || {},
+            documents: initialStudent?.documents || {},
+            documentNames: initialStudent?.documentNames || {},
         });
         if (isOpen) {
             setActiveTab('general'); // Always set General Info tab as active when modal opens
