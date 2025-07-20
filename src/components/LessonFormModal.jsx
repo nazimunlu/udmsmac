@@ -9,7 +9,7 @@ import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
-    const { db, userId, appId } = useAppContext();
+    const { db, userId, appId, students } = useAppContext();
         const [formData, setFormData] = useState({
         date: '',
         topic: '',
