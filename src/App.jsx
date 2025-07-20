@@ -22,7 +22,7 @@ function App() {
       setSession(session);
       setLoading(false);
       if (_event === 'SIGNED_IN') {
-        showNotification('Welcome!', 'success');
+        // showNotification('Welcome!', 'success');
       } else if (_event === 'SIGNED_OUT') {
         showNotification('Logged out successfully.', 'info');
       }
