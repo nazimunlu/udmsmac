@@ -15,7 +15,7 @@ const Sidebar = ({ activeModule, setActiveModule }) => {
         { id: 'dashboard', label: 'Dashboard', icon: ICONS.DASHBOARD },
         { id: 'students', label: 'Students', icon: ICONS.STUDENTS },
         { id: 'groups', label: 'Groups', icon: ICONS.GROUPS },
-        { id: 'finances', label: 'Finances', icon: ICONS.FINANCES },
+        { id: 'finances', label: 'Finances', icon: ICONS.WALLET },
         { id: 'documents', label: 'Documents', icon: ICONS.DOCUMENTS },
     ];
 

@@ -20,21 +20,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const [lessonToDelete, setLessonToDelete] = useState(null);
     const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
-    useEffect(() => {
-        setCurrentStudent({
-            ...initialStudent,
-            installments: initialStudent?.installments || [],
-            feeDetails: initialStudent?.feeDetails || {},
-            tutoringDetails: initialStudent?.tutoringDetails || {},
-            documents: initialStudent?.documents || {},
-            documentNames: initialStudent?.documentNames || {},
-        });
-        if (isOpen) {
-            setActiveTab('general'); // Always set General Info tab as active when modal opens
-        }
-    }, [initialStudent, isOpen]);
-
-    useEffect(() => {
+    const fetchLessonsForStudent = async () => {
         if (!currentStudent?.id) {
             setIsLoading(false);
             setLessons([]);
@@ -42,48 +28,79 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         }
         setIsLoading(true);
 
-        const fetchLessons = async () => {
-            let query = supabase.from('lessons');
+        let query = supabase.from('lessons');
 
-            if (currentStudent.isTutoring) {
-                query = query.select('*').eq('studentId', currentStudent.id);
-            } else if (currentStudent.groupId) {
-                query = query.select('*').eq('groupId', currentStudent.groupId);
-            } else {
-                setIsLoading(false);
-                setLessons([]);
-                return;
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error('Error fetching lessons:', error);
-            } else {
-                data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
-                setLessons(data.map(l => ({
-                    ...l,
-                    attendance: l.attendance ? JSON.parse(l.attendance) : {},
-                })));
-            }
+        if (currentStudent.isTutoring) {
+            query = query.select('*').eq('studentId', currentStudent.id);
+        } else if (currentStudent.groupId) {
+            query = query.select('*').eq('groupId', currentStudent.groupId);
+        } else {
             setIsLoading(false);
-        };
+            setLessons([]);
+            return;
+        }
 
-        const fetchGroups = async () => {
-            const { data, error } = await supabase.from('groups').select('*');
-            if (error) {
-                console.error('Error fetching groups:', error);
-            } else {
-                setGroups(data);
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Error fetching lessons:', error);
+        } else {
+            data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
+            setLessons(data.map(l => ({
+                ...l,
+                attendance: l.attendance ? JSON.parse(l.attendance) : {},
+            })));
+        }
+        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        const safeParse = (jsonString, defaultValue) => {
+            if (typeof jsonString === 'string') {
+                try {
+                    return JSON.parse(jsonString);
+                } catch (e) {
+                    return defaultValue;
+                }
             }
+            return jsonString || defaultValue;
         };
 
-        fetchLessons();
+        setCurrentStudent({
+            ...initialStudent,
+            installments: safeParse(initialStudent?.installments, []),
+            feeDetails: safeParse(initialStudent?.feeDetails, {}),
+            tutoringDetails: safeParse(initialStudent?.tutoringDetails, {}),
+            documents: safeParse(initialStudent?.documents, {}),
+            documentNames: safeParse(initialStudent?.documentNames, {}),
+        });
+
+        if (isOpen) {
+            setActiveTab('general'); // Always set General Info tab as active when modal opens
+        }
+    }, [initialStudent, isOpen]);
+
+    useEffect(() => {
+        if (currentStudent?.id) {
+            fetchLessonsForStudent();
+        }
+    }, [currentStudent?.id]);
+
+    const fetchGroups = async () => {
+        const { data, error } = await supabase.from('groups').select('*');
+        if (error) {
+            console.error('Error fetching groups:', error);
+        } else {
+            setGroups(data);
+        }
+    };
+
+    useEffect(() => {
         fetchGroups();
-    }, [currentStudent]);
+    }, []);
 
     const paymentSummary = useMemo(() => {
-        if (!currentStudent.installments) return null;
+        if (!currentStudent.installments || !Array.isArray(currentStudent.installments)) return null;
         const totalPaid = currentStudent.installments
             .filter(i => i.status === 'Paid')
             .reduce((sum, i) => sum + i.amount, 0);
@@ -105,7 +122,16 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         return { completedLessons, totalLessons };
     }, [lessons, currentStudent.isTutoring]);
     
-    const groupName = currentStudent.groupId ? groups.find(g => g.id === currentStudent.groupId)?.groupName : 'N/A';
+    const group = useMemo(() => {
+        if (currentStudent?.groupId && groups.length > 0) {
+            return groups.find(g => g.id === currentStudent.groupId);
+        }
+        return null;
+    }, [currentStudent, groups]);
+
+    const headerColor = currentStudent.isTutoring ? '#8B5CF6' : (group?.color || '#3B82F6');
+    
+    const groupName = group?.groupName ?? 'N/A';
     
     const getAttendanceStatus = (status) => {
         const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full";
@@ -133,11 +159,11 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                 console.error('Error deleting lesson:', error);
             } else {
                 setLessons(lessons.filter(l => l.id !== lessonToDelete.id));
+                fetchData(); // Refetch global data
             }
             setLessonToDelete(null);
+            setIsConfirmModalOpen(false);
         }
-        setIsConfirmModalOpen(false);
-        fetchData();
     };
 
     const handleToggleStatus = async (lesson) => {
@@ -146,7 +172,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         if (error) {
             console.error('Error updating lesson status:', error);
         } else {
-            fetchData();
+            fetchLessonsForStudent(); // Refetch lessons for this student
+            fetchData(); // Refetch global data
         }
     };
 
@@ -180,6 +207,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         if (error) {
             console.error('Error updating attendance:', error);
         } else {
+            fetchLessonsForStudent(); // Refetch lessons for this student
             fetchData();
         }
     };
@@ -193,7 +221,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+            <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} headerStyle={{ backgroundColor: headerColor }}>
             <div className="mb-4 border-b border-gray-200">
                 <nav className="flex space-x-4" aria-label="Tabs">
                     <button onClick={() => setActiveTab('general')} className={`-mb-px px-3 py-2 font-medium text-sm border-b-2 ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>General Info</button>
@@ -373,6 +401,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         {isLessonFormModalOpen && <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => {
             setIsLessonFormModalOpen(false);
             setLessonToEdit(null);
+            fetchLessonsForStudent(); // Refetch lessons after closing the form
         }} student={currentStudent} lessonToEdit={lessonToEdit} />}
         <ConfirmationModal 
             isOpen={isConfirmModalOpen}

@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
 import EventFormModal from './EventFormModal';
+import LessonFormModal from './LessonFormModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 import { formatDate } from '../utils/formatDate';
@@ -17,14 +18,24 @@ const DashboardModule = ({ setActiveModule }) => {
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [eventToDelete, setEventToDelete] = useState(null);
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+    const [lessonToEdit, setLessonToEdit] = useState(null);
     const [todaysSchedule, setTodaysSchedule] = useState([]);
     const [upcomingEvents, setUpcomingEvents] = useState([]);
     const [weekEvents, setWeekEvents] = useState([]);
     const [allEvents, setAllEvents] = useState({ lessons: [], events: [], birthdays: [] });
     const [duePayments, setDuePayments] = useState([]);
 
-    
+    const generateColorForString = (id) => {
+        if (!id) return '#6B7280'; // default gray
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+            hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, 60%, 70%)`;
+    };
 
     useEffect(() => {
         const now = new Date();
@@ -37,8 +48,25 @@ const DashboardModule = ({ setActiveModule }) => {
         const weekEnd = new Date(Date.UTC(weekStartUTC.getFullYear(), weekStartUTC.getMonth(), weekStartUTC.getDate() + 7));
 
         const allItems = [
-            ...(lessons || []).map(l => ({...l, type: 'lesson', eventName: l.topic, startTime: new Date(l.lessonDate)})),
-            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay})),
+            ...(lessons || []).map(l => {
+                let eventName = l.topic;
+                let color;
+                if (l.studentId) {
+                    const student = students.find(s => s.id === l.studentId);
+                    if (student) {
+                        eventName = `${student.fullName}: ${l.topic}`;
+                        color = generateColorForString(student.id);
+                    }
+                } else if (l.groupId) {
+                    const group = groups.find(g => g.id === l.groupId);
+                    if (group) {
+                        eventName = `${group.groupName}: ${l.topic}`;
+                        color = group.color;
+                    }
+                }
+                return {...l, type: 'lesson', eventName, startTime: new Date(l.lessonDate), color};
+            }),
+            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay, color: 'rgb(16, 185, 129)'})),
             ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -51,6 +79,7 @@ const DashboardModule = ({ setActiveModule }) => {
                     eventName: `${s.fullName}'s Birthday`,
                     startTime: nextBirthday,
                     allDay: true,
+                    color: 'rgb(236, 72, 153)',
                 };
             })
         ];
@@ -77,7 +106,7 @@ const DashboardModule = ({ setActiveModule }) => {
             return item.effectiveEndTime >= now.getTime() && item.startTime.getTime() <= todayEnd.getTime();
         }).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
-        setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
+        setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday' || item.type === 'lesson') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
         const filteredWeekEvents = eventsWithEndTimes.filter(item => item.startTime.getTime() >= weekStart.getTime() && item.startTime.getTime() < weekEnd.getTime() && item.type !== 'birthday' && !(item.type === 'event' && item.isAllDay));
         setWeekEvents(filteredWeekEvents);
@@ -100,14 +129,18 @@ const DashboardModule = ({ setActiveModule }) => {
 
     }, [students, groups, lessons, events, payments]);
     
-    const EventIcon = ({type}) => {
+    const EventIcon = ({type, color}) => {
         const iconMap = {
-            lesson: { path: ICONS.LESSON, color: 'bg-blue-100 text-blue-600' },
-            birthday: { path: ICONS.CAKE, color: 'bg-pink-100 text-pink-600' },
-            event: { path: ICONS.CALENDAR, color: 'bg-green-100 text-green-600' },
+            lesson: { path: ICONS.LESSON, defaultColor: 'bg-blue-100 text-blue-600' },
+            birthday: { path: ICONS.CAKE, defaultColor: 'bg-pink-100 text-pink-600' },
+            event: { path: ICONS.CALENDAR, defaultColor: 'bg-green-100 text-green-600' },
         };
-        const { path, color } = iconMap[type] || { path: ICONS.INFO, color: 'bg-gray-100 text-gray-600' }; // Default to ICONS.INFO
-        return <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-4 ${color}`}><Icon path={path} className="w-5 h-5"/></div>
+        const { path, defaultColor } = iconMap[type] || { path: ICONS.INFO, defaultColor: 'bg-gray-100 text-gray-600' };
+        
+        const style = color ? { backgroundColor: color, color: 'white' } : {};
+        const className = color ? '' : defaultColor;
+
+        return <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-4 ${className}`} style={style}><Icon path={path} className="w-5 h-5"/></div>
     };
 
     const getTimeRemaining = (item) => {
@@ -147,29 +180,38 @@ const DashboardModule = ({ setActiveModule }) => {
         return null;
     };
 
-    const handleEditEvent = (event) => {
-        setEventToEdit(event);
-        setIsEventModalOpen(true);
+    const handleEditItem = (item) => {
+        if (item.type === 'event') {
+            setEventToEdit(item);
+            setIsEventModalOpen(true);
+        } else if (item.type === 'lesson') {
+            setLessonToEdit(item);
+            setIsLessonModalOpen(true);
+        }
     };
 
-    const openDeleteConfirmation = (event) => {
-        setEventToDelete(event);
+    const openDeleteConfirmation = (item) => {
+        setItemToDelete(item);
         setIsConfirmModalOpen(true);
     };
 
-    const handleDeleteEvent = async () => {
-        if (!eventToDelete) return;
+    const handleDeleteItem = async () => {
+        if (!itemToDelete) return;
+        
+        const { type, id, eventName } = itemToDelete;
+        const table = type === 'lesson' ? 'lessons' : 'events';
+
         try {
-            const { error } = await supabase.from('events').delete().match({ id: eventToDelete.id });
+            const { error } = await supabase.from(table).delete().match({ id });
             if (error) throw error;
-            showNotification('Event deleted successfully!', 'success');
+            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully!`, 'success');
             fetchData();
         } catch (error) {
-            console.error("Error deleting event:", error);
-            showNotification('Failed to delete event.', 'error');
+            console.error(`Error deleting ${type}:`, error);
+            showNotification(`Failed to delete ${type}.`, 'error');
         } finally {
             setIsConfirmModalOpen(false);
-            setEventToDelete(null);
+            setItemToDelete(null);
         }
     };
 
@@ -218,15 +260,15 @@ const DashboardModule = ({ setActiveModule }) => {
                             {todaysSchedule.map(item => (
                                 <li key={item.id} className="flex items-center justify-between group">
                                     <div className="flex items-center">
-                                        <EventIcon type={item.type} />
+                                        <EventIcon type={item.type} color={item.color} />
                                         <div>
                                             <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
                                             <p className="text-sm text-gray-500">{item.allDay ? 'All Day' : item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Istanbul'})}</p>
                                         </div>
                                     </div>
-                                    {item.type === 'event' && (
+                                    {(item.type === 'event' || item.type === 'lesson') && (
                                         <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                            <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                             <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                         </div>
                                     )}
@@ -244,15 +286,15 @@ const DashboardModule = ({ setActiveModule }) => {
                             {upcomingEvents.slice(0, 5).map((item, index) => (
                                 <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
                                      <div className="flex items-center">
-                                        <EventIcon type={item.type} />
+                                        <EventIcon type={item.type} color={item.color} />
                                         <div>
                                             <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
                                             <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>
                                         </div>
                                      </div>
-                                     {item.type === 'event' && (
+                                     {(item.type === 'event' || item.type === 'lesson') && (
                                         <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleEditEvent(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                            <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
                                             <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                         </div>
                                     )}
@@ -286,14 +328,15 @@ const DashboardModule = ({ setActiveModule }) => {
                 </div>
             )}
             <StudentFormModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
-            <EventFormModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventToEdit={eventToEdit} />
-            {eventToDelete && (
+            <EventFormModal isOpen={isEventModalOpen} onClose={() => {setIsEventModalOpen(false); setEventToEdit(null);}} eventToEdit={eventToEdit} />
+            <LessonFormModal isOpen={isLessonModalOpen} onClose={() => {setIsLessonModalOpen(false); setLessonToEdit(null);}} lessonToEdit={lessonToEdit} />
+            {itemToDelete && (
                 <ConfirmationModal
                     isOpen={isConfirmModalOpen}
                     onClose={() => setIsConfirmModalOpen(false)}
-                    onConfirm={handleDeleteEvent}
-                    title="Delete Event"
-                    message={`Are you sure you want to delete the event "${eventToDelete.eventName}"? This action cannot be undone.`}
+                    onConfirm={handleDeleteItem}
+                    title={`Delete ${itemToDelete.type}`}
+                    message={`Are you sure you want to delete the ${itemToDelete.type} "${itemToDelete.eventName}"? This action cannot be undone.`}
                 />
             )}
         </div>

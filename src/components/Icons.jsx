@@ -33,7 +33,8 @@ import {
     faBriefcase,
     faUtensils,
     faChartLine,
-    faSignOutAlt
+    faSignOutAlt,
+    faWallet
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
@@ -74,4 +75,5 @@ export const ICONS = {
     PERSONAL_EXPENSE: faUtensils,
     PROFIT: faChartLine,
     LOGOUT: faSignOutAlt,
+    WALLET: faWallet,
 };

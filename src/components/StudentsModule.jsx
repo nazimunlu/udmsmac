@@ -41,14 +41,16 @@ const StudentsModule = () => {
                 sourceStudents = students;
         }
 
+        let studentsToDisplay = sourceStudents;
         if (searchQuery) {
-            return sourceStudents.filter(s =>
+            studentsToDisplay = sourceStudents.filter(s =>
                 s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.studentContact.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.parentContact?.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        return sourceStudents;
+        
+        return [...studentsToDisplay].sort((a, b) => a.fullName.localeCompare(b.fullName));
     }, [students, archivedStudents, activeStudentType, searchQuery, groupStudents, tutoringStudents]);
     
     const openDeleteConfirmation = (student) => {

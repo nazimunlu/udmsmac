@@ -14,7 +14,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { formatDate } from '../utils/formatDate';
 
 const GroupDetailsModal = ({ isOpen, onClose, group }) => {
-    const { fetchData } = useAppContext();
+    const { fetchData, students: allStudents } = useAppContext();
     const [students, setStudents] = useState([]);
     const [studentToRemove, setStudentToRemove] = useState(null);
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -25,38 +25,25 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
     const [lessonToDelete, setLessonToDelete] = useState(null);
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [selectedLessonForAttendance, setSelectedLessonForAttendance] = useState(null);
+    const [activeTab, setActiveTab] = useState('students');
 
-    useEffect(() => {
+    const fetchGroupDetails = async () => {
         if (!group?.id) return;
 
-        const fetchLessons = async () => {
-            const { data, error } = await supabase.from('lessons').select('*').eq('groupId', group.id);
-            if (error) console.error('Error fetching lessons:', error);
-            else {
-                data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
-                setLessons(data.map(l => ({
-                    ...l,
-                    attendance: l.attendance ? JSON.parse(l.attendance) : {},
-                })) || []);
-            }
-        };
+        // Fetch lessons
+        const { data: lessonsData, error: lessonsError } = await supabase.from('lessons').select('*').eq('groupId', group.id).order('lessonDate', { ascending: false });
+        if (lessonsError) console.error('Error fetching lessons:', lessonsError);
+        else setLessons(lessonsData || []);
 
-        const fetchStudents = async () => {
-            const { data, error } = await supabase.from('students').select('*').eq('groupId', group.id);
-            if (error) console.error('Error fetching students:', error);
-            else setStudents(data.map(s => ({
-                ...s,
-                installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-            })) || []);
-        };
+        // Fetch students
+        const { data: studentsData, error: studentsError } = await supabase.from('students').select('*').eq('groupId', group.id);
+        if (studentsError) console.error('Error fetching students:', studentsError);
+        else setStudents(studentsData || []);
+    };
 
-        fetchLessons();
-        fetchStudents();
-    }, [group.id]);
+    useEffect(() => {
+        fetchGroupDetails();
+    }, [group?.id, isOpen]); // Refetch when modal opens or group changes
 
     const openStudentDetailsModal = (student) => {
         setStudentToView(student);
@@ -72,7 +59,8 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
             const { error } = await supabase.from('students').update({ groupId: null }).match({ id: studentToRemove.id });
             if (error) throw error;
             setStudentToRemove(null);
-            fetchData();
+            fetchData(); // Global refetch
+            fetchGroupDetails(); // Local refetch
         } catch (error) {
             console.error("Error removing student from group: ", error);
         }
@@ -89,7 +77,8 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
             const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
             if (error) throw error;
             setLessonToDelete(null);
-            fetchData();
+            fetchData(); // Global refetch
+            fetchGroupDetails(); // Local refetch
         } catch (error) {
             console.error("Error deleting lesson: ", error);
         }
@@ -100,106 +89,107 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
         setIsAttendanceModalOpen(true);
     };
 
+    const handleModalClose = () => {
+        setActiveTab('students'); // Reset to default tab on close
+        onClose();
+    };
+
     const modalTitle = (
         <div>
             <h3 className="text-xl font-bold">{group?.groupName}</h3>
-            <p className="text-sm text-white/80">Group Details</p>
+            <p className="text-sm text-white/80">{students.length} Students</p>
         </div>
     );
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
-                <div className="space-y-6">
-                     <FormSection title="Lessons Log" titleRightContent={
-                        <button onClick={() => openLessonFormModal(null)} className="flex items-center px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm">
-                            <Icon path={ICONS.ADD} className="w-4 h-4 mr-2"/>Log Lesson
-                        </button>
-                    }>
-                        <div className="sm:col-span-6">
-                             {lessons.length > 0 ? (
-                                <ul className="divide-y divide-gray-200">
-                                    {lessons.map(lesson => (
-                                        <li key={lesson.id} className="py-3 flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium text-gray-800">{lesson.topic}</p>
-                                                <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <button onClick={() => openAttendanceModal(lesson)} className="text-sm text-gray-500 hover:text-gray-700">Attendance</button>
-                                                <button onClick={() => openLessonFormModal(lesson)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-4 h-4" /></button>
-                                                <button onClick={() => setLessonToDelete(lesson)} className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-4 h-4" /></button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                             ) : (
-                                <p className="text-center text-gray-500 py-4">No lessons scheduled for this group yet.</p>
-                             )}
-                        </div>
-                    </FormSection>
-                    <FormSection title="Students in this Group">
-                        <div className="sm:col-span-6">
-                            <button onClick={() => setIsAddStudentModalOpen(true)} className="mb-4 w-full flex items-center justify-center px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700"><Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>Add Student</button>
-                            {students.length > 0 ? (
-                                <ul className="divide-y divide-gray-200">
-                                    {students.map(student => (
-                                        <li key={student.id} className="py-3 flex items-center justify-between">
-                                            <span className="text-gray-800">{student.fullName}</span>
-                                            <div className="flex items-center space-x-2">
-                                                <button onClick={() => openStudentDetailsModal(student)} className="text-sm text-blue-600 hover:text-blue-800 py-1">Details</button>
-                                                <button onClick={() => openRemoveConfirmation(student)} className="text-sm text-red-600 hover:text-red-800 py-1">Remove</button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-gray-500">No students assigned to this group yet.</p>
-                            )}
-                        </div>
-                    </FormSection>
+            <Modal 
+                isOpen={isOpen} 
+                onClose={handleModalClose} 
+                title={modalTitle} 
+                headerStyle={{ backgroundColor: group?.color || '#3B82F6' }}
+            >
+                <div className="bg-gray-50 -mx-6 -mb-6">
+                    <div className="border-b border-gray-200">
+                        <nav className="-mb-px flex space-x-6 px-6" aria-label="Tabs">
+                            <button
+                                onClick={() => setActiveTab('students')}
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'students' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            >
+                                Students
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('lessons')}
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'lessons' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            >
+                                Lessons
+                            </button>
+                        </nav>
+                    </div>
+                    <div className="p-6">
+                        {activeTab === 'students' && (
+                            <div className="space-y-4">
+                                <button onClick={() => setIsAddStudentModalOpen(true)} className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors">
+                                    <Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>Add Student to Group
+                                </button>
+                                {students.length > 0 ? (
+                                    <ul className="space-y-3">
+                                        {students.map(student => (
+                                            <li key={student.id} className="p-3 bg-white rounded-lg shadow-sm flex items-center justify-between border border-gray-200 hover:border-blue-400 transition-all">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{student.fullName}</p>
+                                                    <p className="text-sm text-gray-500">{student.studentContact}</p>
+                                                </div>
+                                                <div className="flex items-center space-x-1">
+                                                    <button onClick={() => openStudentDetailsModal(student)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-100"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
+                                                    <button onClick={() => openRemoveConfirmation(student)} className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-gray-500 py-8">No students in this group yet.</p>
+                                )}
+                            </div>
+                        )}
+                        {activeTab === 'lessons' && (
+                            <div className="space-y-4">
+                                <button onClick={() => openLessonFormModal(null)} className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors">
+                                    <Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>Log New Lesson
+                                </button>
+                                {lessons.length > 0 ? (
+                                    <ul className="space-y-3">
+                                        {lessons.map(lesson => (
+                                            <li key={lesson.id} className="p-3 bg-white rounded-lg shadow-sm flex items-center justify-between border border-gray-200 hover:border-blue-400 transition-all">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{lesson.topic}</p>
+                                                    <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate, 'long')}</p>
+                                                </div>
+                                                <div className="flex items-center space-x-1">
+                                                    <button onClick={() => openAttendanceModal(lesson)} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Attendance</button>
+                                                    <button onClick={() => openLessonFormModal(lesson)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-100"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                    <button onClick={() => setLessonToDelete(lesson)} className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-gray-500 py-8">No lessons logged for this group yet.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
-                {studentToRemove && (
-                    <ConfirmationModal
-                        isOpen={!!studentToRemove}
-                        onClose={() => setStudentToRemove(null)}
-                        onConfirm={handleRemoveStudent}
-                        title="Remove Student"
-                        message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`}
-                    />
-                )}
-                {lessonToDelete && (
-                     <ConfirmationModal
-                        isOpen={!!lessonToDelete}
-                        onClose={() => setLessonToDelete(null)}
-                        onConfirm={handleDeleteLesson}
-                        title="Delete Lesson"
-                        message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"?`}
-                    />
-                )}
-                {selectedLessonForAttendance && (
-                    <AttendanceModal
-                        isOpen={isAttendanceModalOpen}
-                        onClose={() => setIsAttendanceModalOpen(false)}
-                        lesson={selectedLessonForAttendance}
-                        studentsInGroup={students}
-                    />
-                )}
-                <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} group={group} lessonToEdit={lessonToEdit} students={students} />
-                <AddStudentToGroupModal
-                    isOpen={isAddStudentModalOpen}
-                    onClose={() => setIsAddStudentModalOpen(false)}
-                    group={group}
-                    currentStudents={students}
-                />
             </Modal>
-            {studentToView && (
-                <StudentDetailsModal
-                    isOpen={!!studentToView}
-                    onClose={() => setStudentToView(null)}
-                    student={studentToView}
-                />
-            )}
+
+            {studentToRemove && <ConfirmationModal isOpen={!!studentToRemove} onClose={() => setStudentToRemove(null)} onConfirm={handleRemoveStudent} title="Remove Student" message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`} />}
+            {lessonToDelete && <ConfirmationModal isOpen={!!lessonToDelete} onClose={() => setLessonToDelete(null)} onConfirm={handleDeleteLesson} title="Delete Lesson" message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"? This action cannot be undone.`} />}
+            
+            <AddStudentToGroupModal isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} group={group} onStudentAdded={() => { fetchData(); fetchGroupDetails(); }} />
+            {studentToView && <StudentDetailsModal isOpen={!!studentToView} onClose={() => setStudentToView(null)} student={studentToView} />}
+            
+            <LessonFormModal isOpen={isLessonFormModalOpen} onClose={() => setIsLessonFormModalOpen(false)} lessonToEdit={lessonToEdit} group={group} onLessonSaved={fetchGroupDetails} />
+            {selectedLessonForAttendance && <AttendanceModal isOpen={isAttendanceModalOpen} onClose={() => setIsAttendanceModalOpen(false)} lesson={selectedLessonForAttendance} studentsInGroup={students} onAttendanceSaved={fetchGroupDetails} />}
         </>
     );
 };

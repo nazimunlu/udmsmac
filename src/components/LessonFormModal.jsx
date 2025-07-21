@@ -8,7 +8,7 @@ import { Icon, ICONS } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
 
-const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
+const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLessonSaved }) => {
     const { fetchData } = useAppContext();
     const { showNotification } = useNotification();
     const [formData, setFormData] = useState({
@@ -34,8 +34,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
             setFormData({
                 date: new Date(lessonToEdit.lessonDate).toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
-                startTime: lessonToEdit.startTime || '09:00',
-                endTime: lessonToEdit.endTime || '10:00',
+                startTime: new Date(lessonToEdit.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                endTime: new Date(lessonToEdit.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
                 materialUrl: lessonToEdit.materialUrl || '',
                 materialName: lessonToEdit.materialName || ''
             });
@@ -76,8 +76,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
             const groupId = group?.id || student?.groupId;
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                // Assuming useNotification is available in this component's scope
-                // If not, you might need to import it and get showNotification
                 showNotification('You must be logged in to upload materials.', 'error');
                 setIsSubmitting(false);
                 return;
@@ -87,11 +85,14 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
             materialName = file.name;
         }
 
+        const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
+        const endDateTime = new Date(`${formData.date}T${formData.endTime}`);
+
         const lessonData = {
             topic: formData.topic,
-            lessonDate: new Date(formData.date).toISOString(),
-            startTime: formData.startTime,
-            endTime: formData.endTime,
+            lessonDate: startDateTime.toISOString(),
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
             materialUrl,
             materialName,
             status: 'Incomplete'
@@ -113,6 +114,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student }) => {
                 if (error) throw error;
             }
             fetchData();
+            if (onLessonSaved) onLessonSaved();
             onClose();
         } catch (error) {
             console.error("Error saving lesson: ", error);

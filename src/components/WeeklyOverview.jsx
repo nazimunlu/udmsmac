@@ -16,8 +16,9 @@ const WeeklyOverview = ({ events }) => {
     const getDayIndex = (date) => (date.getDay() + 6) % 7; 
     const todayIndex = getDayIndex(new Date());
     
-    const getEventColor = (type) => {
-        switch(type) {
+    const getEventColor = (event) => {
+        if (event.color) return event.color;
+        switch(event.type) {
             case 'lesson': return 'rgb(59, 130, 246)';
             case 'birthday': return 'rgb(236, 72, 153)';
             case 'event': return 'rgb(16, 185, 129)';
@@ -50,9 +51,9 @@ const WeeklyOverview = ({ events }) => {
 
                     {events.map(event => {
                         const startTime = new Date(event.startTime);
-                        const endTime = event.type === 'lesson' 
-                            ? new Date(startTime.getTime() + 2 * 60 * 60 * 1000)
-                            : (event.endTime ? new Date(event.endTime) : new Date(startTime.getTime() + 1 * 60 * 60 * 1000));
+                        const endTime = event.endTime 
+                            ? new Date(event.endTime) 
+                            : new Date(startTime.getTime() + 60 * 60 * 1000);
                         
                         const dayIndex = getDayIndex(startTime);
                         
@@ -67,16 +68,17 @@ const WeeklyOverview = ({ events }) => {
                         const width = (1/7) * 100;
 
                         return (
-                            <div key={event.id} className="absolute p-1 rounded text-white text-xs overflow-hidden mx-px flex flex-col justify-center items-center text-center" 
+                            <div key={event.id} className="absolute p-1 rounded text-white text-xs overflow-hidden mx-px flex flex-col justify-center text-center" 
                                  style={{ 
                                     top: `${top}%`,
                                     height: `${height}%`,
                                     left: `${left}%`,
                                     width: `calc(${width}% - 2px)`,
-                                    backgroundColor: getEventColor(event.type)
+                                    backgroundColor: getEventColor(event)
                                  }}>
-                                <p className="font-bold truncate w-full">{event.eventName}</p>
-                                <p className="text-[0.6rem] text-white/80 truncate w-full">{new Date(startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})} - {new Date(endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})}</p>
+                                <p className="font-bold leading-tight">{event.eventName}</p>
+                                {event.groupName && <p className="text-[0.6rem] text-white/80">{event.groupName}</p>}
+                                <p className="text-[0.6rem] text-white/80">{new Date(startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})} - {new Date(endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})}</p>
                             </div>
                         )
                     })}
