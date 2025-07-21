@@ -22,13 +22,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
     const [file, setFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const timeOptions = [];
-    for (let h = 9; h <= 23; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            timeOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
-        }
-    }
-
     useEffect(() => {
         if (lessonToEdit) {
             setFormData({
@@ -130,8 +123,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                 <FormSection title="Lesson Details">
                     <div className="sm:col-span-6"><FormInput label="Topic" name="topic" value={formData.topic} onChange={(e) => setFormData({...formData, topic: e.target.value})} required /></div>
                     <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} required /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} options={timeOptions} /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} options={timeOptions} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} /></div>
                 </FormSection>
                 <FormSection title="Lesson Material">
                     <div className="sm:col-span-6">

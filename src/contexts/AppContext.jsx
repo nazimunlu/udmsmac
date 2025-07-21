@@ -17,6 +17,7 @@ const AppProvider = ({ children }) => {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [todos, setTodos] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -29,6 +30,7 @@ const AppProvider = ({ children }) => {
         { data: transactionsData, error: transactionsError },
         { data: documentsData, error: documentsError },
         { data: settingsData, error: settingsError },
+        { data: todosData, error: todosError },
       ] = await Promise.all([
         supabase.from('students').select('*'),
         supabase.from('groups').select('id, created_at, groupName, schedule, color, startDate, programLength, endDate, isArchived'),
@@ -37,6 +39,7 @@ const AppProvider = ({ children }) => {
         supabase.from('transactions').select('*'),
         supabase.from('documents').select('*'),
         supabase.from('settings').select('*'),
+        supabase.from('todos').select('*').order('created_at', { ascending: false }),
       ]);
 
       if (studentsError) { console.error("Error fetching students:", studentsError); throw studentsError; }
@@ -46,6 +49,7 @@ const AppProvider = ({ children }) => {
       if (transactionsError) { console.error("Error fetching transactions:", transactionsError); throw transactionsError; }
       if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
       if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
+      if (todosError) { console.error("Error fetching todos:", todosError); throw todosError; }
 
       const allStudents = studentsData.map(s => {
         let parsedStudent = { ...s };
@@ -79,6 +83,7 @@ const AppProvider = ({ children }) => {
       setExpenses(transactionsData.filter(t => t.type.startsWith('expense')));
       setDocuments(documentsData);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
+      setTodos(todosData);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -102,6 +107,7 @@ const AppProvider = ({ children }) => {
     documents,
     teachers,
     settings,
+    todos,
     loading,
     error,
     fetchData,

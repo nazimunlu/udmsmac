@@ -10,6 +10,9 @@ import { formatDate } from '../utils/formatDate';
 import WeeklyOverview from './WeeklyOverview';
 import NotificationCard from '././NotificationCard';
 import { useAppContext } from '../contexts/AppContext';
+import SettingsModule from './SettingsModule';
+import LoadingSpinner from './LoadingSpinner';
+import TodoModule from './TodoModule';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
@@ -154,35 +157,39 @@ const DashboardModule = ({ setActiveModule }) => {
         const now = Date.now();
         const startTime = item.startTime.getTime();
         const endTime = item.effectiveEndTime;
-
+    
         if (item.type === 'birthday') {
             const diff = startTime - now;
             const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
             return days > 0 ? `in ${days} day${days > 1 ? 's' : ''}` : 'Today';
         }
-
+    
         if (now < startTime) {
             // Event is upcoming
             const diff = startTime - now;
-            const minutes = Math.floor((diff / (1000 * 60)) % 60);
-            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    
+            let parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
 
-            let timeString = '';
-            if (days > 0) timeString += `${days}d `;
-            if (hours > 0) timeString += `${hours}h `;
-            timeString += `${minutes}m`;
-            return `starts in ${timeString.trim()}`;
+            if (parts.length === 0) return `starting now`;
+            return `in ${parts.join(' ')}`;
         } else if (now >= startTime && now < endTime) {
             // Event is in progress
             const diff = endTime - now;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
-            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    
+            let parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
 
-            let timeString = '';
-            if (hours > 0) timeString += `${hours}h `;
-            timeString += `${minutes}m`;
-            return `ends in ${timeString.trim()}`;
+            if (parts.length === 0) return `ending now`;
+            return `ends in ${parts.join(' ')}`;
         }
         return null;
     };
@@ -259,62 +266,63 @@ const DashboardModule = ({ setActiveModule }) => {
                 </button>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4 text-gray-800">Today's Schedule</h3>
-                    {todaysSchedule.length > 0 ? (
-                        <ul className="space-y-4">
-                            {todaysSchedule.map(item => (
-                                <li key={item.id} className="flex items-center justify-between group">
-                                    <div className="flex items-center">
-                                        <EventIcon type={item.type} color={item.color} />
-                                        <div>
-                                            <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                            <p className="text-sm text-gray-500">{item.allDay ? 'All Day' : item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Istanbul'})}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="font-semibold mb-4 text-gray-800">Today's Schedule</h3>
+                        {todaysSchedule.length > 0 ? (
+                            <ul className="space-y-4">
+                                {todaysSchedule.map(item => (
+                                    <li key={item.id} className="flex items-center justify-between group">
+                                        <div className="flex items-center">
+                                            <EventIcon type={item.type} color={item.color} />
+                                            <div>
+                                                <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                                <p className="text-sm text-gray-500">{item.allDay ? 'All Day' : item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Istanbul'})}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {(item.type === 'event' || item.type === 'lesson') && (
-                                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                            <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                        {(item.type === 'event' || item.type === 'lesson') && (
+                                            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-gray-500 text-center py-4">No events or lessons scheduled for today.</p>
+                        )}
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="font-semibold mb-4 text-gray-800">Upcoming Events</h3>
+                        {upcomingEvents.length > 0 ? (
+                            <ul className="space-y-4">
+                                {upcomingEvents.slice(0, 5).map((item, index) => (
+                                    <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
+                                        <div className="flex items-center">
+                                            <EventIcon type={item.type} color={item.color} />
+                                            <div>
+                                                <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                                <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>
+                                            </div>
                                         </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-gray-500 text-center py-4">No events or lessons scheduled for today.</p>
-                    )}
+                                        {(item.type === 'event' || item.type === 'lesson') && (
+                                            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-gray-500 text-center py-4">No upcoming events.</p>
+                        )}
+                    </div>
                 </div>
-                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
-                     <h3 className="font-semibold mb-4 text-gray-800">Upcoming Events</h3>
-                     {upcomingEvents.length > 0 ? (
-                        <ul className="space-y-4">
-                            {upcomingEvents.slice(0, 5).map((item, index) => (
-                                <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
-                                     <div className="flex items-center">
-                                        <EventIcon type={item.type} color={item.color} />
-                                        <div>
-                                            <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                            <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>
-                                        </div>
-                                     </div>
-                                     {(item.type === 'event' || item.type === 'lesson') && (
-                                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                            <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                     ) : (
-                        <p className="text-gray-500 text-center py-4">No upcoming events.</p>
-                     )}
-                </div>
-                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4 text-gray-800">Weekly Overview</h3>
-                    <WeeklyOverview events={weekEvents} />
+                <div className="lg:col-span-1 space-y-6">
+                    <TodoModule />
                 </div>
             </div>
 
@@ -346,7 +354,12 @@ const DashboardModule = ({ setActiveModule }) => {
                     </div>
                 )}
             </div>
-            
+
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 className="font-semibold mb-4 text-gray-800">Weekly Overview</h3>
+                <WeeklyOverview events={weekEvents} />
+            </div>
+
             <StudentFormModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
             <EventFormModal isOpen={isEventModalOpen} onClose={() => {setIsEventModalOpen(false); setEventToEdit(null);}} eventToEdit={eventToEdit} />
             <LessonFormModal isOpen={isLessonModalOpen} onClose={() => {setIsLessonModalOpen(false); setLessonToEdit(null);}} lessonToEdit={lessonToEdit} />

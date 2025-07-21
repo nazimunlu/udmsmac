@@ -1,130 +1,155 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import StudentPaymentDetailsModal from './StudentPaymentDetailsModal';
-import StudentPaymentsView from './StudentPaymentsView';
-import BusinessExpensesView from './BusinessExpensesView';
-import PersonalExpensesView from './PersonalExpensesView';
-import { Icon, ICONS } from './Icons';
-import FinancialOverview from './FinancialOverview';
-import TransactionFormModal from './TransactionFormModal';
-import FinancialReports from './FinancialReports';
-import Modal from './Modal';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-
-const FinancialCard = ({ title, value, icon, onClick, isDataHidden, borderColor }) => (
-    <div onClick={onClick} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center cursor-pointer transform transition duration-300 hover:scale-105" style={{ borderTop: `4px solid ${borderColor}` }}>
-        <div className={`rounded-full p-4 mb-4 flex items-center justify-center shadow-md`} style={{ backgroundColor: borderColor, color: 'white' }}>
-            <Icon path={icon} className="w-10 h-10" />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-800 mb-1">{title}</h3>
-        <p className="text-2xl font-bold text-gray-900">{isDataHidden ? '₺•••,••' : value}</p>
-    </div>
-);
+import { Icon, ICONS } from './Icons';
+import DateRangePicker from './DateRangePicker';
+import { startOfMonth, endOfMonth } from 'date-fns';
+import FinancialCharts from './FinancialCharts';
+import FinanceDetailsModal from './FinanceDetailsModal';
+import StudentPaymentsDetailModal from './StudentPaymentsDetailModal';
+import TransactionFormModal from './TransactionFormModal';
 
 const FinancesModule = () => {
-    const { payments, expenses, students } = useAppContext();
-    const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
-    const [isBusinessExpensesModalOpen, setIsBusinessExpensesModalOpen] = useState(false);
-    const [isPersonalExpensesModalOpen, setIsPersonalExpensesModalOpen] = useState(false);
-    const [isFinancialReportsModalOpen, setIsFinancialReportsModalOpen] = useState(false);
-    const [selectedStudent, setSelectedStudent] = useState(null);
+    const { payments, expenses, students, groups, loading } = useAppContext();
+    const [dateRange, setDateRange] = useState({
+        startDate: startOfMonth(new Date()),
+        endDate: endOfMonth(new Date()),
+    });
     const [isDataHidden, setIsDataHidden] = useState(false);
-
     
+    const [isExpenseDetailsModalOpen, setIsExpenseDetailsModalOpen] = useState(false);
+    const [isStudentPaymentsModalOpen, setIsStudentPaymentsModalOpen] = useState(false);
+    
+    const [modalContent, setModalContent] = useState({ title: '', transactions: [] });
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
-    const formatCurrency = (value) => {
-        if (isDataHidden) return '₺•••,••';
-        const options = {
-            style: 'currency',
-            currency: 'TRY',
-            minimumFractionDigits: (value % 1 === 0) ? 0 : 2,
-            maximumFractionDigits: (value % 1 === 0) ? 0 : 2,
-        };
-        return new Intl.NumberFormat('tr-TR', options).format(value || 0);
+    const [filteredPayments, setFilteredPayments] = useState([]);
+    const [filteredExpenses, setFilteredExpenses] = useState([]);
+    const [unpaidAmountInPeriod, setUnpaidAmountInPeriod] = useState(0);
+
+    useEffect(() => {
+        const filterByDate = (items) => items.filter(i => {
+            const itemDate = new Date(i.transactionDate);
+            return itemDate >= dateRange.startDate && itemDate <= dateRange.endDate;
+        });
+        setFilteredPayments(filterByDate(payments));
+        setFilteredExpenses(filterByDate(expenses));
+
+        // Calculate unpaid installment amount due in the period
+        let unpaidTotal = 0;
+        students.forEach(student => {
+            student.installments?.forEach(inst => {
+                const dueDate = new Date(inst.dueDate);
+                if (inst.status === 'Unpaid' && dueDate >= dateRange.startDate && dueDate <= dateRange.endDate) {
+                    unpaidTotal += inst.amount;
+                }
+            });
+        });
+        setUnpaidAmountInPeriod(unpaidTotal);
+
+    }, [dateRange, payments, expenses, students]);
+
+    const openExpenseDetailsModal = (title, transactions) => {
+        setModalContent({ title, transactions });
+        setIsExpenseDetailsModalOpen(true);
     };
 
-    const totalIncome = useMemo(() => {
-        return (payments || []).reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [payments]);
+    const SummaryCard = ({ title, transactions, icon, color, onClick, subtext }) => {
+        const total = transactions.reduce((sum, item) => sum + item.amount, 0);
+        const count = transactions.length;
 
-    const totalBusinessExpenses = useMemo(() => {
-        return (expenses || []).filter(t => t.category === 'business').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [expenses]);
-
-    const totalPersonalExpenses = useMemo(() => {
-        return (expenses || []).filter(t => t.category === 'personal').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    }, [expenses]);
-
-    const netProfit = totalIncome - totalBusinessExpenses - totalPersonalExpenses;
+        return (
+            <div 
+                className="bg-white p-6 rounded-lg shadow-md flex flex-col cursor-pointer hover:shadow-xl transition-shadow"
+                onClick={onClick}
+            >
+                <div className="flex items-center mb-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 bg-${color}-100 text-${color}-600`}>
+                        <Icon path={icon} className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                </div>
+                <div className="flex-grow">
+                    <p className="text-3xl font-bold text-gray-900">
+                        {isDataHidden ? '***' : `${total.toFixed(2)} ₺`}
+                    </p>
+                    <p className="text-gray-500">{subtext !== undefined ? subtext : `${count} transactions`}</p>
+                </div>
+            </div>
+        );
+    };
 
     return (
-        <>
-            <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-                <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                    <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.WALLET} className="w-8 h-8 mr-3"/>Finances</h2>
-                    <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200">
-                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="text-gray-600 w-6 h-6" />
+        <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
+            <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
+                <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+                    <Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3" />
+                    Finances
+                </h2>
+                <div className="flex items-center space-x-2">
+                    <button onClick={() => setIsFormModalOpen(true)} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Expense</button>
+                    <button onClick={() => setIsDataHidden(!isDataHidden)} className="p-2 rounded-full hover:bg-gray-200">
+                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-6 h-6 text-gray-600" />
                     </button>
                 </div>
-
-                {/* Financial Cards for Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <FinancialCard
-                        title="Student Payments"
-                        value={formatCurrency(totalIncome)}
-                        icon={ICONS.INCOME}
-                        onClick={() => setIsStudentPaymentsModalOpen(true)}
-                        isDataHidden={isDataHidden}
-                        borderColor="#10B981" // Green for Income
-                    />
-                    <FinancialCard
-                        title="Business Expenses"
-                        value={formatCurrency(totalBusinessExpenses)}
-                        icon={ICONS.BUSINESS_EXPENSE}
-                        onClick={() => setIsBusinessExpensesModalOpen(true)}
-                        isDataHidden={isDataHidden}
-                        borderColor="#EF4444" // Red for Business Expenses
-                    />
-                    <FinancialCard
-                        title="Personal Expenses"
-                        value={formatCurrency(totalPersonalExpenses)}
-                        icon={ICONS.PERSONAL_EXPENSE}
-                        onClick={() => setIsPersonalExpensesModalOpen(true)}
-                        isDataHidden={isDataHidden}
-                        borderColor="#F59E0B" // Orange for Personal Expenses
-                    />
-                    <FinancialCard
-                        title="Net Profit"
-                        value={formatCurrency(netProfit)}
-                        icon={ICONS.PROFIT}
-                        onClick={() => setIsFinancialReportsModalOpen(true)}
-                        isDataHidden={isDataHidden}
-                        borderColor="#3B82F6" // Blue for Net Profit
-                    />
-                </div>
-
-                <FinancialOverview transactions={[...(payments || []), ...(expenses || [])]} isDataHidden={isDataHidden} formatCurrency={formatCurrency} />
             </div>
 
-            {selectedStudent && <StudentPaymentDetailsModal isOpen={!!selectedStudent} onClose={() => setSelectedStudent(null)} student={selectedStudent} onUpdateStudent={setSelectedStudent} />}
+            <DateRangePicker onDateChange={setDateRange} initialRange={dateRange} />
 
-            {/* Modals for each financial view */}
-            <Modal isOpen={isStudentPaymentsModalOpen} onClose={() => setIsStudentPaymentsModalOpen(false)} title="Student Payments">
-                <StudentPaymentsView onStudentSelect={setSelectedStudent} />
-            </Modal>
+            {loading ? (
+                <p className="text-center text-gray-500 mt-8">Loading financial data...</p>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                        <SummaryCard 
+                            title="Student Payments"
+                            transactions={filteredPayments}
+                            icon={ICONS.WALLET}
+                            color="green"
+                            onClick={() => setIsStudentPaymentsModalOpen(true)}
+                            subtext={`${unpaidAmountInPeriod.toFixed(2)} ₺ remaining`}
+                        />
+                        <SummaryCard 
+                            title="Business Expenses"
+                            transactions={filteredExpenses.filter(e => e.expenseType === 'business')}
+                            icon={ICONS.BRIEFCASE}
+                            color="red"
+                            onClick={() => openExpenseDetailsModal('Business Expenses', filteredExpenses.filter(e => e.expenseType === 'business'))}
+                        />
+                        <SummaryCard 
+                            title="Personal Expenses"
+                            transactions={filteredExpenses.filter(e => e.expenseType === 'personal')}
+                            icon={ICONS.USER}
+                            color="orange"
+                            onClick={() => openExpenseDetailsModal('Personal Expenses', filteredExpenses.filter(e => e.expenseType === 'personal'))}
+                        />
+                    </div>
 
-            <Modal isOpen={isBusinessExpensesModalOpen} onClose={() => setIsBusinessExpensesModalOpen(false)} title="Business Expenses">
-                <BusinessExpensesView />
-            </Modal>
+                    <FinancialCharts payments={filteredPayments} expenses={filteredExpenses} isDataHidden={isDataHidden} />
+                </>
+            )}
 
-            <Modal isOpen={isPersonalExpensesModalOpen} onClose={() => setIsPersonalExpensesModalOpen(false)} title="Personal Expenses">
-                <PersonalExpensesView />
-            </Modal>
+            <FinanceDetailsModal 
+                isOpen={isExpenseDetailsModalOpen}
+                onClose={() => setIsExpenseDetailsModalOpen(false)}
+                title={modalContent.title}
+                transactions={modalContent.transactions}
+                students={students}
+                groups={groups}
+            />
 
-            <Modal isOpen={isFinancialReportsModalOpen} onClose={() => setIsFinancialReportsModalOpen(false)} title="Financial Reports">
-                <FinancialReports formatCurrency={formatCurrency} />
-            </Modal>
-        </>
+            <StudentPaymentsDetailModal
+                isOpen={isStudentPaymentsModalOpen}
+                onClose={() => setIsStudentPaymentsModalOpen(false)}
+                students={students}
+                payments={filteredPayments}
+            />
+
+            <TransactionFormModal
+                isOpen={isFormModalOpen}
+                onClose={() => setIsFormModalOpen(false)}
+                isExpenseOnly={true}
+            />
+        </div>
     );
 };
 

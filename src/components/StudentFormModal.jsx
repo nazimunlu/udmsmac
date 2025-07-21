@@ -1,25 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNotification } from '../contexts/NotificationContext';
 import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
-import CustomTimePicker from './CustomTimePicker';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import { Icon, ICONS } from './Icons';
 import { AppContext } from '../contexts/AppContext';
+import { calculateLessonsWithinRange, generateMonthlyInstallments } from '../utils/lessonCalculator';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { showNotification } = useNotification();
-    const { fetchData } = React.useContext(AppContext);
+    const { fetchData, settings } = useContext(AppContext);
     const [groups, setGroups] = useState([]);
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
-    
-    const timeOptions = [];
-    for (let h = 9; h <= 23; h++) {
-        timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
-        timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
-    }
+
+    const defaultPricePerLesson = useMemo(() => {
+        return settings && settings.pricePerLesson ? parseFloat(settings.pricePerLesson) : 800;
+    }, [settings]);
 
     useEffect(() => {
         const fetchGroups = async () => {
@@ -27,15 +25,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             if (error) {
                 console.error('Error fetching groups:', error);
             } else {
-                setGroups(data.map(g => ({
-                    ...g,
-                    schedule: g.schedule ? JSON.parse(g.schedule) : {},
-                })));
+                setGroups(data);
             }
         };
-
-        fetchGroups();
-    }, []);
+        if (isOpen) {
+            fetchGroups();
+        }
+    }, [isOpen]);
 
     const getInitialFormData = useCallback(() => {
         const getSafeDateString = (dateSource) => {
@@ -46,6 +42,31 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             return adjustedDate.toISOString().split('T')[0];
         };
 
+        const safeParse = (jsonString, defaultValue) => {
+            if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
+            if (typeof jsonString === 'string') {
+                try {
+                    return JSON.parse(jsonString);
+                } catch (e) {
+                    return defaultValue;
+                }
+            }
+            return defaultValue;
+        };
+        
+        const studentTutoringDetails = safeParse(studentToEdit?.tutoringDetails, {});
+
+        const defaultTutoringDetails = {
+            pricePerLesson: studentTutoringDetails.pricePerLesson || defaultPricePerLesson,
+            totalCalculatedFee: studentTutoringDetails.totalCalculatedFee || 0,
+            numberOfLessons: studentTutoringDetails.numberOfLessons || 0,
+            endDate: studentTutoringDetails.endDate || '',
+            schedule: { 
+                days: [], 
+                ...studentTutoringDetails.schedule
+            }
+        };
+
         return {
             fullName: studentToEdit?.fullName || '',
             studentContact: studentToEdit?.studentContact || '',
@@ -54,23 +75,18 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             birthDate: getSafeDateString(studentToEdit?.birthDate) || '',
             isTutoring: studentToEdit?.isTutoring || false,
             groupId: studentToEdit?.groupId || null,
-            documents: studentToEdit?.documents || { nationalIdUrl: '', agreementUrl: '' },
-            documentNames: studentToEdit?.documentNames || { nationalId: '', agreement: '' },
-            feeDetails: studentToEdit?.feeDetails || { totalFee: '12000', numberOfInstallments: '3' },
-            tutoringDetails: studentToEdit?.tutoringDetails || {
-                    hourlyRate: '',
-                    numberOfLessons: '',
-                    endDate: '',
-                    schedule: { days: [], startTime: '09:00', endTime: '10:00' }
-                },
-            installments: studentToEdit?.installments || [],
+            documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
+            documentNames: safeParse(studentToEdit?.documentNames, { nationalId: '', agreement: '' }),
+            feeDetails: safeParse(studentToEdit?.feeDetails, { totalFee: '12000', numberOfInstallments: '3' }),
+            tutoringDetails: defaultTutoringDetails,
+            installments: safeParse(studentToEdit?.installments, []),
             isArchived: studentToEdit?.isArchived || false
         };
-    }, [studentToEdit]);
+    }, [studentToEdit, defaultPricePerLesson]);
 
     const [formData, setFormData] = useState(getInitialFormData());
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     useEffect(() => {
         if (isOpen) {
             setFormData(getInitialFormData());
@@ -78,23 +94,50 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
     }, [isOpen, getInitialFormData]);
 
+    useEffect(() => {
+        if (formData.isTutoring) {
+            const { schedule, endDate, pricePerLesson } = formData.tutoringDetails;
+            const { enrollmentDate } = formData;
+            const lessons = calculateLessonsWithinRange(enrollmentDate, endDate, schedule.days);
+            const totalFee = lessons * (parseFloat(pricePerLesson) || 0);
+
+            setFormData(prev => ({
+                ...prev,
+                tutoringDetails: {
+                    ...prev.tutoringDetails,
+                    numberOfLessons: lessons,
+                    totalCalculatedFee: totalFee
+                }
+            }));
+        }
+    }, [
+        formData.isTutoring, 
+        formData.enrollmentDate, 
+        formData.tutoringDetails.endDate, 
+        formData.tutoringDetails.schedule.days,
+        formData.tutoringDetails.pricePerLesson
+    ]);
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         if (name === 'studentContact' || name === 'parentContact') {
             setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        } else if (name === 'isTutoring') {
+             setFormData(prev => ({ ...prev, [name]: checked }));
+        }
+        else {
+            setFormData(prev => ({ ...prev, [name]: value }));
         }
     };
-    
+
     const handleFeeChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({...prev, feeDetails: {...prev.feeDetails, [name]: value }}));
+        setFormData(prev => ({ ...prev, feeDetails: { ...prev.feeDetails, [name]: value } }));
     };
 
     const handleTutoringChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({...prev, tutoringDetails: {...prev.tutoringDetails, [name]: value }}));
+        setFormData(prev => ({ ...prev, tutoringDetails: { ...prev.tutoringDetails, [name]: value } }));
     };
 
     const handleTutoringScheduleChange = (e) => {
@@ -116,23 +159,26 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         const newDays = currentDays.includes(day)
             ? currentDays.filter(d => d !== day)
             : [...currentDays, day];
-        setFormData(prev => ({...prev, tutoringDetails: {...prev.tutoringDetails, schedule: {...prev.tutoringDetails.schedule, days: newDays}}}));
+        setFormData(prev => ({ ...prev, tutoringDetails: { ...prev.tutoringDetails, schedule: { ...prev.tutoringDetails.schedule, days: newDays } } }));
     };
 
     const handleFileChange = (e) => {
         const { name, files: selectedFiles } = e.target;
-        if (selectedFiles[0]) { setFiles(prev => ({ ...prev, [name]: selectedFiles[0] })); }
+        if (selectedFiles[0]) {
+            setFiles(prev => ({ ...prev, [name]: selectedFiles[0] }));
+        }
     };
 
     const uploadFile = async (file, path) => {
         if (!file) return null;
-        const { data, error } = await supabase.storage.from('udms').upload(path, file);
+        const { data, error } = await supabase.storage.from('udms').upload(path, file, { upsert: true });
         if (error) throw error;
         return supabase.storage.from('udms').getPublicUrl(path).data.publicUrl;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
         if (!formData.isTutoring && (!files.nationalId && !studentToEdit?.documents?.nationalIdUrl || !files.agreement && !studentToEdit?.documents?.agreementUrl)) {
             showNotification('National ID and Agreement are mandatory for group students.', 'error');
@@ -140,15 +186,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             return;
         }
 
-        setIsSubmitting(true);
         let dataToSave = { ...formData };
-
-        const getSafeDateString = (dateSource) => {
-            if (dateSource && typeof dateSource.toDate === 'function') {
-                return dateSource.toDate().toISOString().split('T')[0];
-            }
-            return typeof dateSource === 'string' ? dateSource : '';
-        };
 
         let feeStructureChanged = !studentToEdit;
         if (studentToEdit) {
@@ -161,20 +199,18 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 const originalSchedule = originalTutoring.schedule || {};
                 const currentSchedule = currentTutoring.schedule || {};
                 if (
-                    String(originalTutoring.hourlyRate || '') !== currentTutoring.hourlyRate ||
-                    String(originalTutoring.numberOfLessons || '') !== currentTutoring.numberOfLessons ||
-                    getSafeDateString(originalTutoring.endDate) !== getSafeDateString(currentTutoring.endDate) ||
-                    getSafeDateString(studentToEdit.enrollmentDate) !== getSafeDateString(formData.enrollmentDate) ||
+                    studentToEdit.enrollmentDate !== formData.enrollmentDate ||
+                    originalTutoring.endDate !== currentTutoring.endDate ||
                     JSON.stringify(originalSchedule.days || []) !== JSON.stringify(currentSchedule.days || []) ||
-                    originalSchedule.startTime !== currentSchedule.startTime
+                    parseFloat(originalTutoring.pricePerLesson) !== parseFloat(currentTutoring.pricePerLesson)
                 ) {
                     feeStructureChanged = true;
                 }
-            } else { // Not tutoring
+            } else {
                 if (
                     String(studentToEdit.feeDetails?.totalFee || '') !== formData.feeDetails.totalFee ||
                     String(studentToEdit.feeDetails?.numberOfInstallments || '') !== formData.feeDetails.numberOfInstallments ||
-                    getSafeDateString(studentToEdit.enrollmentDate) !== getSafeDateString(formData.enrollmentDate)
+                    studentToEdit.enrollmentDate !== formData.enrollmentDate
                 ) {
                     feeStructureChanged = true;
                 }
@@ -182,7 +218,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
 
         if (feeStructureChanged) {
-            if (!dataToSave.isTutoring) {
+            if (dataToSave.isTutoring) {
+                dataToSave.installments = generateMonthlyInstallments(
+                    dataToSave.tutoringDetails.totalCalculatedFee,
+                    dataToSave.enrollmentDate,
+                    dataToSave.tutoringDetails.endDate
+                );
+            } else {
                 const totalFee = parseFloat(dataToSave.feeDetails.totalFee) || 0;
                 const numInstallments = parseInt(dataToSave.feeDetails.numberOfInstallments, 10) || 1;
                 const installmentAmount = totalFee > 0 && numInstallments > 0 ? totalFee / numInstallments : 0;
@@ -194,51 +236,19 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     return {
                         number: i + 1,
                         amount: installmentAmount,
-                        dueDate: dueDate.toISOString(),
+                        dueDate: dueDate.toISOString().split('T')[0],
                         status: 'Unpaid'
                     };
                 });
-            } else {
-                const hourlyRate = parseFloat(dataToSave.tutoringDetails.hourlyRate) || 0;
-                const enrollmentDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
-                const tutoringEndDateString = typeof dataToSave.tutoringDetails.endDate === 'string' ? dataToSave.tutoringDetails.endDate : null;
-                const tutoringEndDate = tutoringEndDateString ? new Date(tutoringEndDateString.replace(/-/g, '/')) : null;
-                const scheduledDays = (dataToSave.tutoringDetails.schedule.days || []).map(day => ({'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6}[day])).filter(d => d !== undefined);
-                const [startHour, startMinute] = (dataToSave.tutoringDetails.schedule.startTime || "09:00").split(':').map(Number);
-
-                dataToSave.installments = [];
-                let currentLessonDate = new Date(enrollmentDate);
-                let lessonCount = 0;
-
-                if (dataToSave.tutoringDetails.numberOfLessons) {
-                    const targetLessons = parseInt(dataToSave.tutoringDetails.numberOfLessons, 10);
-                    while (lessonCount < targetLessons) {
-                        if (scheduledDays.includes(currentLessonDate.getDay())) {
-                            const dueDate = new Date(currentLessonDate);
-                            dueDate.setHours(startHour, startMinute, 0, 0);
-                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: dueDate.toISOString(), status: 'Unpaid' });
-                            lessonCount++;
-                        }
-                        currentLessonDate.setDate(currentLessonDate.getDate() + 1);
-                    }
-                    if(lessonCount > 0) {
-                       currentLessonDate.setDate(currentLessonDate.getDate() - 1);
-                    }
-                    dataToSave.tutoringDetails.endDate = currentLessonDate.toISOString();
-                } else if (tutoringEndDate) {
-                    while (currentLessonDate <= tutoringEndDate) {
-                        if (scheduledDays.includes(currentLessonDate.getDay())) {
-                            const dueDate = new Date(currentLessonDate);
-                            dueDate.setHours(startHour, startMinute, 0, 0);
-                            dataToSave.installments.push({ number: lessonCount + 1, amount: hourlyRate, dueDate: dueDate.toISOString(), status: 'Unpaid' });
-                            lessonCount++;
-                        }
-                        currentLessonDate.setDate(currentLessonDate.getDate() + 1);
-                    }
-                    dataToSave.tutoringDetails.numberOfLessons = lessonCount;
-                }
             }
         }
+
+        // Stringify JSON fields before saving
+        dataToSave.feeDetails = JSON.stringify(dataToSave.feeDetails);
+        dataToSave.installments = JSON.stringify(dataToSave.installments);
+        dataToSave.documents = JSON.stringify(dataToSave.documents);
+        dataToSave.documentNames = JSON.stringify(dataToSave.documentNames);
+        dataToSave.tutoringDetails = JSON.stringify(dataToSave.tutoringDetails);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -249,17 +259,23 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             }
             const userId = user.id;
 
-            const nationalIdPath = `student_documents/${userId}/${Date.now()}_nationalId_${files.nationalId?.name}`;
-            const agreementPath = `student_documents/${userId}/${Date.now()}_agreement_${files.agreement?.name}`;
+            const nationalIdPath = `student_documents/${userId}/${dataToSave.fullName}_nationalId_${files.nationalId?.name || Date.now()}`;
+            const agreementPath = `student_documents/${userId}/${dataToSave.fullName}_agreement_${files.agreement?.name || Date.now()}`;
 
             if (files.nationalId) {
-                dataToSave.documents.nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
+                const nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
+                let docs = JSON.parse(dataToSave.documents);
+                docs.nationalIdUrl = nationalIdUrl;
+                dataToSave.documents = JSON.stringify(docs);
             }
 
             if (files.agreement) {
-                dataToSave.documents.agreementUrl = await uploadFile(files.agreement, agreementPath);
+                const agreementUrl = await uploadFile(files.agreement, agreementPath);
+                let docs = JSON.parse(dataToSave.documents);
+                docs.agreementUrl = agreementUrl;
+                dataToSave.documents = JSON.stringify(docs);
             }
-            
+
             if (studentToEdit) {
                 const { error } = await supabase.from('students').update(dataToSave).match({ id: studentToEdit.id });
                 if (error) throw error;
@@ -273,12 +289,12 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             onClose();
         } catch (error) {
             console.error("Error saving student:", error);
-            showNotification('Failed to save student. Please check console for details.', 'error');
+            showNotification(`Failed to save student. Please check console for details.`, 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
-    
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={studentToEdit ? "Edit Student" : "Enroll New Student"}>
             <form onSubmit={handleSubmit}>
@@ -289,7 +305,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <div className="sm:col-span-3">
                         <CustomDatePicker label="Enrollment Date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} />
                     </div>
-                     <div className="sm:col-span-3"><CustomDatePicker label="Birth Date (Optional)" name="birthDate" value={formData.birthDate} onChange={handleChange} /></div>
+                    <div className="sm:col-span-3"><CustomDatePicker label="Birth Date (Optional)" name="birthDate" value={formData.birthDate} onChange={handleChange} /></div>
                     <div className="sm:col-span-6 flex items-center justify-end pt-5">
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="isTutoring" checked={formData.isTutoring} onChange={handleChange} className="sr-only peer" />
@@ -301,8 +317,16 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
                 {formData.isTutoring ? (
                     <FormSection title="Tutoring Details">
-                        <div className="sm:col-span-3"><FormInput label="Hourly Rate (₺)" name="hourlyRate" type="number" value={formData.tutoringDetails.hourlyRate} onChange={handleTutoringChange} /></div>
                         <div className="sm:col-span-3"><CustomDatePicker label="End Date" name="endDate" value={formData.tutoringDetails.endDate} onChange={handleTutoringChange} /></div>
+                        <div className="sm:col-span-3">
+                            <FormInput 
+                                label="Price Per Lesson (₺)" 
+                                name="pricePerLesson" 
+                                type="number" 
+                                value={formData.tutoringDetails.pricePerLesson} 
+                                onChange={handleTutoringChange} 
+                            />
+                        </div>
                         <div className="sm:col-span-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Recurring Schedule</label>
                             <div className="flex flex-wrap gap-2 mb-4">
@@ -312,10 +336,18 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1"><CustomTimePicker label="Start Time" name="startTime" value={formData.tutoringDetails.schedule.startTime} onChange={handleTutoringScheduleChange} options={timeOptions}/></div>
-                                <div className="pt-6 text-gray-500">-</div>
-                                <div className="flex-1"><CustomTimePicker label="End Time" name="endTime" value={formData.tutoringDetails.schedule.endTime} onChange={handleTutoringScheduleChange} options={timeOptions}/></div>
+                        </div>
+                        <div className="sm:col-span-6 mt-4 p-4 bg-blue-50 rounded-lg">
+                            <h4 className="text-md font-semibold text-gray-800">Calculated Plan</h4>
+                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <p className="text-sm text-gray-600">Total Lessons</p>
+                                    <p className="text-xl font-bold text-blue-800">{formData.tutoringDetails.numberOfLessons}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">Total Fee</p>
+                                    <p className="text-xl font-bold text-blue-800">{(formData.tutoringDetails.totalCalculatedFee || 0).toFixed(2)} ₺</p>
+                                </div>
                             </div>
                         </div>
                     </FormSection>
@@ -332,44 +364,46 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                             <div className="sm:col-span-3"><FormInput label="Number of Installments" name="numberOfInstallments" type="number" value={formData.feeDetails.numberOfInstallments} onChange={handleFeeChange} /></div>
                         </FormSection>
                         <FormSection title="Document Uploads">
-                           <div className="sm:col-span-3">
+                            <div className="sm:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">National ID</label>
                                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                                     <div className="space-y-1 text-center w-full">
                                         <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                                                <span>{files.nationalId ? files.nationalId.name : 'Upload a file'}</span>
+                                                <span>{files.nationalId ? files.nationalId.name : (formData.documentNames?.nationalId || 'Upload a file')}</span>
                                                 <input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} />
                                             </label>
-                                            {!files.nationalId && <p className="pl-1">or drag and drop</p>}
+                                            {!files.nationalId && !formData.documentNames?.nationalId && <p className="pl-1">or drag and drop</p>}
                                         </div>
                                         <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
                                     </div>
                                 </div>
-                           </div>
-                           <div className="sm:col-span-3">
+                            </div>
+                            <div className="sm:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Agreement</label>
-                                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                                     <div className="space-y-1 text-center w-full">
                                         <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                                                <span>{files.agreement ? files.agreement.name : 'Upload a file'}</span>
+                                                <span>{files.agreement ? files.agreement.name : (formData.documentNames?.agreement || 'Upload a file')}</span>
                                                 <input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} />
                                             </label>
-                                            {!files.agreement && <p className="pl-1">or drag and drop</p>}
+                                            {!files.agreement && !formData.documentNames?.agreement && <p className="pl-1">or drag and drop</p>}
                                         </div>
                                         <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
                                     </div>
                                 </div>
-                           </div>
+                            </div>
                         </FormSection>
                     </>
                 )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">Save Student</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Saving...' : (studentToEdit ? 'Save Changes' : 'Enroll Student')}
+                    </button>
                 </div>
             </form>
         </Modal>

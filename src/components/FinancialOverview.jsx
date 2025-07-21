@@ -1,153 +1,86 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Icon, ICONS } from './Icons';
 
-const FinancialOverview = ({ transactions, isDataHidden, formatCurrency }) => {
-    const COLORS = {
-        primary: '#4F46E5', // Indigo 600
-        secondary: '#10B981', // Emerald 500
-        tertiary: '#F59E0B', // Amber 500
-        danger: '#EF4444', // Red 500
-        info: '#3B82F6', // Blue 500
-        lightGray: '#E5E7EB', // Gray 200
-        darkGray: '#6B7280', // Gray 500
+const FinancialOverview = ({ payments, students, isDataHidden }) => {
+
+    const { income, expenses, profit, incomeBySource, expensesByCategory } = useMemo(() => {
+        const income = payments.filter(p => p.type.startsWith('income')).reduce((acc, p) => acc + p.amount, 0);
+        const expenses = payments.filter(p => p.type.startsWith('expense')).reduce((acc, p) => acc + p.amount, 0);
+        const profit = income - expenses;
+
+        const incomeBySource = payments
+            .filter(p => p.type.startsWith('income'))
+            .reduce((acc, p) => {
+                const source = p.type === 'income-group' ? 'Group' : 'Tutoring';
+                acc[source] = (acc[source] || 0) + p.amount;
+                return acc;
+            }, {});
+
+        const expensesByCategory = payments
+            .filter(p => p.type.startsWith('expense'))
+            .reduce((acc, p) => {
+                const category = p.category || 'Other';
+                acc[category] = (acc[category] || 0) + p.amount;
+                return acc;
+            }, {});
+
+        return { income, expenses, profit, incomeBySource, expensesByCategory };
+    }, [payments]);
+
+    const formatCurrency = (amount) => {
+        if (isDataHidden) return '*****';
+        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
     };
 
-    const PIE_COLORS = {
-        'income-group': COLORS.secondary,
-        'income-tutoring': COLORS.info,
-        'expense-business': COLORS.danger,
-        'expense-personal': COLORS.tertiary,
+    const pieChartData = (data) => {
+        return Object.keys(data).map(key => ({ name: key, value: data[key] }));
     };
-    
-    const incomeSourceColors = [PIE_COLORS['income-group'], PIE_COLORS['income-tutoring']];
-    const expenseBreakdownColors = [PIE_COLORS['expense-business'], PIE_COLORS['expense-personal']];
 
-    const processedData = useMemo(() => {
-        let totalIncome = 0;
-        let totalExpenses = 0;
-        const incomeSources = { 'income-group': 0, 'income-tutoring': 0 };
-        const expenseBreakdown = { 'expense-business': 0, 'expense-personal': 0 };
-        const monthlySummary = {};
-
-        transactions.forEach(t => {
-            const amount = t.amount || 0;
-            const month = new Date(t.date).toLocaleString('en-US', { month: 'short', year: 'numeric' });
-            
-            if (!monthlySummary[month]) {
-                monthlySummary[month] = { name: month, income: 0, expenses: 0 };
-            }
-
-            if (t.type.startsWith('income')) {
-                totalIncome += amount;
-                incomeSources[t.type] = (incomeSources[t.type] || 0) + amount;
-                monthlySummary[month].income += amount;
-            } else if (t.type.startsWith('expense')) {
-                totalExpenses += amount;
-                expenseBreakdown[t.type] = (expenseBreakdown[t.type] || 0) + amount;
-                monthlySummary[month].expenses += amount;
-            }
-        });
-
-        const incomeSourceData = Object.entries(incomeSources)
-            .map(([key, value]) => ({ name: key === 'income-group' ? 'Group' : 'Tutoring', value }))
-            .filter(d => d.value > 0);
-
-        const expenseBreakdownData = Object.entries(expenseBreakdown)
-            .map(([key, value]) => ({ name: key === 'expense-business' ? 'Business' : 'Personal', value }))
-            .filter(d => d.value > 0);
-
-        return {
-            totalIncome,
-            totalExpenses,
-            incomeSourceData,
-            expenseBreakdownData,
-            monthlySummaryData: Object.values(monthlySummary).reverse(),
-        };
-    }, [transactions]);
-
-    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }) => {
-        const RADIAN = Math.PI / 180;
-        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-        return (
-            <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">
-                {`${name} (${(percent * 100).toFixed(0)}%)`}
-            </text>
-        );
-    };
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
     return (
-        <div className="space-y-8 p-4 bg-gray-50 rounded-lg shadow-inner">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4 text-gray-800">Income Sources</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={processedData.incomeSourceData}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={100}
-                                innerRadius={50}
-                                fill={COLORS.primary}
-                                labelLine={false}
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                stroke="none"
-                                
-                            >
-                                {processedData.incomeSourceData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={incomeSourceColors[index % incomeSourceColors.length]} stroke={COLORS.lightGray} strokeWidth={1} />
-                                ))}
-                            </Pie>
-                            <Tooltip formatter={(value, name, props) => [`${formatCurrency(value)}`, `${props.payload.name}`]} />
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <h4 className="text-gray-500">Total Income</h4>
+                    <p className="text-3xl font-bold text-green-600">{formatCurrency(income)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4 text-gray-800">Expense Breakdown</h3>
-                     <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={processedData.expenseBreakdownData}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={100}
-                                innerRadius={50}
-                                fill={COLORS.primary}
-                                labelLine={false}
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                stroke="none"
-                            >
-                                {processedData.expenseBreakdownData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={expenseBreakdownColors[index % expenseBreakdownColors.length]} stroke={COLORS.lightGray} strokeWidth={1} />
-                                ))}
-                            </Pie>
-                            <Tooltip formatter={(value, name, props) => [`${formatCurrency(value)}`, `${props.payload.name}`]} />
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <h4 className="text-gray-500">Total Expenses</h4>
+                    <p className="text-3xl font-bold text-red-600">{formatCurrency(expenses)}</p>
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h4 className="text-gray-500">Profit</h4>
+                    <p className={`text-3xl font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="font-semibold mb-4 text-gray-800">Monthly Summary</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={processedData.monthlySummaryData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} padding={{ left: 20, right: 20 }} />
-                        <YAxis tickFormatter={(value) => formatCurrency(value)} axisLine={false} tickLine={false} />
-                        <Tooltip formatter={(value) => formatCurrency(value)} cursor={{ fill: COLORS.lightGray }} />
-                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                        <Bar dataKey="income" fill={COLORS.secondary} name="Income" barSize={30} radius={[10, 10, 0, 0]} />
-                        <Bar dataKey="expenses" fill={COLORS.danger} name="Expenses" barSize={30} radius={[10, 10, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h4 className="font-semibold mb-4">Income Sources</h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie data={pieChartData(incomeBySource)} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
+                                {pieChartData(incomeBySource).map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h4 className="font-semibold mb-4">Expense Breakdown</h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie data={pieChartData(expensesByCategory)} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#82ca9d" label>
+                                {pieChartData(expensesByCategory).map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );

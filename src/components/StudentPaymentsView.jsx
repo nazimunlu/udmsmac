@@ -1,53 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { formatDate } from '../utils/formatDate';
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../contexts/AppContext';
+import { Icon, ICONS } from './Icons';
+import StudentPaymentDetailsModal from './StudentPaymentDetailsModal';
 
-const StudentPaymentsView = ({ onStudentSelect }) => {
-    const { students, payments, loading } = useAppContext();
+const StudentPaymentsView = () => {
+    const { students } = useAppContext();
+    const [selectedStudent, setSelectedStudent] = useState(null);
 
-    const incomeTransactions = payments.filter(t => t.type.startsWith("income"));
+    const { groupStudents, tutoringStudents } = useMemo(() => {
+        const groupStudents = students.filter(s => !s.isTutoring && s.groupId);
+        const tutoringStudents = students.filter(s => s.isTutoring);
+        return { groupStudents, tutoringStudents };
+    }, [students]);
 
-    const getStudentName = (studentId) => {
-        const student = students.find(s => s.id === studentId);
-        return student ? student.fullName : 'N/A';
-    };
+    const StudentList = ({ title, students }) => (
+        <div className="bg-white rounded-lg shadow-md">
+            <h3 className="font-semibold text-xl p-6 border-b border-gray-200">{title}</h3>
+            <ul className="divide-y divide-gray-200">
+                {students.map(student => (
+                    <li key={student.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
+                        <div>
+                            <p className="font-medium text-gray-800">{student.fullName}</p>
+                            <p className="text-sm text-gray-500">{student.studentContact}</p>
+                        </div>
+                        <button 
+                            onClick={() => setSelectedStudent(student)}
+                            className="p-2 rounded-full hover:bg-gray-200"
+                            title="View Payment Details"
+                        >
+                            <Icon path={ICONS.WALLET} className="w-6 h-6 text-blue-600" />
+                        </button>
+                    </li>
+                ))}
+                 {students.length === 0 && (
+                    <p className="p-4 text-center text-gray-500">No students in this category.</p>
+                )}
+            </ul>
+        </div>
+    );
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md">
-                <h3 className="font-semibold text-xl p-6 border-b border-gray-200">All Income Transactions</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Date</th>
-                                <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Student Name</th>
-                                <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Type</th>
-                                <th className="p-4 font-semibold text-sm text-gray-600 uppercase">Description</th>
-                                <th className="p-4 font-semibold text-sm text-gray-600 uppercase text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {loading ? (
-                                <tr><td colSpan="5" className="p-4 text-center text-gray-500">Loading income transactions...</td></tr>
-                            ) : incomeTransactions.length > 0 ? (
-                                incomeTransactions.map(transaction => (
-                                    <tr key={transaction.id} className="hover:bg-gray-50">
-                                        <td className="p-4 text-gray-600">{formatDate(transaction.date)}</td>
-                                        <td className="p-4 text-gray-800">{getStudentName(transaction.studentId)}</td>
-                                        <td className="p-4 text-gray-800">{transaction.type === 'income-group' ? 'Group Payment' : 'Tutoring Payment'}</td>
-                                        <td className="p-4 text-gray-800">{transaction.description}</td>
-                                        <td className="p-4 text-gray-800 font-semibold text-right">₺{transaction.amount.toFixed(2)}</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr><td colSpan="5" className="p-4 text-center text-gray-500">No income transactions found.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <StudentList title="Group Students" students={groupStudents} />
+            <StudentList title="Tutoring Students" students={tutoringStudents} />
+
+            {selectedStudent && (
+                <StudentPaymentDetailsModal
+                    isOpen={!!selectedStudent}
+                    onClose={() => setSelectedStudent(null)}
+                    student={selectedStudent}
+                />
+            )}
         </div>
     );
 };

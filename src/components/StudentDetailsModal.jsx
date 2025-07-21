@@ -100,13 +100,19 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     }, []);
 
     const paymentSummary = useMemo(() => {
-        if (!currentStudent.installments || !Array.isArray(currentStudent.installments)) return null;
+        if (!currentStudent.installments || !Array.isArray(currentStudent.installments)) {
+            return { totalPaid: 0, totalFee: 0 };
+        }
+        
         const totalPaid = currentStudent.installments
             .filter(i => i.status === 'Paid')
             .reduce((sum, i) => sum + i.amount, 0);
-        const totalFee = parseFloat(currentStudent.feeDetails?.totalFee) || 0;
+
+        const totalFee = currentStudent.installments
+            .reduce((sum, i) => sum + i.amount, 0);
+
         return { totalPaid, totalFee };
-    }, [currentStudent.installments, currentStudent.feeDetails]);
+    }, [currentStudent.installments]);
 
     const attendanceSummary = useMemo(() => {
         if (currentStudent.isTutoring || lessons.length === 0) return null;
@@ -287,7 +293,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
                                 <div className="bg-blue-600 h-4 rounded-full"
-                                     style={{ width: `${(paymentSummary.totalPaid / paymentSummary.totalFee) * 100}%` }}>
+                                     style={{ width: `${paymentSummary.totalFee > 0 ? (paymentSummary.totalPaid / paymentSummary.totalFee) * 100 : 0}%` }}>
                                 </div>
                             </div>
                             <p className="text-center text-blue-800 mt-2">₺{paymentSummary.totalPaid.toFixed(0)} paid out of ₺{paymentSummary.totalFee.toFixed(0)}</p>
