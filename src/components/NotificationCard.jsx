@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon, ICONS } from './Icons';
 
-const NotificationCard = ({ message, type, onDismiss }) => {
+const NotificationCard = ({ message, details, type, onDismiss }) => {
     const bgColor = {
         info: 'bg-blue-50 border-blue-200',
         warning: 'bg-yellow-50 border-yellow-200',
@@ -31,13 +31,16 @@ const NotificationCard = ({ message, type, onDismiss }) => {
     }[type] || ICONS.INFO;
 
     return (
-        <div className={`flex items-center justify-between p-4 border rounded-lg shadow-sm ${bgColor} ${textColor}`}>
-            <div className="flex items-center">
-                <Icon path={iconType} className={`w-5 h-5 mr-3 ${iconColor}`} />
-                <p className="font-medium text-sm">{message}</p>
+        <div className={`p-4 border rounded-lg shadow-sm ${bgColor} ${textColor}`}>
+            <div className="flex items-start">
+                <Icon path={iconType} className={`w-5 h-5 mr-3 mt-1 flex-shrink-0 ${iconColor}`} />
+                <div>
+                    <p className="font-semibold text-sm">{message}</p>
+                    {details && <p className="text-xs mt-1">{details}</p>}
+                </div>
             </div>
             {onDismiss && (
-                <button onClick={onDismiss} className="text-gray-400 hover:text-gray-600">
+                <button onClick={onDismiss} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
                     <Icon path={ICONS.CLOSE} className="w-4 h-4" />
                 </button>
             )}

@@ -40,11 +40,12 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                 materialName: lessonToEdit.materialName || ''
             });
         } else {
+            const schedule = student?.tutoringDetails?.schedule || group?.schedule;
             setFormData({
                 date: new Date().toISOString().split('T')[0],
                 topic: '',
-                startTime: group?.schedule?.startTime || '09:00',
-                endTime: group?.schedule?.endTime || '10:00',
+                startTime: schedule?.startTime || '09:00',
+                endTime: schedule?.endTime || '10:00',
                 materialUrl: '',
                 materialName: ''
             });

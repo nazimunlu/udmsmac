@@ -113,17 +113,24 @@ const DashboardModule = ({ setActiveModule }) => {
 
         const paymentsDue = [];
         (students || []).forEach(student => {
-            student.installments?.forEach(installment => {
-                if (installment.status === 'Unpaid' && new Date(installment.dueDate) <= now) {
-                    paymentsDue.push({
-                        id: `${student.id}-${installment.number}`,
-                        message: `${student.fullName} has an installment of ${installment.amount} ₺ due since ${formatDate(installment.dueDate)}.`, 
-                        type: 'warning',
-                        studentId: student.id,
-                        installmentNumber: installment.number
-                    });
-                }
-            });
+            const overdueInstallments = student.installments?.filter(
+                inst => inst.status === 'Unpaid' && new Date(inst.dueDate) <= now
+            );
+
+            if (overdueInstallments && overdueInstallments.length > 0) {
+                const totalDue = overdueInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+                const lastDueDate = overdueInstallments.reduce((latest, inst) => 
+                    new Date(inst.dueDate) > new Date(latest.dueDate) ? inst : latest
+                ).dueDate;
+
+                paymentsDue.push({
+                    id: `payment-${student.id}`,
+                    message: `${student.fullName} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
+                    details: `Last due date was ${formatDate(lastDueDate)}.`,
+                    type: 'warning',
+                    studentId: student.id,
+                });
+            }
         });
         setDuePayments(paymentsDue);
 
@@ -312,21 +319,34 @@ const DashboardModule = ({ setActiveModule }) => {
             </div>
 
             {/* Important Notifications */}
-            {duePayments.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h3 className="font-semibold mb-4 text-gray-800">Important Notifications</h3>
-                    <div className="space-y-3">
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 className="font-semibold mb-4 text-gray-800">Important Notifications</h3>
+                {duePayments.length > 0 ? (
+                    <ul className="space-y-4">
                         {duePayments.map(notification => (
-                            <NotificationCard 
-                                key={notification.id} 
-                                message={notification.message} 
-                                type={notification.type} 
-                                // You might want to add an onDismiss prop here if notifications can be dismissed
-                            />
+                            <li key={notification.id} className="flex items-center justify-between group">
+                                <div className="flex items-center">
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-4 bg-yellow-100 text-yellow-600">
+                                        <Icon path={ICONS.WALLET} className="w-5 h-5"/>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-800">{notification.message}</p>
+                                        {notification.details && <p className="text-sm text-gray-500">{notification.details}</p>}
+                                    </div>
+                                </div>
+                            </li>
                         ))}
+                    </ul>
+                ) : (
+                    <div className="flex items-center text-green-600">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-4 bg-green-100 text-green-600">
+                            <Icon path={ICONS.CHECK} className="w-5 h-5"/>
+                        </div>
+                        <p className="font-medium">Everything is good! No overdue payments.</p>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
+            
             <StudentFormModal isOpen={isStudentModalOpen} onClose={() => setIsStudentModalOpen(false)} />
             <EventFormModal isOpen={isEventModalOpen} onClose={() => {setIsEventModalOpen(false); setEventToEdit(null);}} eventToEdit={eventToEdit} />
             <LessonFormModal isOpen={isLessonModalOpen} onClose={() => {setIsLessonModalOpen(false); setLessonToEdit(null);}} lessonToEdit={lessonToEdit} />

@@ -29,7 +29,7 @@ const StudentPaymentsView = ({ onStudentSelect }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {isLoading ? (
+                            {loading ? (
                                 <tr><td colSpan="5" className="p-4 text-center text-gray-500">Loading income transactions...</td></tr>
                             ) : incomeTransactions.length > 0 ? (
                                 incomeTransactions.map(transaction => (

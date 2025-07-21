@@ -34,10 +34,15 @@ import {
     faUtensils,
     faChartLine,
     faSignOutAlt,
-    faWallet
+    faWallet,
+    faExclamationCircle
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
+    if (!path) {
+        console.warn("Icon component received an undefined path.");
+        return <FontAwesomeIcon icon={faExclamationCircle} className={className} />;
+    }
     return <FontAwesomeIcon icon={path} className={className} />;
 };
 
@@ -76,4 +81,5 @@ export const ICONS = {
     PROFIT: faChartLine,
     LOGOUT: faSignOutAlt,
     WALLET: faWallet,
+    WARNING: faExclamationTriangle,
 };
