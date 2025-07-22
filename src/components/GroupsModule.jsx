@@ -142,7 +142,7 @@ const GroupsModule = () => {
                     onClose={() => setIsConfirmModalOpen(false)}
                     onConfirm={handleDeleteGroup}
                     title="Delete Group"
-                    message={`Are you sure you want to ${showArchivedGroups ? 'permanently delete' : 'archive'} the group "${groupToDelete.group_name}"? ${!showArchivedGroups ? 'This will also unassign all students from this group.' : 'This action cannot be undone.'`}
+                    message={`Are you sure you want to ${showArchivedGroups ? 'permanently delete' : 'archive'} the group "${groupToDelete.group_name}"? ${!showArchivedGroups ? 'This will also unassign all students from this group.' : 'This action cannot be undone.'}`}
                 />
             )}
         </div>
