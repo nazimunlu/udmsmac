@@ -18,10 +18,10 @@ const SettingsModule = () => {
             dataFolder.file('students.json', JSON.stringify(studentsData.map(s => ({
                 ...s,
                 installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
+                feeDetails: s.fee_details ? JSON.parse(s.fee_details) : {},
+                tutoringDetails: s.tutoring_details ? JSON.parse(s.tutoring_details) : {},
                 documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
+                documentNames: s.document_names ? JSON.parse(s.document_names) : {},
             })), null, 2));
 
             const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');

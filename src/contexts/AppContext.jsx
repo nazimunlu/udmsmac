@@ -45,10 +45,10 @@ const AppProvider = ({ children }) => {
       const allStudents = studentsData.map(s => {
         let parsedStudent = { ...s };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
-        try { parsedStudent.feeDetails = s.feeDetails ? JSON.parse(s.feeDetails) : {}; } catch (e) { console.error("Error parsing student feeDetails:", e); parsedStudent.feeDetails = {}; }
-        try { parsedStudent.tutoringDetails = s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {}; } catch (e) { console.error("Error parsing student tutoringDetails:", e); parsedStudent.tutoringDetails = {}; }
+        try { parsedStudent.feeDetails = s.fee_details ? JSON.parse(s.fee_details) : {}; } catch (e) { console.error("Error parsing student fee_details:", e); parsedStudent.feeDetails = {}; }
+        try { parsedStudent.tutoringDetails = s.tutoring_details ? JSON.parse(s.tutoring_details) : {}; } catch (e) { console.error("Error parsing student tutoring_details:", e); parsedStudent.tutoringDetails = {}; }
         try { parsedStudent.documents = s.documents ? JSON.parse(s.documents) : {}; } catch (e) { console.error("Error parsing student documents:", e); parsedStudent.documents = {}; }
-        try { parsedStudent.documentNames = s.documentNames ? JSON.parse(s.documentNames) : {}; } catch (e) { console.error("Error parsing student documentNames:", e); parsedStudent.documentNames = {}; }
+        try { parsedStudent.documentNames = s.document_names ? JSON.parse(s.document_names) : {}; } catch (e) { console.error("Error parsing student document_names:", e); parsedStudent.documentNames = {}; }
         parsedStudent.isArchived = !!s.isArchived;
         return parsedStudent;
       });

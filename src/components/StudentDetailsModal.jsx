@@ -69,10 +69,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         setCurrentStudent({
             ...initialStudent,
             installments: safeParse(initialStudent?.installments, []),
-            feeDetails: safeParse(initialStudent?.feeDetails, {}),
-            tutoringDetails: safeParse(initialStudent?.tutoringDetails, {}),
+            fee_details: safeParse(initialStudent?.fee_details, {}),
+            tutoring_details: safeParse(initialStudent?.tutoring_details, {}),
             documents: safeParse(initialStudent?.documents, {}),
-            documentNames: safeParse(initialStudent?.documentNames, {}),
+            document_names: safeParse(initialStudent?.document_names, {}),
         });
 
         if (isOpen) {

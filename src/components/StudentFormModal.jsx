@@ -54,7 +54,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             return defaultValue;
         };
         
-        const studentTutoringDetails = safeParse(studentToEdit?.tutoringDetails, {});
+        const studentTutoringDetails = safeParse(studentToEdit?.tutoring_details, {});
 
         const defaultTutoringDetails = {
             pricePerLesson: studentTutoringDetails.pricePerLesson || defaultPricePerLesson,
@@ -76,8 +76,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             isTutoring: studentToEdit?.isTutoring || false,
             groupId: studentToEdit?.groupId || null,
             documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
-            documentNames: safeParse(studentToEdit?.documentNames, { nationalId: '', agreement: '' }),
-            feeDetails: safeParse(studentToEdit?.feeDetails, { totalFee: '12000', numberOfInstallments: '3' }),
+            document_names: safeParse(studentToEdit?.document_names, { nationalId: '', agreement: '' }),
+            fee_details: safeParse(studentToEdit?.fee_details, { totalFee: '12000', numberOfInstallments: '3' }),
             tutoringDetails: defaultTutoringDetails,
             installments: safeParse(studentToEdit?.installments, []),
             isArchived: studentToEdit?.isArchived || false
@@ -208,8 +208,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 }
             } else {
                 if (
-                    String(studentToEdit.feeDetails?.totalFee || '') !== formData.feeDetails.totalFee ||
-                    String(studentToEdit.feeDetails?.numberOfInstallments || '') !== formData.feeDetails.numberOfInstallments ||
+                    String(studentToEdit.fee_details?.totalFee || '') !== formData.feeDetails.totalFee ||
+                    String(studentToEdit.fee_details?.numberOfInstallments || '') !== formData.feeDetails.numberOfInstallments ||
                     studentToEdit.enrollmentDate !== formData.enrollmentDate
                 ) {
                     feeStructureChanged = true;
@@ -247,8 +247,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         dataToSave.feeDetails = JSON.stringify(dataToSave.feeDetails);
         dataToSave.installments = JSON.stringify(dataToSave.installments);
         dataToSave.documents = JSON.stringify(dataToSave.documents);
-        dataToSave.documentNames = JSON.stringify(dataToSave.documentNames);
-        dataToSave.tutoringDetails = JSON.stringify(dataToSave.tutoringDetails);
+        dataToSave.document_names = JSON.stringify(dataToSave.document_names);
+        dataToSave.tutoring_details = JSON.stringify(dataToSave.tutoring_details);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -371,7 +371,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                         <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                                                <span>{files.nationalId ? files.nationalId.name : (formData.documentNames?.nationalId || 'Upload a file')}</span>
+                                                <span>{files.nationalId ? files.nationalId.name : (formData.document_names?.nationalId || 'Upload a file')}</span>
                                                 <input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} />
                                             </label>
                                             {!files.nationalId && !formData.documentNames?.nationalId && <p className="pl-1">or drag and drop</p>}
@@ -387,7 +387,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                         <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                                                <span>{files.agreement ? files.agreement.name : (formData.documentNames?.agreement || 'Upload a file')}</span>
+                                                <span>{files.agreement ? files.agreement.name : (formData.document_names?.agreement || 'Upload a file')}</span>
                                                 <input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} />
                                             </label>
                                             {!files.agreement && !formData.documentNames?.agreement && <p className="pl-1">or drag and drop</p>}
