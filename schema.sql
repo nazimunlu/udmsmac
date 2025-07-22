@@ -24,6 +24,7 @@ CREATE TABLE public.students (
   is_archived boolean NOT NULL DEFAULT false,
   installments jsonb,
   price_per_lesson NUMERIC,
+  birth_date DATE,
   CONSTRAINT students_pkey PRIMARY KEY (id),
   CONSTRAINT students_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE SET NULL
 );
