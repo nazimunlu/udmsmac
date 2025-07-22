@@ -132,7 +132,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
     const handleFeeChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, feeDetails: { ...prev.feeDetails, [name]: value } }));
+        setFormData(prev => ({ ...prev, fee_details: { ...prev.fee_details, [name]: value } }));
     };
 
     const handleTutoringChange = (e) => {
@@ -208,8 +208,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 }
             } else {
                 if (
-                    String(studentToEdit.fee_details?.totalFee || '') !== formData.feeDetails.totalFee ||
-                    String(studentToEdit.fee_details?.numberOfInstallments || '') !== formData.feeDetails.numberOfInstallments ||
+                    String(studentToEdit.fee_details?.totalFee || '') !== formData.fee_details.totalFee ||
+                    String(studentToEdit.fee_details?.numberOfInstallments || '') !== formData.fee_details.numberOfInstallments ||
                     studentToEdit.enrollmentDate !== formData.enrollmentDate
                 ) {
                     feeStructureChanged = true;
@@ -225,8 +225,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     dataToSave.tutoringDetails.endDate
                 );
             } else {
-                const totalFee = parseFloat(dataToSave.feeDetails.totalFee) || 0;
-                const numInstallments = parseInt(dataToSave.feeDetails.numberOfInstallments, 10) || 1;
+                const totalFee = parseFloat(dataToSave.fee_details.totalFee) || 0;
+                const numInstallments = parseInt(dataToSave.fee_details.numberOfInstallments, 10) || 1;
                 const installmentAmount = totalFee > 0 && numInstallments > 0 ? totalFee / numInstallments : 0;
                 const startDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
                 
@@ -244,7 +244,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
 
         // Stringify JSON fields before saving
-        dataToSave.feeDetails = JSON.stringify(dataToSave.feeDetails);
+        dataToSave.fee_details = JSON.stringify(dataToSave.fee_details);
         dataToSave.installments = JSON.stringify(dataToSave.installments);
         dataToSave.documents = JSON.stringify(dataToSave.documents);
         dataToSave.document_names = JSON.stringify(dataToSave.document_names);
@@ -360,8 +360,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                     {groups.map(group => <option key={group.id} value={group.id}>{group.groupName}</option>)}
                                 </FormSelect>
                             </div>
-                            <div className="sm:col-span-3"><FormInput label="Total Fee (₺)" name="totalFee" type="number" value={formData.feeDetails.totalFee} onChange={handleFeeChange} /></div>
-                            <div className="sm:col-span-3"><FormInput label="Number of Installments" name="numberOfInstallments" type="number" value={formData.feeDetails.numberOfInstallments} onChange={handleFeeChange} /></div>
+                            <div className="sm:col-span-3"><FormInput label="Total Fee (₺)" name="totalFee" type="number" value={formData.fee_details.totalFee} onChange={handleFeeChange} /></div>
+                            <div className="sm:col-span-3"><FormInput label="Number of Installments" name="numberOfInstallments" type="number" value={formData.fee_details.numberOfInstallments} onChange={handleFeeChange} /></div>
                         </FormSection>
                         <FormSection title="Document Uploads">
                             <div className="sm:col-span-3">
