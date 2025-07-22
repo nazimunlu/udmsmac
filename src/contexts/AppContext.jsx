@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 
 const AppContext = createContext();
 
@@ -23,33 +23,24 @@ const AppProvider = ({ children }) => {
     setLoading(true);
     try {
       const [
-        { data: studentsData, error: studentsError },
-        { data: groupsData, error: groupsError },
-        { data: lessonsData, error: lessonsError },
-        { data: eventsData, error: eventsError },
-        { data: transactionsData, error: transactionsError },
-        { data: documentsData, error: documentsError },
-        { data: settingsData, error: settingsError },
-        { data: todosData, error: todosError },
+        studentsData,
+        groupsData,
+        lessonsData,
+        eventsData,
+        transactionsData,
+        documentsData,
+        settingsData,
+        todosData,
       ] = await Promise.all([
-        supabase.from('students').select('*'),
-        supabase.from('groups').select('id, created_at, groupName, schedule, color, startDate, programLength, endDate, isArchived'),
-        supabase.from('lessons').select('*'),
-        supabase.from('events').select('*'),
-        supabase.from('transactions').select('*'),
-        supabase.from('documents').select('*'),
-        supabase.from('settings').select('*'),
-        supabase.from('todos').select('*').order('created_at', { ascending: false }),
+        apiClient.getAll('students'),
+        apiClient.getAll('groups'),
+        apiClient.getAll('lessons'),
+        apiClient.getAll('events'),
+        apiClient.getAll('transactions'),
+        apiClient.getAll('documents'),
+        apiClient.getAll('settings'),
+        apiClient.getAll('todos'),
       ]);
-
-      if (studentsError) { console.error("Error fetching students:", studentsError); throw studentsError; }
-      if (groupsError) { console.error("Error fetching groups:", groupsError); throw groupsError; }
-      if (lessonsError) { console.error("Error fetching lessons:", lessonsError); throw lessonsError; }
-      if (eventsError) { console.error("Error fetching events:", eventsError); throw eventsError; }
-      if (transactionsError) { console.error("Error fetching transactions:", transactionsError); throw transactionsError; }
-      if (documentsError) { console.error("Error fetching documents:", documentsError); throw documentsError; }
-      if (settingsError) { console.error("Error fetching settings:", settingsError); throw settingsError; }
-      if (todosError) { console.error("Error fetching todos:", todosError); throw todosError; }
 
       const allStudents = studentsData.map(s => {
         let parsedStudent = { ...s };

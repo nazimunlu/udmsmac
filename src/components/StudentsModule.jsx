@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import { useNotification } from '../contexts/NotificationContext';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
@@ -62,12 +62,10 @@ const StudentsModule = () => {
         if (!studentToDelete) return;
         try {
             if (activeStudentType === 'archived') {
-                const { error } = await supabase.from('students').delete().match({ id: studentToDelete.id });
-                if (error) throw error;
+                await apiClient.delete('students', studentToDelete.id);
                 showNotification('Student permanently deleted!', 'success');
             } else {
-                const { error } = await supabase.from('students').update({ isArchived: true }).match({ id: studentToDelete.id });
-                if (error) throw error;
+                await apiClient.update('students', studentToDelete.id, { isArchived: true });
                 showNotification('Student archived successfully!', 'success');
             }
             fetchData();
@@ -82,8 +80,7 @@ const StudentsModule = () => {
 
     const handleUnarchiveStudent = async (student) => {
         try {
-            const { error } = await supabase.from('students').update({ isArchived: false }).match({ id: student.id });
-            if (error) throw error;
+            await apiClient.update('students', student.id, { isArchived: false });
             showNotification('Student unarchived successfully!', 'success');
             fetchData();
         } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import { Icon, ICONS } from './Icons';
 import GroupFormModal from './GroupFormModal';
 import GroupDetailsModal from './GroupDetailsModal';
@@ -46,17 +46,17 @@ const GroupsModule = () => {
         if (!groupToDelete) return;
         try {
             if (showArchivedGroups) {
-                const { error } = await supabase.from('groups').delete().match({ id: groupToDelete.id });
-                if (error) throw error;
+                await apiClient.delete('groups', groupToDelete.id);
                 showNotification('Group permanently deleted!', 'success');
             } else {
-                const { error } = await supabase.from('groups').update({ isArchived: true }).match({ id: groupToDelete.id });
-                if (error) throw error;
+                await apiClient.update('groups', groupToDelete.id, { isArchived: true });
                 showNotification('Group archived successfully!', 'success');
             }
             // Unassign students from this group
-            const { error: updateError } = await supabase.from('students').update({ groupId: null }).eq('groupId', groupToDelete.id);
-            if (updateError) throw updateError;
+            const studentsInGroup = students.filter(s => s.groupId === groupToDelete.id);
+            for (const student of studentsInGroup) {
+                await apiClient.update('students', student.id, { groupId: null });
+            }
             fetchData();
 
         } catch (error) {
@@ -70,8 +70,7 @@ const GroupsModule = () => {
 
     const handleUnarchiveGroup = async (group) => {
         try {
-            const { error } = await supabase.from('groups').update({ isArchived: false }).match({ id: group.id });
-            if (error) throw error;
+            await apiClient.update('groups', group.id, { isArchived: false });
             showNotification('Group unarchived successfully!', 'success');
             fetchData();
         } catch (error) {
