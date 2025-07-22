@@ -43,13 +43,18 @@ const AppProvider = ({ children }) => {
       ]);
 
       const allStudents = studentsData.map(s => {
-        let parsedStudent = { ...s };
+        let parsedStudent = {
+          ...s,
+          fullName: s.full_name,
+          enrollmentDate: s.enrollment_date,
+          birthDate: s.birth_date,
+          feeDetails: s.fee_details,
+          tutoringDetails: s.tutoring_details,
+          documentNames: s.document_names,
+        };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
-        try { parsedStudent.feeDetails = s.fee_details ? JSON.parse(s.fee_details) : {}; } catch (e) { console.error("Error parsing student fee_details:", e); parsedStudent.feeDetails = {}; }
-        try { parsedStudent.tutoringDetails = s.tutoring_details ? JSON.parse(s.tutoring_details) : {}; } catch (e) { console.error("Error parsing student tutoring_details:", e); parsedStudent.tutoringDetails = {}; }
         try { parsedStudent.documents = s.documents ? JSON.parse(s.documents) : {}; } catch (e) { console.error("Error parsing student documents:", e); parsedStudent.documents = {}; }
-        try { parsedStudent.documentNames = s.document_names ? JSON.parse(s.document_names) : {}; } catch (e) { console.error("Error parsing student document_names:", e); parsedStudent.documentNames = {}; }
-        parsedStudent.isArchived = !!s.isArchived;
+        parsedStudent.isArchived = !!s.is_archived;
         return parsedStudent;
       });
       setStudents(allStudents.filter(s => !s.isArchived));
