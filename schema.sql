@@ -1,82 +1,95 @@
+-- Create the tables in an order that respects dependencies.
 
-CREATE TABLE groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_name TEXT NOT NULL,
-    color TEXT,
-    schedule JSONB,
-    start_date DATE,
-    end_date DATE,
-    is_archived BOOLEAN DEFAULT FALSE
+CREATE TABLE public.groups (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  group_name text NOT NULL,
+  schedule jsonb,
+  color text,
+  start_date date,
+  end_date date,
+  program_length text,
+  is_archived boolean NOT NULL DEFAULT false,
+  CONSTRAINT groups_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE students (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    full_name TEXT NOT NULL,
-    student_contact TEXT,
-    parent_contact TEXT,
-    enrollment_date DATE,
-    is_tutoring BOOLEAN DEFAULT FALSE,
-    is_archived BOOLEAN DEFAULT FALSE,
-    group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
-    installments JSONB,
-    price_per_lesson NUMERIC
+CREATE TABLE public.students (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  full_name text NOT NULL,
+  student_contact text,
+  parent_name text,
+  parent_contact text,
+  group_id bigint,
+  is_archived boolean NOT NULL DEFAULT false,
+  installments jsonb,
+  price_per_lesson NUMERIC,
+  CONSTRAINT students_pkey PRIMARY KEY (id),
+  CONSTRAINT students_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE SET NULL
 );
 
-CREATE TABLE payments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    amount NUMERIC NOT NULL,
-    transaction_date DATE NOT NULL,
-    student_id UUID REFERENCES students(id) ON DELETE CASCADE
+CREATE TABLE public.lessons (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  group_id bigint NOT NULL,
+  lesson_date date NOT NULL,
+  topic text,
+  attendance jsonb,
+  CONSTRAINT lessons_pkey PRIMARY KEY (id),
+  CONSTRAINT lessons_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE
 );
 
-CREATE TABLE expenses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    amount NUMERIC NOT NULL,
-    transaction_date DATE NOT NULL,
-    expense_type TEXT NOT NULL
+CREATE TABLE public.transactions (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  amount numeric NOT NULL,
+  type text NOT NULL, -- 'income' or 'expense'
+  description text,
+  transaction_date date NOT NULL,
+  category text,
+  expense_type text, -- For expenses: 'business' or 'personal'
+  invoice_url text,
+  student_id uuid,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE SET NULL
 );
 
--- Function to get a student's group
-CREATE OR REPLACE FUNCTION get_student_group(student_id_param UUID)
-RETURNS JSON
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    group_data JSON;
-BEGIN
-    SELECT json_build_object(
-        'id', g.id,
-        'group_name', g.group_name,
-        'color', g.color
-    )
-    INTO group_data
-    FROM groups g
-    JOIN students s ON s.group_id = g.id
-    WHERE s.id = student_id_param;
+CREATE TABLE public.documents (
+  id text NOT NULL DEFAULT uuid_generate_v4(),
+  created_at text NOT NULL DEFAULT now(),
+  name text NOT NULL,
+  type text NOT NULL,
+  url text NOT NULL,
+  uploadDate text,
+  storagePath text,
+  CONSTRAINT documents_pkey PRIMARY KEY (id)
+);
 
-    RETURN group_data;
-END;
-$$;
+CREATE TABLE public.events (
+  id text NOT NULL DEFAULT uuid_generate_v4(),
+  created_at text NOT NULL DEFAULT now(),
+  eventName text NOT NULL,
+  startTime text NOT NULL,
+  endTime text NOT NULL,
+  isAllDay boolean NOT NULL,
+  CONSTRAINT events_pkey PRIMARY KEY (id)
+);
 
--- Function to get a student's payments
-CREATE OR REPLACE FUNCTION get_student_payments(student_id_param UUID)
-RETURNS JSON
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    payments_data JSON;
-BEGIN
-    SELECT json_agg(
-        json_build_object(
-            'id', p.id,
-            'amount', p.amount,
-            'transaction_date', p.transaction_date
-        )
-    )
-    INTO payments_data
-    FROM payments p
-    WHERE p.student_id = student_id_param;
+CREATE TABLE public.settings (
+  id text NOT NULL DEFAULT uuid_generate_v4(),
+  created_at text NOT NULL DEFAULT now(),
+  key text NOT NULL UNIQUE,
+  value text,
+  CONSTRAINT settings_pkey PRIMARY KEY (id)
+);
 
-    RETURN payments_data;
-END;
-$$;
+CREATE TABLE public.todos (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  task text NOT NULL,
+  is_completed boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  due_date timestamp with time zone,
+  CONSTRAINT todos_pkey PRIMARY KEY (id),
+  CONSTRAINT todos_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
