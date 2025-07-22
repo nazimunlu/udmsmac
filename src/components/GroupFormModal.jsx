@@ -85,8 +85,8 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         const { start_date, program_length, schedule } = formData;
         let calculatedEndDate = null;
 
-        if (startDate && programLength && schedule.days.length > 0) {
-            const start = new Date(startDate);
+        if (start_date && program_length && schedule.days.length > 0) {
+            const start = new Date(start_date);
             let current = new Date(start);
             let weeksCounted = 0;
             let daysInWeek = 0;
