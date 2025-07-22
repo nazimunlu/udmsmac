@@ -34,13 +34,13 @@ const BusinessExpensesView = () => {
                             {expenses.length > 0 ? (
                                 expenses.map(expense => (
                                     <tr key={expense.id} className="hover:bg-gray-50">
-                                        <td className="p-4 text-gray-600">{formatDate(expense.date)}</td>
+                                        <td className="p-4 text-gray-600">{formatDate(expense.transaction_date)}</td>
                                         <td className="p-4 text-gray-800">{expense.category}</td>
                                         <td className="p-4 text-gray-800">{expense.description}</td>
                                         <td className="p-4 text-gray-800 font-semibold text-right">₺{expense.amount.toFixed(2)}</td>
                                         <td className="p-4">
-                                            {expense.invoiceUrl ? (
-                                                <a href={expense.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:underline">View</a>
+                                            {expense.invoice_url ? (
+                                                <a href={expense.invoice_url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:underline">View</a>
                                             ) : 'N/A'}
                                         </td>
                                     </tr>

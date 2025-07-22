@@ -76,13 +76,38 @@ const AppProvider = ({ children }) => {
       setArchivedGroups(allGroups.filter(g => g.isArchived));
 
       setLessons(lessonsData.map(l => {
-        let parsedLesson = { ...l };
+        let parsedLesson = {
+          ...l,
+          lessonDate: l.lesson_date,
+          startTime: l.start_time,
+          endTime: l.end_time,
+          materialUrl: l.material_url,
+          materialName: l.material_name,
+          groupId: l.group_id,
+          studentId: l.student_id,
+        };
         try { parsedLesson.attendance = l.attendance ? JSON.parse(l.attendance) : {}; } catch (e) { console.error("Error parsing lesson attendance:", e); parsedLesson.attendance = {}; }
         return parsedLesson;
       }));
-      setEvents(eventsData);
-      setPayments(transactionsData.filter(t => t.type.startsWith('income')));
-      setExpenses(transactionsData.filter(t => t.type.startsWith('expense')));
+      setEvents(eventsData.map(e => ({
+        ...e,
+        eventName: e.event_name,
+        startTime: e.start_time,
+        endTime: e.end_time,
+        isAllDay: e.is_all_day,
+      })));
+      setPayments(transactionsData.filter(t => t.type.startsWith('income')).map(t => ({
+        ...t,
+        transactionDate: t.transaction_date,
+        invoiceUrl: t.invoice_url,
+        invoiceName: t.invoice_name,
+      })));
+      setExpenses(transactionsData.filter(t => t.type.startsWith('expense')).map(t => ({
+        ...t,
+        transactionDate: t.transaction_date,
+        invoiceUrl: t.invoice_url,
+        invoiceName: t.invoice_name,
+      })));
       setDocuments(documentsData);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
       setTodos(todosData);

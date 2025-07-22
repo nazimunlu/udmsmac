@@ -20,7 +20,7 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group 
                     </div>
                     <div>
                         <p className={`text-2xl font-bold ${colorClass}`}>{transaction.amount.toFixed(2)} ₺</p>
-                        <p className="text-gray-500">{formatDate(transaction.transactionDate)}</p>
+                        <p className="text-gray-500">{formatDate(transaction.transaction_date)}</p>
                     </div>
                 </div>
 

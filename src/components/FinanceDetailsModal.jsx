@@ -25,7 +25,7 @@ const FinanceDetailsModal = ({ isOpen, onClose, title, transactions, students, g
                         <p className={`font-bold ${t.type.startsWith('income') ? 'text-green-600' : 'text-red-600'}`}>
                             {t.amount.toFixed(2)} ₺
                         </p>
-                        <p className="text-sm text-gray-500">{formatDate(t.transactionDate)}</p>
+                        <p className="text-sm text-gray-500">{formatDate(t.transaction_date)}</p>
                     </div>
                 </div>
             ))}

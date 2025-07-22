@@ -25,12 +25,12 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
     useEffect(() => {
         if (lessonToEdit) {
             setFormData({
-                date: new Date(lessonToEdit.lessonDate).toISOString().split('T')[0],
+                date: new Date(lessonToEdit.lesson_date).toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
-                startTime: new Date(lessonToEdit.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                endTime: new Date(lessonToEdit.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                materialUrl: lessonToEdit.materialUrl || '',
-                materialName: lessonToEdit.materialName || ''
+                startTime: new Date(lessonToEdit.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                endTime: new Date(lessonToEdit.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                materialUrl: lessonToEdit.material_url || '',
+                materialName: lessonToEdit.material_name || ''
             });
         } else {
             const schedule = student?.tutoringDetails?.schedule || group?.schedule;
@@ -63,8 +63,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
         if (!formData.date || !formData.topic) return;
 
         setIsSubmitting(true);
-        let materialUrl = lessonToEdit?.materialUrl || '';
-        let materialName = lessonToEdit?.materialName || '';
+        let material_url = lessonToEdit?.material_url || '';
+        let material_name = lessonToEdit?.material_name || '';
 
         if (file) {
             const groupId = group?.id || student?.groupId;
@@ -75,8 +75,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                 return;
             }
             const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${file.name}`;
-            materialUrl = await uploadFile(file, materialPath);
-            materialName = file.name;
+            material_url = await uploadFile(file, materialPath);
+            material_name = file.name;
         }
 
         const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
@@ -84,19 +84,19 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
 
         const lessonData = {
             topic: formData.topic,
-            lessonDate: startDateTime.toISOString(),
-            startTime: startDateTime.toISOString(),
-            endTime: endDateTime.toISOString(),
-            materialUrl,
-            materialName,
+            lesson_date: startDateTime.toISOString(),
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            material_url,
+            material_name,
             status: 'Incomplete'
         };
 
         if (group) {
-            lessonData.groupId = group.id;
+            lessonData.group_id = group.id;
         } else if (student) {
-            lessonData.groupId = student.groupId;
-            lessonData.studentId = student.id;
+            lessonData.group_id = student.groupId;
+            lessonData.student_id = student.id;
         }
 
         try {
@@ -123,8 +123,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                 <FormSection title="Lesson Details">
                     <div className="sm:col-span-6"><FormInput label="Topic" name="topic" value={formData.topic} onChange={(e) => setFormData({...formData, topic: e.target.value})} required /></div>
                     <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} required /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="start_time" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="end_time" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} /></div>
                 </FormSection>
                 <FormSection title="Lesson Material">
                     <div className="sm:col-span-6">
@@ -134,7 +134,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                                 <Icon path={ICONS.UPLOAD} className="mx-auto h-12 w-12 text-gray-400" />
                                 <div className="flex text-sm text-gray-600">
                                     <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                                        <span>{file ? file.name : (formData.materialName || 'Upload a file')}</span>
+                                        <span>{file ? file.name : (formData.material_name || 'Upload a file')}</span>
                                         <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
                                     </label>
                                 </div>

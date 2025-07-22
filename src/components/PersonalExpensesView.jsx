@@ -33,7 +33,7 @@ const PersonalExpensesView = () => {
                             {expenses.length > 0 ? (
                                 expenses.map(expense => (
                                     <tr key={expense.id} className="hover:bg-gray-50">
-                                        <td className="p-4 text-gray-600">{formatDate(expense.date)}</td>
+                                        <td className="p-4 text-gray-600">{formatDate(expense.transaction_date)}</td>
                                         <td className="p-4 text-gray-800">{expense.category}</td>
                                         <td className="p-4 text-gray-800">{expense.description}</td>
                                         <td className="p-4 text-gray-800 font-semibold text-right">₺{expense.amount.toFixed(2)}</td>

@@ -60,16 +60,16 @@ const DashboardModule = ({ setActiveModule }) => {
                         eventName = `${student.full_name}: ${l.topic}`;
                         color = generateColorForString(student.id);
                     }
-                } else if (l.groupId) {
-                    const group = groups.find(g => g.id === l.groupId);
+                } else if (l.group_id) {
+                    const group = groups.find(g => g.id === l.group_id);
                     if (group) {
                         eventName = `${group.group_name}: ${l.topic}`;
                         color = group.color;
                     }
                 }
-                return {...l, type: 'lesson', eventName, startTime: new Date(l.lessonDate), color};
+                return {...l, type: 'lesson', eventName, startTime: new Date(l.lesson_date), color};
             }),
-            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay, color: 'rgb(16, 185, 129)'})),
+            ...(events || []).map(e => ({...e, type: 'event', eventName: e.event_name, startTime: new Date(e.start_time), endTime: e.end_time ? new Date(e.end_time) : null, isAllDay: e.is_all_day, color: 'rgb(16, 185, 129)'})),
             ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -212,7 +212,7 @@ const DashboardModule = ({ setActiveModule }) => {
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
         
-        const { type, id, eventName } = itemToDelete;
+        const { type, id, event_name } = itemToDelete;
         const table = type === 'lesson' ? 'lessons' : 'events';
 
         try {
@@ -369,7 +369,7 @@ const DashboardModule = ({ setActiveModule }) => {
                     onClose={() => setIsConfirmModalOpen(false)}
                     onConfirm={handleDeleteItem}
                     title={`Delete ${itemToDelete.type}`}
-                    message={`Are you sure you want to delete the ${itemToDelete.type} "${itemToDelete.eventName}"? This action cannot be undone.`}
+                    message={`Are you sure you want to delete the ${itemToDelete.type} "${itemToDelete.event_name}"? This action cannot be undone.`}
                 />
             )}
         </div>

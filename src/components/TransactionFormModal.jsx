@@ -26,22 +26,22 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
             setFormData({
                 type: transactionToEdit.type || '',
                 amount: transactionToEdit.amount || '',
-                date: new Date(transactionToEdit.date).toISOString().split('T')[0],
+                date: new Date(transactionToEdit.transaction_date).toISOString().split('T')[0],
                 description: transactionToEdit.description || '',
                 category: transactionToEdit.category || '',
-                invoiceUrl: transactionToEdit.invoiceUrl || '',
-                invoiceName: transactionToEdit.invoiceName || '',
+                invoice_url: transactionToEdit.invoice_url || '',
+                invoice_name: transactionToEdit.invoice_name || '',
             });
         } else {
-            setFormData({
+            setFormData(prev => ({
                 type: defaultCategory ? (defaultCategory.includes('business') ? 'expense-business' : 'expense-personal') : 'income-group',
                 amount: '',
                 date: new Date().toISOString().split('T')[0],
                 description: '',
                 category: defaultCategory || '',
-                invoiceUrl: '',
-                invoiceName: '',
-            });
+                invoice_url: '',
+                invoice_name: '',
+            }));
         }
         setInvoiceFile(null);
         setStatusMessage(null);
@@ -55,7 +55,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
             setInvoiceFile(e.target.files[0]);
-            setFormData(prev => ({ ...prev, invoiceName: e.target.files[0].name }));
+            setFormData(prev => ({ ...prev, invoice_name: e.target.files[0].name }));
         }
     };
 
@@ -74,7 +74,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
         const isBusinessExpense = formData.type === 'expense-business';
         const isMandatoryCategory = mandatoryInvoiceCategories.includes(formData.category);
 
-        if (isBusinessExpense && isMandatoryCategory && !invoiceFile && !formData.invoiceUrl) {
+        if (isBusinessExpense && isMandatoryCategory && !invoiceFile && !formData.invoice_url) {
             setStatusMessage({ type: 'error', text: 'Invoice upload is mandatory for this category.' });
             return;
         }
@@ -92,10 +92,10 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
 
             if (invoiceFile) {
                 const invoicePath = `transactions/${user.id}/${Date.now()}_${invoiceFile.name}`;
-                dataToSave.invoiceUrl = await uploadFile(invoiceFile, invoicePath);
+                dataToSave.invoice_url = await uploadFile(invoiceFile, invoicePath);
             }
 
-            dataToSave.date = new Date(formData.date).toISOString();
+            dataToSave.transaction_date = new Date(formData.date).toISOString();
             dataToSave.amount = parseFloat(formData.amount);
 
             if (transactionToEdit) {
@@ -162,7 +162,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
                         <div className="sm:col-span-6">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
                             <input type="file" name="invoice" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                            {formData.invoiceUrl && <p className="mt-2 text-sm text-gray-500">Current: <a href={formData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.invoiceName || 'View Invoice'}</a></p>}
+                            {formData.invoice_url && <p className="mt-2 text-sm text-gray-500">Current: <a href={formData.invoice_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.invoice_name || 'View Invoice'}</a></p>}
                             {statusMessage && statusMessage.type === 'error' && <p className="mt-2 text-sm text-red-600">{statusMessage.text}</p>}
                         </div>
                     )}
