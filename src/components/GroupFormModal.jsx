@@ -36,12 +36,12 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     ];
 
     const getInitialData = useCallback(() => ({
-        groupName: groupToEdit?.groupName || '',
+        group_name: groupToEdit?.group_name || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
         color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
-        startDate: groupToEdit?.startDate ? new Date(groupToEdit.startDate).toISOString().split('T')[0] : '',
-        programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
-        isArchived: groupToEdit?.isArchived || false,
+        start_date: groupToEdit?.start_date ? new Date(groupToEdit.start_date).toISOString().split('T')[0] : '',
+        program_length: groupToEdit?.program_length || '12', // Default to 12 weeks
+        is_archived: groupToEdit?.is_archived || false,
     }), [groupToEdit]);
 
     const [formData, setFormData] = useState(getInitialData());
@@ -82,7 +82,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        const { startDate, programLength, schedule } = formData;
+        const { start_date, program_length, schedule } = formData;
         let calculatedEndDate = null;
 
         if (startDate && programLength && schedule.days.length > 0) {
@@ -113,9 +113,9 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
 
         const dataToSave = {
             ...formData,
-            isArchived: formData.isArchived || false,
+            is_archived: formData.is_archived || false,
             schedule: JSON.stringify(formData.schedule),
-            startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+            start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
             endDate: calculatedEndDate ? calculatedEndDate.toISOString() : null,
         };
 
@@ -142,11 +142,11 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         <Modal isOpen={isOpen} onClose={onClose} title={groupToEdit ? "Edit Group" : "Add New Group"}>
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
-                    <FormInput label="Group Name" name="groupName" value={formData.groupName} onChange={handleChange} required />
+                    <FormInput label="Group Name" name="group_name" value={formData.group_name} onChange={handleChange} required />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <CustomDatePicker label="Start Date" name="startDate" value={formData.startDate} onChange={(e) => handleDateChange('startDate', e.target.value)} />
-                        <FormSelect label="Program Length (Weeks)" name="programLength" value={formData.programLength} onChange={handleChange}>
+                        <CustomDatePicker label="Start Date" name="start_date" value={formData.start_date} onChange={(e) => handleDateChange('start_date', e.target.value)} />
+                        <FormSelect label="Program Length (Weeks)" name="program_length" value={formData.program_length} onChange={handleChange}>
                             {[4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48].map(length => (
                                 <option key={length} value={length}>{length} Weeks</option>
                             ))}

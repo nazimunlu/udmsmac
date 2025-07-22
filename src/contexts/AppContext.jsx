@@ -61,9 +61,15 @@ const AppProvider = ({ children }) => {
       setArchivedStudents(allStudents.filter(s => s.isArchived));
 
       const allGroups = groupsData.map(g => {
-        let parsedGroup = { ...g };
+        let parsedGroup = {
+          ...g,
+          groupName: g.group_name,
+          startDate: g.start_date,
+          endDate: g.end_date,
+          programLength: g.program_length,
+          isArchived: g.is_archived,
+        };
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
-        parsedGroup.isArchived = !!g.isArchived; // Explicitly convert to boolean
         return parsedGroup;
       });
       setGroups(allGroups.filter(g => !g.isArchived));

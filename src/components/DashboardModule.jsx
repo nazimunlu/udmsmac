@@ -63,7 +63,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 } else if (l.groupId) {
                     const group = groups.find(g => g.id === l.groupId);
                     if (group) {
-                        eventName = `${group.groupName}: ${l.topic}`;
+                        eventName = `${group.group_name}: ${l.topic}`;
                         color = group.color;
                     }
                 }
