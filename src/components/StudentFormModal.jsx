@@ -72,7 +72,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             studentContact: studentToEdit?.studentContact || '',
             parentContact: studentToEdit?.parentContact || '',
             enrollmentDate: getSafeDateString(studentToEdit?.enrollmentDate) || new Date().toISOString().split('T')[0],
-            birthDate: getSafeDateString(studentToEdit?.birthDate) || '',
+            birth_date: getSafeDateString(studentToEdit?.birth_date) || '',
             isTutoring: studentToEdit?.isTutoring || false,
             groupId: studentToEdit?.groupId || null,
             documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
@@ -289,7 +289,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             onClose();
         } catch (error) {
             console.error("Error saving student:", error);
-            showNotification(`Failed to save student. Please check console for details.`, 'error');
+            showNotification(`Failed to save student: ${error.message || error.details || error.hint || JSON.stringify(error)}. Please check console for details.`, 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -305,7 +305,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <div className="sm:col-span-3">
                         <CustomDatePicker label="Enrollment Date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} />
                     </div>
-                    <div className="sm:col-span-3"><CustomDatePicker label="Birth Date (Optional)" name="birthDate" value={formData.birthDate} onChange={handleChange} /></div>
+                    <div className="sm:col-span-3"><CustomDatePicker label="Birth Date (Optional)" name="birth_date" value={formData.birth_date} onChange={handleChange} /></div>
                     <div className="sm:col-span-6 flex items-center justify-end pt-5">
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="isTutoring" checked={formData.isTutoring} onChange={handleChange} className="sr-only peer" />
