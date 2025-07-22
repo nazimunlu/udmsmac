@@ -57,7 +57,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 if (l.studentId) {
                     const student = students.find(s => s.id === l.studentId);
                     if (student) {
-                        eventName = `${student.fullName}: ${l.topic}`;
+                        eventName = `${student.full_name}: ${l.topic}`;
                         color = generateColorForString(student.id);
                     }
                 } else if (l.groupId) {
@@ -79,7 +79,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 return {
                     id: `bday-${s.id}`,
                     type: 'birthday',
-                    eventName: `${s.fullName}'s Birthday`,
+                    eventName: `${s.full_name}'s Birthday`,
                     startTime: nextBirthday,
                     allDay: true,
                     color: 'rgb(236, 72, 153)',
@@ -128,7 +128,7 @@ const DashboardModule = ({ setActiveModule }) => {
 
                 paymentsDue.push({
                     id: `payment-${student.id}`,
-                    message: `${student.fullName} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
+                    message: `${student.full_name} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
                     details: `Last due date was ${formatDate(lastDueDate)}.`,
                     type: 'warning',
                     studentId: student.id,

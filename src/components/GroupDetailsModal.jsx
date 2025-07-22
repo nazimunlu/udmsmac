@@ -137,7 +137,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                         {students.map(student => (
                                             <li key={student.id} className="p-3 bg-white rounded-lg shadow-sm flex items-center justify-between border border-gray-200 hover:border-blue-400 transition-all">
                                                 <div>
-                                                    <p className="font-semibold text-gray-800">{student.fullName}</p>
+                                                    <p className="font-semibold text-gray-800">{student.full_name}</p>
                                                     <p className="text-sm text-gray-500">{student.studentContact}</p>
                                                 </div>
                                                 <div className="flex items-center space-x-1">
@@ -182,7 +182,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                 </div>
             </Modal>
 
-            {studentToRemove && <ConfirmationModal isOpen={!!studentToRemove} onClose={() => setStudentToRemove(null)} onConfirm={handleRemoveStudent} title="Remove Student" message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`} />}
+            {studentToRemove && <ConfirmationModal isOpen={!!studentToRemove} onClose={() => setStudentToRemove(null)} onConfirm={handleRemoveStudent} title="Remove Student" message={`Are you sure you want to remove ${studentToRemove.full_name} from this group?`} />}
             {lessonToDelete && <ConfirmationModal isOpen={!!lessonToDelete} onClose={() => setLessonToDelete(null)} onConfirm={handleDeleteLesson} title="Delete Lesson" message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"? This action cannot be undone.`} />}
             
             <AddStudentToGroupModal isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} group={group} onStudentAdded={() => { fetchData(); fetchGroupDetails(); }} />

@@ -43,11 +43,11 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
 
             await supabase.from('transactions').insert([{
                 studentId: student.id,
-                studentName: student.fullName,
+                studentName: student.full_name,
                 amount: installmentToLog.amount,
                 date: new new Date().toISOString(), 
                 type: 'income-group',
-                description: `Installment #${installmentNumber} for ${student.fullName}`,
+                description: `Installment #${installmentNumber} for ${student.full_name}`,
                 installmentId: `${student.id}-${installmentNumber}`
             }]);
             fetchData();
@@ -130,7 +130,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         try {
             await supabase.from('transactions').insert([{
                 studentId: student.id,
-                studentName: student.fullName,
+                studentName: student.full_name,
                 amount: totalAmount,
                 date: new Date().toISOString(),
                 type: 'income-tutoring',
@@ -147,7 +147,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
     
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{student.fullName}</h3>
+            <h3 className="text-xl font-bold">{student.full_name}</h3>
             <p className="text-sm text-white/80">Payment Details</p>
         </div>
     );

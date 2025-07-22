@@ -41,7 +41,7 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group 
                     {isIncome && student && (
                         <div className="flex justify-between items-center">
                             <span className="font-medium text-gray-600">Student:</span>
-                            <span className="text-gray-800">{student.fullName}</span>
+                            <span className="text-gray-800">{student.full_name}</span>
                         </div>
                     )}
                     {isIncome && group && (

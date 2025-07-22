@@ -59,7 +59,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
                         {studentsToDisplay.length > 0 ? (
                             studentsToDisplay.map(s => (
                                 <div key={s.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                                    <span className="font-medium text-gray-800">{s.fullName}</span>
+                                    <span className="font-medium text-gray-800">{s.full_name}</span>
                                     <div className="flex space-x-2">
                                         <button
                                             type="button"
