@@ -245,13 +245,13 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Student Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.studentContact)}</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.student_contact)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Parent Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parentContact) || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parent_contact) || 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">

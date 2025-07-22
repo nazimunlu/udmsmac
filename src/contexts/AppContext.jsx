@@ -46,15 +46,21 @@ const AppProvider = ({ children }) => {
         let parsedStudent = {
           ...s,
           fullName: s.full_name,
+          studentContact: s.student_contact,
+          parentName: s.parent_name,
+          parentContact: s.parent_contact,
+          groupId: s.group_id,
+          isTutoring: s.is_tutoring,
+          isArchived: !!s.is_archived,
           enrollmentDate: s.enrollment_date,
           birthDate: s.birth_date,
+          pricePerLesson: s.price_per_lesson,
           feeDetails: s.fee_details,
           tutoringDetails: s.tutoring_details,
           documentNames: s.document_names,
         };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
         try { parsedStudent.documents = s.documents ? JSON.parse(s.documents) : {}; } catch (e) { console.error("Error parsing student documents:", e); parsedStudent.documents = {}; }
-        parsedStudent.isArchived = !!s.is_archived;
         return parsedStudent;
       });
       setStudents(allStudents.filter(s => !s.is_archived));
@@ -101,12 +107,14 @@ const AppProvider = ({ children }) => {
         transactionDate: t.transaction_date,
         invoiceUrl: t.invoice_url,
         invoiceName: t.invoice_name,
+        studentId: t.student_id,
       })));
       setExpenses(transactionsData.filter(t => t.type.startsWith('expense')).map(t => ({
         ...t,
         transactionDate: t.transaction_date,
         invoiceUrl: t.invoice_url,
         invoiceName: t.invoice_name,
+        studentId: t.student_id,
       })));
       setDocuments(documentsData.map(d => ({
         ...d,
@@ -114,7 +122,12 @@ const AppProvider = ({ children }) => {
         storagePath: d.storage_path,
       })));
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
-      setTodos(todosData);
+      setTodos(todosData.map(t => ({
+        ...t,
+        userId: t.user_id,
+        isCompleted: t.is_completed,
+        dueDate: t.due_date,
+      })));
     } catch (error) {
       setError(error.message);
     } finally {

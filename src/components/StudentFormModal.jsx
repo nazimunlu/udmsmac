@@ -69,8 +69,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
         return {
             full_name: studentToEdit?.full_name || '',
-            studentContact: studentToEdit?.studentContact || '',
-            parentContact: studentToEdit?.parentContact || '',
+            student_contact: studentToEdit?.student_contact || '',
+            parent_contact: studentToEdit?.parent_contact || '',
             enrollment_date: getSafeDateString(studentToEdit?.enrollment_date) || new Date().toISOString().split('T')[0],
             birth_date: getSafeDateString(studentToEdit?.birth_date) || '',
             isTutoring: studentToEdit?.isTutoring || false,
@@ -120,7 +120,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        if (name === 'studentContact' || name === 'parentContact') {
+        if (name === 'student_contact' || name === 'parent_contact') {
             setFormData(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
         } else if (name === 'isTutoring') {
              setFormData(prev => ({ ...prev, [name]: checked }));
@@ -300,8 +300,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             <form onSubmit={handleSubmit}>
                 <FormSection title="General Information">
                     <div className="sm:col-span-6"><FormInput label="Full Name" name="full_name" value={formData.full_name} onChange={handleChange} required /></div>
-                    <div className="sm:col-span-3"><FormInput label="Student Contact" name="studentContact" type="tel" value={formData.studentContact} onChange={handleChange} required /></div>
-                    <div className="sm:col-span-3"><FormInput label="Parent Contact (Optional)" name="parentContact" type="tel" value={formData.parentContact} onChange={handleChange} /></div>
+                    <div className="sm:col-span-3"><FormInput label="Student Contact" name="student_contact" type="tel" value={formData.student_contact} onChange={handleChange} required /></div>
+                    <div className="sm:col-span-3"><FormInput label="Parent Contact (Optional)" name="parent_contact" type="tel" value={formData.parent_contact} onChange={handleChange} /></div>
                     <div className="sm:col-span-3">
                         <CustomDatePicker label="Enrollment Date" name="enrollment_date" value={formData.enrollment_date} onChange={handleChange} />
                     </div>

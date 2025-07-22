@@ -21,7 +21,7 @@ const StudentPaymentsView = () => {
                     <li key={student.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
                         <div>
                             <p className="font-medium text-gray-800">{student.full_name}</p>
-                            <p className="text-sm text-gray-500">{student.studentContact}</p>
+                            <p className="text-sm text-gray-500">{student.student_contact}</p>
                         </div>
                         <button 
                             onClick={() => setSelectedStudent(student)}
