@@ -40,7 +40,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
             const filtered = allStudents.filter(s => 
                 !s.groupId && 
                 !s.isTutoring && 
-                s.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+                s.full_name.toLowerCase().includes(searchTerm.toLowerCase())
             );
             setUnassignedStudents(filtered);
         }
@@ -77,7 +77,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
                     {unassignedStudents.length > 0 ? (
                         unassignedStudents.map(student => (
                             <div key={student.id} className="flex justify-between items-center p-2 hover:bg-gray-100 rounded-md">
-                                <span>{student.fullName}</span>
+                                <span>{student.full_name}</span>
                                 <button
                                     onClick={() => handleAddStudent(student.id)}
                                     disabled={isSubmitting}

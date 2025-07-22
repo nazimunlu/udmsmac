@@ -68,7 +68,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         };
 
         return {
-            fullName: studentToEdit?.fullName || '',
+            full_name: studentToEdit?.full_name || '',
             studentContact: studentToEdit?.studentContact || '',
             parentContact: studentToEdit?.parentContact || '',
             enrollment_date: getSafeDateString(studentToEdit?.enrollment_date) || new Date().toISOString().split('T')[0],
@@ -259,8 +259,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             }
             const userId = user.id;
 
-            const nationalIdPath = `student_documents/${userId}/${dataToSave.fullName}_nationalId_${files.nationalId?.name || Date.now()}`;
-            const agreementPath = `student_documents/${userId}/${dataToSave.fullName}_agreement_${files.agreement?.name || Date.now()}`;
+            const nationalIdPath = `student_documents/${userId}/${dataToSave.full_name}_nationalId_${files.nationalId?.name || Date.now()}`;
+            const agreementPath = `student_documents/${userId}/${dataToSave.full_name}_agreement_${files.agreement?.name || Date.now()}`;
 
             if (files.nationalId) {
                 const nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
@@ -299,7 +299,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         <Modal isOpen={isOpen} onClose={onClose} title={studentToEdit ? "Edit Student" : "Enroll New Student"}>
             <form onSubmit={handleSubmit}>
                 <FormSection title="General Information">
-                    <div className="sm:col-span-6"><FormInput label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} required /></div>
+                    <div className="sm:col-span-6"><FormInput label="Full Name" name="full_name" value={formData.full_name} onChange={handleChange} required /></div>
                     <div className="sm:col-span-3"><FormInput label="Student Contact" name="studentContact" type="tel" value={formData.studentContact} onChange={handleChange} required /></div>
                     <div className="sm:col-span-3"><FormInput label="Parent Contact (Optional)" name="parentContact" type="tel" value={formData.parentContact} onChange={handleChange} /></div>
                     <div className="sm:col-span-3">

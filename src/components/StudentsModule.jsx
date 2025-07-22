@@ -44,13 +44,13 @@ const StudentsModule = () => {
         let studentsToDisplay = sourceStudents;
         if (searchQuery) {
             studentsToDisplay = sourceStudents.filter(s =>
-                s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.studentContact.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.parentContact?.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
         
-        return [...studentsToDisplay].sort((a, b) => a.fullName.localeCompare(b.fullName));
+        return [...studentsToDisplay].sort((a, b) => a.full_name.localeCompare(b.full_name));
     }, [students, archivedStudents, activeStudentType, searchQuery, groupStudents, tutoringStudents]);
     
     const openDeleteConfirmation = (student) => {
@@ -146,7 +146,7 @@ const StudentsModule = () => {
                             <tbody className="divide-y divide-gray-200">
                                 {filteredStudents.map(student => (
                                     <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="p-4 text-gray-800">{student.fullName}</td>
+                                        <td className="p-4 text-gray-800">{student.full_name}</td>
                                         <td className="p-4 text-gray-600">{formatPhoneNumber(student.studentContact)}</td>
                                         <td className="p-4 text-gray-600">
                                             {student.isTutoring ? (
@@ -178,7 +178,7 @@ const StudentsModule = () => {
                 <p className="text-center text-gray-500 py-8">No students found matching your criteria.</p>
             )}
             <StudentFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} studentToEdit={studentToEdit} />
-            <ConfirmationModal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleDeleteStudent} title="Delete Student" message={`Are you sure you want to delete ${studentToDelete?.fullName}? This action cannot be undone.`} />
+            <ConfirmationModal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleDeleteStudent} title="Delete Student" message={`Are you sure you want to delete ${studentToDelete?.full_name}? This action cannot be undone.`} />
             {studentToView && <StudentDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} student={studentToView} />}
         </div>
     );

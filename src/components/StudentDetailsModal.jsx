@@ -220,7 +220,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{currentStudent.fullName}</h3>
+            <h3 className="text-xl font-bold">{currentStudent.full_name}</h3>
             <p className="text-sm text-white/80">Student Details</p>
         </div>
     );

@@ -20,7 +20,7 @@ const StudentPaymentsView = () => {
                 {students.map(student => (
                     <li key={student.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
                         <div>
-                            <p className="font-medium text-gray-800">{student.fullName}</p>
+                            <p className="font-medium text-gray-800">{student.full_name}</p>
                             <p className="text-sm text-gray-500">{student.studentContact}</p>
                         </div>
                         <button 
