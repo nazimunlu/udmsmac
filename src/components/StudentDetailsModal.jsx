@@ -257,7 +257,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Enrollment Date</p>
-                            <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollmentDate)}</p>
+                            <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollment_date)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">

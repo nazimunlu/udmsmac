@@ -71,7 +71,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             fullName: studentToEdit?.fullName || '',
             studentContact: studentToEdit?.studentContact || '',
             parentContact: studentToEdit?.parentContact || '',
-            enrollmentDate: getSafeDateString(studentToEdit?.enrollmentDate) || new Date().toISOString().split('T')[0],
+            enrollment_date: getSafeDateString(studentToEdit?.enrollment_date) || new Date().toISOString().split('T')[0],
             birth_date: getSafeDateString(studentToEdit?.birth_date) || '',
             isTutoring: studentToEdit?.isTutoring || false,
             groupId: studentToEdit?.groupId || null,
@@ -97,8 +97,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     useEffect(() => {
         if (formData.isTutoring) {
             const { schedule, endDate, pricePerLesson } = formData.tutoringDetails;
-            const { enrollmentDate } = formData;
-            const lessons = calculateLessonsWithinRange(enrollmentDate, endDate, schedule.days);
+            const { enrollment_date } = formData;
+            const lessons = calculateLessonsWithinRange(enrollment_date, endDate, schedule.days);
             const totalFee = lessons * (parseFloat(pricePerLesson) || 0);
 
             setFormData(prev => ({
@@ -112,7 +112,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         }
     }, [
         formData.isTutoring, 
-        formData.enrollmentDate, 
+        formData.enrollment_date, 
         formData.tutoringDetails.endDate, 
         formData.tutoringDetails.schedule.days,
         formData.tutoringDetails.pricePerLesson
@@ -210,7 +210,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 if (
                     String(studentToEdit.fee_details?.totalFee || '') !== formData.fee_details.totalFee ||
                     String(studentToEdit.fee_details?.numberOfInstallments || '') !== formData.fee_details.numberOfInstallments ||
-                    studentToEdit.enrollmentDate !== formData.enrollmentDate
+                    studentToEdit.enrollment_date !== formData.enrollment_date
                 ) {
                     feeStructureChanged = true;
                 }
@@ -221,14 +221,14 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             if (dataToSave.isTutoring) {
                 dataToSave.installments = generateMonthlyInstallments(
                     dataToSave.tutoringDetails.totalCalculatedFee,
-                    dataToSave.enrollmentDate,
+                    dataToSave.enrollment_date,
                     dataToSave.tutoringDetails.endDate
                 );
             } else {
                 const totalFee = parseFloat(dataToSave.fee_details.totalFee) || 0;
                 const numInstallments = parseInt(dataToSave.fee_details.numberOfInstallments, 10) || 1;
                 const installmentAmount = totalFee > 0 && numInstallments > 0 ? totalFee / numInstallments : 0;
-                const startDate = new Date(dataToSave.enrollmentDate.replace(/-/g, '/'));
+                const startDate = new Date(dataToSave.enrollment_date.replace(/-/g, '/'));
                 
                 dataToSave.installments = Array.from({ length: numInstallments }, (_, i) => {
                     const dueDate = new Date(startDate);
@@ -303,7 +303,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <div className="sm:col-span-3"><FormInput label="Student Contact" name="studentContact" type="tel" value={formData.studentContact} onChange={handleChange} required /></div>
                     <div className="sm:col-span-3"><FormInput label="Parent Contact (Optional)" name="parentContact" type="tel" value={formData.parentContact} onChange={handleChange} /></div>
                     <div className="sm:col-span-3">
-                        <CustomDatePicker label="Enrollment Date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} />
+                        <CustomDatePicker label="Enrollment Date" name="enrollment_date" value={formData.enrollment_date} onChange={handleChange} />
                     </div>
                     <div className="sm:col-span-3"><CustomDatePicker label="Birth Date (Optional)" name="birth_date" value={formData.birth_date} onChange={handleChange} /></div>
                     <div className="sm:col-span-6 flex items-center justify-end pt-5">
