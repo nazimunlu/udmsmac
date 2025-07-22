@@ -74,7 +74,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             enrollment_date: getSafeDateString(studentToEdit?.enrollment_date) || new Date().toISOString().split('T')[0],
             birth_date: getSafeDateString(studentToEdit?.birth_date) || '',
             isTutoring: studentToEdit?.isTutoring || false,
-            groupId: studentToEdit?.groupId || null,
+            group_id: studentToEdit?.group_id || null,
             documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
             document_names: safeParse(studentToEdit?.document_names, { nationalId: '', agreement: '' }),
             fee_details: safeParse(studentToEdit?.fee_details, { totalFee: '12000', numberOfInstallments: '3' }),
@@ -355,9 +355,9 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <>
                         <FormSection title="Group & Financial Details">
                             <div className="sm:col-span-6">
-                                <FormSelect label="Assign to Group" name="groupId" value={formData.groupId || ''} onChange={handleChange}>
+                                <FormSelect label="Assign to Group" name="group_id" value={formData.group_id || ''} onChange={handleChange}>
                                     <option value="">Select a group</option>
-                                    {groups.map(group => <option key={group.id} value={group.id}>{group.groupName}</option>)}
+                                    {groups.map(group => <option key={group.id} value={group.id}>{group.group_name}</option>)}
                                 </FormSelect>
                             </div>
                             <div className="sm:col-span-3"><FormInput label="Total Fee (₺)" name="totalFee" type="number" value={formData.fee_details.totalFee} onChange={handleFeeChange} /></div>

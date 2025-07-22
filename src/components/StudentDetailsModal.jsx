@@ -31,9 +31,9 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         let query = supabase.from('lessons');
 
         if (currentStudent.isTutoring) {
-            query = query.select('*').eq('studentId', currentStudent.id);
-        } else if (currentStudent.groupId) {
-            query = query.select('*').eq('groupId', currentStudent.groupId);
+            query = query.select('*').eq('student_id', currentStudent.id);
+        } else if (currentStudent.group_id) {
+            query = query.select('*').eq('group_id', currentStudent.group_id);
         } else {
             setIsLoading(false);
             setLessons([]);
@@ -129,8 +129,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     }, [lessons, currentStudent.isTutoring]);
     
     const group = useMemo(() => {
-        if (currentStudent?.groupId && groups.length > 0) {
-            return groups.find(g => g.id === currentStudent.groupId);
+        if (currentStudent?.group_id && groups.length > 0) {
+            return groups.find(g => g.id === currentStudent.group_id);
         }
         return null;
     }, [currentStudent, groups]);

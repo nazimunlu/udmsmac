@@ -38,7 +38,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
     useEffect(() => {
         if (isOpen) {
             const filtered = allStudents.filter(s => 
-                !s.groupId && 
+                !s.group_id && 
                 !s.isTutoring && 
                 s.full_name.toLowerCase().includes(searchTerm.toLowerCase())
             );
@@ -49,7 +49,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
     const handleAddStudent = async (studentId) => {
         setIsSubmitting(true);
         try {
-            const { error } = await supabase.from('students').update({ groupId: group.id }).match({ id: studentId });
+            const { error } = await supabase.from('students').update({ group_id: group.id }).match({ id: studentId });
             if (error) throw error;
             setSearchTerm(''); // Clear search after adding
             fetchData();

@@ -67,14 +67,14 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
         let material_name = lessonToEdit?.material_name || '';
 
         if (file) {
-            const groupId = group?.id || student?.groupId;
+            const group_id = group?.id || student?.group_id;
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 showNotification('You must be logged in to upload materials.', 'error');
                 setIsSubmitting(false);
                 return;
             }
-            const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${file.name}`;
+            const materialPath = `lesson_materials/${user.id}/${group_id}/${Date.now()}_${file.name}`;
             material_url = await uploadFile(file, materialPath);
             material_name = file.name;
         }
@@ -95,7 +95,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
         if (group) {
             lessonData.group_id = group.id;
         } else if (student) {
-            lessonData.group_id = student.groupId;
+            lessonData.group_id = student.group_id;
             lessonData.student_id = student.id;
         }
 

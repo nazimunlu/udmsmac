@@ -54,8 +54,8 @@ const DashboardModule = ({ setActiveModule }) => {
             ...(lessons || []).map(l => {
                 let eventName = l.topic;
                 let color;
-                if (l.studentId) {
-                    const student = students.find(s => s.id === l.studentId);
+                if (l.student_id) {
+                    const student = students.find(s => s.id === l.student_id);
                     if (student) {
                         eventName = `${student.full_name}: ${l.topic}`;
                         color = generateColorForString(student.id);
@@ -131,7 +131,7 @@ const DashboardModule = ({ setActiveModule }) => {
                     message: `${student.full_name} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
                     details: `Last due date was ${formatDate(lastDueDate)}.`,
                     type: 'warning',
-                    studentId: student.id,
+                    student_id: student.id,
                 });
             }
         });
