@@ -70,6 +70,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         return {
             full_name: studentToEdit?.full_name || '',
             student_contact: studentToEdit?.student_contact || '',
+            parent_name: studentToEdit?.parent_name || '',
             parent_contact: studentToEdit?.parent_contact || '',
             enrollment_date: getSafeDateString(studentToEdit?.enrollment_date) || new Date().toISOString().split('T')[0],
             birth_date: getSafeDateString(studentToEdit?.birth_date) || '',
@@ -301,6 +302,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 <FormSection title="General Information">
                     <div className="sm:col-span-6"><FormInput label="Full Name" name="full_name" value={formData.full_name} onChange={handleChange} required /></div>
                     <div className="sm:col-span-3"><FormInput label="Student Contact" name="student_contact" type="tel" value={formData.student_contact} onChange={handleChange} required /></div>
+                    <div className="sm:col-span-3"><FormInput label="Parent Name (Optional)" name="parent_name" value={formData.parent_name} onChange={handleChange} /></div>
                     <div className="sm:col-span-3"><FormInput label="Parent Contact (Optional)" name="parent_contact" type="tel" value={formData.parent_contact} onChange={handleChange} /></div>
                     <div className="sm:col-span-3">
                         <CustomDatePicker label="Enrollment Date" name="enrollment_date" value={formData.enrollment_date} onChange={handleChange} />
