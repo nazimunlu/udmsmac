@@ -16,7 +16,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
 
     const defaultPricePerLesson = useMemo(() => {
-        return settings && settings.pricePerLesson ? parseFloat(settings.pricePerLesson) : 800;
+        return settings && settings.price_per_lesson ? parseFloat(settings.price_per_lesson) : 800;
     }, [settings]);
 
     useEffect(() => {
