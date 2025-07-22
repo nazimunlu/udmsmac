@@ -30,7 +30,7 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                         <li key={doc.id} className="py-3 flex justify-between items-center">
                             <div>
                                 <p className="font-medium text-gray-800">{doc.name}</p>
-                                <p className="text-sm text-gray-500">Uploaded: {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : 'N/A'}</p>
+                                <p className="text-sm text-gray-500">Uploaded: {doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : 'N/A'}</p>
                             </div>
                             <div className="flex space-x-2">
                                 <a href={doc.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700">
@@ -99,8 +99,8 @@ const DocumentsModule = () => {
             const { error: dbError } = await supabase.from('documents').delete().match({ id: documentToDelete.id });
             if (dbError) throw dbError;
 
-            if (documentToDelete.storagePath) {
-                const { error: storageError } = await supabase.storage.from('udms').remove([documentToDelete.storagePath]);
+            if (documentToDelete.storage_path) {
+                const { error: storageError } = await supabase.storage.from('udms').remove([documentToDelete.storage_path]);
                 if (storageError) {
                     console.error("Error deleting file from Supabase:", storageError);
                     showNotification('Failed to delete file from storage.', 'error');

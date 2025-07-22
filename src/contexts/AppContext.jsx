@@ -108,7 +108,11 @@ const AppProvider = ({ children }) => {
         invoiceUrl: t.invoice_url,
         invoiceName: t.invoice_name,
       })));
-      setDocuments(documentsData);
+      setDocuments(documentsData.map(d => ({
+        ...d,
+        uploadDate: d.upload_date,
+        storagePath: d.storage_path,
+      })));
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
       setTodos(todosData);
     } catch (error) {
