@@ -27,9 +27,9 @@ const InvoiceGenerator = ({ student, payment }) => {
 
             <div className="mb-8">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Bill To:</h3>
-                <p className="font-medium text-gray-800">{student.full_name}</p>
-                <p className="text-sm text-gray-600">Contact: {formatPhoneNumber(student.student_contact)}</p>
-                {student.parent_contact && <p className="text-sm text-gray-600">Parent: {formatPhoneNumber(student.parent_contact)}</p>}
+                <p className="font-medium text-gray-800">{student.fullName}</p>
+                <p className="text-sm text-gray-600">Contact: {formatPhoneNumber(student.studentContact)}</p>
+                {student.parentContact && <p className="text-sm text-gray-600">Parent: {formatPhoneNumber(student.parentContact)}</p>}
             </div>
 
             <div className="overflow-x-auto mb-8">
@@ -42,7 +42,7 @@ const InvoiceGenerator = ({ student, payment }) => {
                     </thead>
                     <tbody>
                         <tr className="border-b border-gray-200">
-                            <td className="py-3 px-4 text-gray-800">{`Installment #${payment.number} for ${student.full_name} - ${student.isTutoring ? 'Tutoring' : 'Group'} Course` }</td>
+                            <td className="py-3 px-4 text-gray-800">{`Installment #${payment.number} for ${student.fullName} - ${student.isTutoring ? 'Tutoring' : 'Group'} Course` }</td>
                             <td className="py-3 px-4 text-right text-gray-800">₺{payment.amount ? payment.amount.toFixed(2) : '0.00'}</td>
                         </tr>
                         {/* Add more rows for other charges/discounts if applicable */}

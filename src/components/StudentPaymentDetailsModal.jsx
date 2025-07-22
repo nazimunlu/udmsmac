@@ -5,6 +5,7 @@ import { FormInput } from './Form';
 import { formatDate } from '../utils/formatDate';
 import InvoiceGenerator from './InvoiceGenerator';
 import { useAppContext } from '../contexts/AppContext';
+import apiClient from '../apiClient';
 
 const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent }) => {
     const { fetchData } = useAppContext();
@@ -19,7 +20,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
 
     const tutoringPayments = useMemo(() => {
         return transactions
-            .filter(t => t.expense_type === 'income-tutoring' && t.studentId === student.id)
+            .filter(t => t.expenseType === 'income-tutoring' && t.studentId === student.id)
             .sort((a,b) => new Date(b.date) - new Date(a.date));
     }, [transactions, student.id]);
 
@@ -34,22 +35,21 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         const installmentToLog = student.installments.find(inst => inst.number === installmentNumber);
 
         try {
-            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
-            if (error) throw error;
+            await apiClient.update('students', student.id, { installments: updatedInstallments });
 
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
             }
 
-            await supabase.from('transactions').insert([{
+            await apiClient.create('transactions', {
                 studentId: student.id,
-                studentName: student.full_name,
+                studentName: student.fullName,
                 amount: installmentToLog.amount,
-                date: new new Date().toISOString(), 
-                expense_type: 'income-group',
-                description: `Installment #${installmentNumber} for ${student.full_name}`,
+                transactionDate: new Date().toISOString(), 
+                expenseType: 'income-group',
+                description: `Installment #${installmentNumber} for ${student.fullName}`,
                 installmentId: `${student.id}-${installmentNumber}`
-            }]);
+            });
             fetchData();
 
         } catch (error) {
@@ -57,29 +57,27 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         }
     };
 
-    const handleUndoInstallmentPayment = async (installmentNumber) => {
+    const handleUnlogInstallmentPayment = async (installmentNumber) => {
         const updatedInstallments = student.installments.map(inst => {
             if (inst.number === installmentNumber) {
-                const newInst = { ...inst };
-                delete newInst.paymentDate;
-                return { ...newInst, status: 'Unpaid' };
+                return { ...inst, status: 'Unpaid', paymentDate: null };
             }
             return inst;
         });
 
         try {
-            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
-            if (error) throw error;
+            await apiClient.update('students', student.id, { installments: updatedInstallments });
 
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
             }
 
-            await supabase.from('transactions').delete().match({ installmentId: `${student.id}-${installmentNumber}` });
+            // Delete the transaction
+            await apiClient.delete('transactions', `${student.id}-${installmentNumber}`);
             fetchData();
 
         } catch (error) {
-            console.error("Error undoing payment: ", error);
+            console.error("Error unlogging payment: ", error);
         }
     };
 
@@ -103,8 +101,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
         });
 
         try {
-            const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: student.id });
-            if (error) throw error;
+            await apiClient.update('students', student.id, { installments: updatedInstallments });
             setEditingInstallment(null);
             if (onUpdateStudent) {
                 onUpdateStudent({ ...student, installments: updatedInstallments });
@@ -116,26 +113,30 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
     };
     
     const handleLogTutoringPayment = async () => {
-        setIsSubmitting(true);
-        const hourlyRate = parseFloat(student.tutoringDetails?.hourlyRate) || 0;
-        const numHours = parseInt(hours, 10) || 0;
-        if (hourlyRate <= 0 || numHours <= 0) {
+        if (!hours || hours <= 0) {
+            alert("Please enter a valid number of hours.");
+            setIsSubmitting(true);
+            return;
+        }
+
+        const hourlyRate = student.tutoringDetails?.hourlyRate;
+        if (!hourlyRate || hourlyRate <= 0) {
             alert("Please enter a valid hourly rate and number of hours.");
             setIsSubmitting(false);
             return;
         }
 
-        const totalAmount = hourlyRate * numHours;
+        const totalAmount = hourlyRate * hours;
 
         try {
-            await supabase.from('transactions').insert([{
+            await apiClient.create('transactions', {
                 studentId: student.id,
-                studentName: student.full_name,
+                studentName: student.fullName,
                 amount: totalAmount,
-                date: new Date().toISOString(),
-                expense_type: 'income-tutoring',
-                description: `Tutoring payment for ${numHours} hour(s).`
-            }]);
+                transactionDate: new Date().toISOString(),
+                expenseType: 'income-tutoring',
+                description: `Tutoring payment for ${hours} hour(s).`
+            });
             setHours(1);
             fetchData();
         } catch (error) {
@@ -147,7 +148,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
     
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{student.full_name}</h3>
+            <h3 className="text-xl font-bold">{student.fullName}</h3>
             <p className="text-sm text-white/80">Payment Details</p>
         </div>
     );
@@ -246,7 +247,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
                                                     <button onClick={() => handleGenerateInvoice(inst)} className="px-3 py-1 text-sm rounded-lg text-white bg-purple-600 hover:bg-purple-700">Invoice</button>
                                                 </div>
                                             ) : (
-                                                <button onClick={() => handleUndoInstallmentPayment(inst.number)} className="px-3 py-1 text-sm rounded-lg text-white bg-yellow-600 hover:bg-yellow-700">
+                                                <button onClick={() => handleUnlogInstallmentPayment(inst.number)} className="px-3 py-1 text-sm rounded-lg text-white bg-yellow-600 hover:bg-yellow-700">
                                                     Undo Payment
                                                 </button>
                                             )}

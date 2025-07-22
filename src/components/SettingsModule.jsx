@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Icon, ICONS } from './Icons';
@@ -13,31 +13,27 @@ const SettingsModule = () => {
             const zip = new JSZip();
             const dataFolder = zip.folder('exported_data');
 
-            const { data: studentsData, error: studentsError } = await supabase.from('students').select('*');
-            if (studentsError) throw studentsError;
+            const studentsData = await apiClient.getAll('students');
             dataFolder.file('students.json', JSON.stringify(studentsData.map(s => ({
                 ...s,
                 installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.fee_details ? JSON.parse(s.fee_details) : {},
-                tutoringDetails: s.tutoring_details ? JSON.parse(s.tutoring_details) : {},
+                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
                 documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.document_names ? JSON.parse(s.document_names) : {},
+                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
             })), null, 2));
 
-            const { data: groupsData, error: groupsError } = await supabase.from('groups').select('*');
-            if (groupsError) throw groupsError;
+            const groupsData = await apiClient.getAll('groups');
             dataFolder.file('groups.json', JSON.stringify(groupsData.map(g => ({
                 ...g,
                 schedule: g.schedule ? JSON.parse(g.schedule) : {},
             })), null, 2));
 
-            const { data: transactionsData, error: transactionsError } = await supabase.from('transactions').select('*');
-            if (transactionsError) throw transactionsError;
+            const transactionsData = await apiClient.getAll('transactions');
             dataFolder.file('transactions.json', JSON.stringify(transactionsData, null, 2));
 
-            const { data: documentsData, error: documentsError } = await supabase.from('documents').select('*');
-            if (documentsError) throw documentsError;
-            dataFolder.file('documents_metadata.json', JSON.stringify(documentsData, null, 2));
+            const documentsData = await apiClient.getAll('documents');
+            dataFolder.file('documents.json', JSON.stringify(documentsData, null, 2));
 
             zip.generateAsync({ type: 'blob' }).then(function(content) {
                 saveAs(content, 'udms_data_export.zip');

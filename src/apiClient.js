@@ -1,5 +1,6 @@
 
 import { supabase } from './supabaseClient';
+import { convertKeysToCamelCase, convertKeysToSnakeCase } from './utils/caseConverter';
 
 // Generic API client for Supabase
 const apiClient = {
@@ -7,35 +8,37 @@ const apiClient = {
     getAll: async (tableName) => {
         const { data, error } = await supabase.from(tableName).select('*');
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Fetch a single record by ID
     getById: async (tableName, id) => {
         const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single();
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Create a new record
     create: async (tableName, newData) => {
-        const { data, error } = await supabase.from(tableName).insert(newData).single();
+        const snakeCaseData = convertKeysToSnakeCase(newData);
+        const { data, error } = await supabase.from(tableName).insert(snakeCaseData).single();
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Update a record by ID
     update: async (tableName, id, updatedData) => {
-        const { data, error } = await supabase.from(tableName).update(updatedData).eq('id', id).single();
+        const snakeCaseData = convertKeysToSnakeCase(updatedData);
+        const { data, error } = await supabase.from(tableName).update(snakeCaseData).eq('id', id).single();
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Delete a record by ID
     delete: async (tableName, id) => {
         const { data, error } = await supabase.from(tableName).delete().eq('id', id);
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Fetch students with their group information
@@ -45,14 +48,14 @@ const apiClient = {
             group:groups(*)
         `);
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 
     // Fetch groups with their student count
     getGroupsWithStudentCount: async () => {
         const { data, error } = await supabase.rpc('get_groups_with_student_count');
         if (error) throw error;
-        return data;
+        return convertKeysToCamelCase(data);
     },
 };
 

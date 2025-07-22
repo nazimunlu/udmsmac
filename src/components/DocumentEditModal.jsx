@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import Modal from './Modal';
 import { FormInput, FormSelect } from './Form';
 import { useNotification } from '../contexts/NotificationContext';
@@ -33,8 +33,7 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
         setIsSubmitting(true);
 
         try {
-            const { error } = await supabase.from('documents').update({ name: formData.name, type: formData.type }).match({ id: documentToEdit.id });
-            if (error) throw error;
+            await apiClient.update('documents', documentToEdit.id, { name: formData.name, type: formData.type });
             showNotification('Document updated successfully!', 'success');
             fetchData();
             onClose();

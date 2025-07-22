@@ -27,7 +27,7 @@ const StudentPaymentsDetailModal = ({ isOpen, onClose, students, payments }) => 
                         className="p-3 bg-gray-100 rounded-lg cursor-pointer hover:bg-blue-100"
                         onClick={() => handleSelectStudent(student)}
                     >
-                        {student.full_name}
+                        {student.fullName}
                     </li>
                 ))}
             </ul>
@@ -54,7 +54,7 @@ const StudentPaymentsDetailModal = ({ isOpen, onClose, students, payments }) => 
                     Back to Student List
                 </button>
                 <div className="flex items-center mb-4">
-                    <h3 className="text-xl font-bold text-gray-800">{selectedStudent.full_name}</h3>
+                    <h3 className="text-xl font-bold text-gray-800">{selectedStudent.fullName}</h3>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-blue-50 rounded-lg text-center">
                     <div>

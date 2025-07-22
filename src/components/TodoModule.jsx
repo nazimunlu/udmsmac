@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiClient from '../apiClient';
 import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import { useNotification } from '../contexts/NotificationContext';
@@ -36,38 +37,40 @@ const TodoModule = () => {
         }
 
         if (user) {
-            const { error } = await supabase.from('todos').insert([{ 
-                task: newTask, 
-                user_id: user.id,
-                due_date: dueDate
-            }]);
-            if (error) {
-                showNotification('Error adding task.', 'error');
-                console.error('Error adding task:', error);
-            } else {
+            try {
+                await apiClient.create('todos', { 
+                    task: newTask, 
+                    userId: user.id,
+                    dueDate: dueDate
+                });
                 setNewTask('');
                 setDueTime('');
                 fetchData();
+            } catch (error) {
+                showNotification('Error adding task.', 'error');
+                console.error('Error adding task:', error);
             }
         }
         setIsSubmitting(false);
     };
 
-    const handleToggleComplete = async (id, is_completed) => {
-        const { error } = await supabase.from('todos').update({ is_completed: !is_completed }).match({ id });
-        if (error) {
-            showNotification('Error updating task.', 'error');
-        } else {
+    const toggleTask = async (id, isCompleted) => {
+        try {
+            await apiClient.update('todos', id, { isCompleted: !isCompleted });
             fetchData();
+        } catch (error) {
+            showNotification('Error updating task.', 'error');
+            console.error('Error updating task:', error);
         }
     };
 
-    const handleDeleteTask = async (id) => {
-        const { error } = await supabase.from('todos').delete().match({ id });
-        if (error) {
-            showNotification('Error deleting task.', 'error');
-        } else {
+    const deleteTask = async (id) => {
+        try {
+            await apiClient.delete('todos', id);
             fetchData();
+        } catch (error) {
+            showNotification('Error deleting task.', 'error');
+            console.error('Error deleting task:', error);
         }
     };
 

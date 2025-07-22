@@ -13,6 +13,7 @@ import { useAppContext } from '../contexts/AppContext';
 import SettingsModule from './SettingsModule';
 import LoadingSpinner from './LoadingSpinner';
 import TodoModule from './TodoModule';
+import apiClient from '../apiClient';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
@@ -54,22 +55,22 @@ const DashboardModule = ({ setActiveModule }) => {
             ...(lessons || []).map(l => {
                 let eventName = l.topic;
                 let color;
-                if (l.student_id) {
-                    const student = students.find(s => s.id === l.student_id);
+                if (l.studentId) {
+                    const student = students.find(s => s.id === l.studentId);
                     if (student) {
-                        eventName = `${student.full_name}: ${l.topic}`;
+                        eventName = `${student.fullName}: ${l.topic}`;
                         color = generateColorForString(student.id);
                     }
-                } else if (l.group_id) {
-                    const group = groups.find(g => g.id === l.group_id);
+                } else if (l.groupId) {
+                    const group = groups.find(g => g.id === l.groupId);
                     if (group) {
-                        eventName = `${group.group_name}: ${l.topic}`;
+                        eventName = `${group.groupName}: ${l.topic}`;
                         color = group.color;
                     }
                 }
-                return {...l, type: 'lesson', eventName, startTime: new Date(l.lesson_date), color};
+                return {...l, type: 'lesson', eventName, startTime: new Date(l.lessonDate), color};
             }),
-            ...(events || []).map(e => ({...e, type: 'event', eventName: e.event_name, startTime: new Date(e.start_time), endTime: e.end_time ? new Date(e.end_time) : null, isAllDay: e.is_all_day, color: 'rgb(16, 185, 129)'})),
+            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay, color: 'rgb(16, 185, 129)'})),
             ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -79,7 +80,7 @@ const DashboardModule = ({ setActiveModule }) => {
                 return {
                     id: `bday-${s.id}`,
                     type: 'birthday',
-                    eventName: `${s.full_name}'s Birthday`,
+                    eventName: `${s.fullName}'s Birthday`,
                     startTime: nextBirthday,
                     allDay: true,
                     color: 'rgb(236, 72, 153)',
@@ -128,7 +129,7 @@ const DashboardModule = ({ setActiveModule }) => {
 
                 paymentsDue.push({
                     id: `payment-${student.id}`,
-                    message: `${student.full_name} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
+                    message: `${student.fullName} has ${overdueInstallments.length} overdue payment(s) totaling ${totalDue.toFixed(2)} ₺.`,
                     details: `Last due date was ${formatDate(lastDueDate)}.`,
                     type: 'warning',
                     student_id: student.id,
@@ -212,12 +213,11 @@ const DashboardModule = ({ setActiveModule }) => {
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
         
-        const { type, id, event_name } = itemToDelete;
+        const { type, id, eventName } = itemToDelete;
         const table = type === 'lesson' ? 'lessons' : 'events';
 
         try {
-            const { error } = await supabase.from(table).delete().match({ id });
-            if (error) throw error;
+            await apiClient.delete(table, id);
             showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully!`, 'success');
             fetchData();
         } catch (error) {
@@ -226,6 +226,15 @@ const DashboardModule = ({ setActiveModule }) => {
         } finally {
             setIsConfirmModalOpen(false);
             setItemToDelete(null);
+        }
+    };
+
+    const handleDelete = async (table, id) => {
+        try {
+            await apiClient.delete(table, id);
+            fetchData();
+        } catch (error) {
+            console.error(`Error deleting from ${table}:`, error);
         }
     };
 

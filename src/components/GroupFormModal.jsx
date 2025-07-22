@@ -6,6 +6,7 @@ import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
+import apiClient from '../apiClient';
 
 const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const { fetchData } = useAppContext();
@@ -96,7 +97,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             };
             const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
 
-            while (weeksCounted < parseInt(programLength, 10)) {
+            while (weeksCounted < parseInt(program_length, 10)) {
                 if (scheduledDayNumbers.includes(current.getDay())) {
                     daysInWeek++;
                 }
@@ -121,11 +122,9 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
 
         try {
             if (groupToEdit) {
-                const { error } = await supabase.from('groups').update(dataToSave).match({ id: groupToEdit.id });
-                if (error) throw error;
+                await apiClient.update('groups', groupToEdit.id, dataToSave);
             } else {
-                const { error } = await supabase.from('groups').insert([dataToSave]);
-                if (error) throw error;
+                await apiClient.create('groups', dataToSave);
                 showNotification('Group added successfully!', 'success');
             }
             fetchData();

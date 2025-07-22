@@ -4,6 +4,7 @@ import Modal from './Modal';
 import { FormInput, FormSelect, FormSection } from './Form';
 import CustomDatePicker from './CustomDatePicker';
 import { useAppContext } from '../contexts/AppContext';
+import apiClient from '../apiClient';
 
 const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCategory }) => {
     const { fetchData } = useAppContext();
@@ -99,11 +100,9 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
             dataToSave.amount = parseFloat(formData.amount);
 
             if (transactionToEdit) {
-                const { error } = await supabase.from('transactions').update(dataToSave).match({ id: transactionToEdit.id });
-                if (error) throw error;
+                await apiClient.update('transactions', transactionToEdit.id, dataToSave);
             } else {
-                const { error } = await supabase.from('transactions').insert([dataToSave]);
-                if (error) throw error;
+                await apiClient.create('transactions', dataToSave);
             }
             fetchData();
             onClose();

@@ -42,92 +42,38 @@ const AppProvider = ({ children }) => {
         apiClient.getAll('todos'),
       ]);
 
+      // Parse JSON fields for students
       const allStudents = studentsData.map(s => {
-        let parsedStudent = {
-          ...s,
-          fullName: s.full_name,
-          studentContact: s.student_contact,
-          parentName: s.parent_name,
-          parentContact: s.parent_contact,
-          groupId: s.group_id,
-          isTutoring: s.is_tutoring,
-          isArchived: !!s.is_archived,
-          enrollmentDate: s.enrollment_date,
-          birthDate: s.birth_date,
-          pricePerLesson: s.price_per_lesson,
-          feeDetails: s.fee_details,
-          tutoringDetails: s.tutoring_details,
-          documentNames: s.document_names,
-        };
+        let parsedStudent = { ...s };
         try { parsedStudent.installments = s.installments ? JSON.parse(s.installments) : []; } catch (e) { console.error("Error parsing student installments:", e); parsedStudent.installments = []; }
         try { parsedStudent.documents = s.documents ? JSON.parse(s.documents) : {}; } catch (e) { console.error("Error parsing student documents:", e); parsedStudent.documents = {}; }
         return parsedStudent;
       });
-      setStudents(allStudents.filter(s => !s.is_archived));
-      setArchivedStudents(allStudents.filter(s => s.is_archived));
+      setStudents(allStudents.filter(s => !s.isArchived));
+      setArchivedStudents(allStudents.filter(s => s.isArchived));
 
+      // Parse JSON fields for groups
       const allGroups = groupsData.map(g => {
-        let parsedGroup = {
-          ...g,
-          groupName: g.group_name,
-          startDate: g.start_date,
-          endDate: g.end_date,
-          programLength: g.program_length,
-          isArchived: g.is_archived,
-        };
+        let parsedGroup = { ...g };
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
         return parsedGroup;
       });
-      setGroups(allGroups.filter(g => !g.is_archived));
-      setArchivedGroups(allGroups.filter(g => g.is_archived));
+      setGroups(allGroups.filter(g => !g.isArchived));
+      setArchivedGroups(allGroups.filter(g => g.isArchived));
 
+      // Parse JSON fields for lessons
       setLessons(lessonsData.map(l => {
-        let parsedLesson = {
-          ...l,
-          lessonDate: l.lesson_date,
-          startTime: l.start_time,
-          endTime: l.end_time,
-          materialUrl: l.material_url,
-          materialName: l.material_name,
-          groupId: l.group_id,
-          studentId: l.student_id,
-        };
+        let parsedLesson = { ...l };
         try { parsedLesson.attendance = l.attendance ? JSON.parse(l.attendance) : {}; } catch (e) { console.error("Error parsing lesson attendance:", e); parsedLesson.attendance = {}; }
         return parsedLesson;
       }));
-      setEvents(eventsData.map(e => ({
-        ...e,
-        eventName: e.event_name,
-        startTime: e.start_time,
-        endTime: e.end_time,
-        isAllDay: e.is_all_day,
-      })));
-      setPayments(transactionsData.filter(t => t.expense_type.startsWith('income')).map(t => ({
-        ...t,
-        transactionDate: t.transaction_date,
-        invoiceUrl: t.invoice_url,
-        invoiceName: t.invoice_name,
-        studentId: t.student_id,
-      })));
-      setExpenses(transactionsData.filter(t => t.expense_type.startsWith('expense')).map(t => ({
-        ...t,
-        transactionDate: t.transaction_date,
-        invoiceUrl: t.invoice_url,
-        invoiceName: t.invoice_name,
-        studentId: t.student_id,
-      })));
-      setDocuments(documentsData.map(d => ({
-        ...d,
-        uploadDate: d.upload_date,
-        storagePath: d.storage_path,
-      })));
+
+      setEvents(eventsData);
+      setPayments(transactionsData.filter(t => t.expenseType?.startsWith('income')));
+      setExpenses(transactionsData.filter(t => t.expenseType?.startsWith('expense')));
+      setDocuments(documentsData);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
-      setTodos(todosData.map(t => ({
-        ...t,
-        userId: t.user_id,
-        isCompleted: t.is_completed,
-        dueDate: t.due_date,
-      })));
+      setTodos(todosData);
     } catch (error) {
       setError(error.message);
     } finally {

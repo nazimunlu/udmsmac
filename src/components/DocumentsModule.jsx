@@ -6,6 +6,7 @@ import DocumentEditModal from './DocumentEditModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
+import apiClient from '../apiClient';
 
 const DocumentCategoryCard = ({ category, icon, color, documents, onSelectCategory }) => (
     <div 
@@ -63,6 +64,8 @@ const DocumentsModule = () => {
     const [documentToEdit, setDocumentToEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [documentToDelete, setDocumentToDelete] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
     const filteredDocuments = documents.filter(doc => {
         const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
@@ -96,11 +99,10 @@ const DocumentsModule = () => {
         if (!documentToDelete) return;
 
         try {
-            const { error: dbError } = await supabase.from('documents').delete().match({ id: documentToDelete.id });
-            if (dbError) throw dbError;
+            await apiClient.delete('documents', documentToDelete.id);
 
-            if (documentToDelete.storage_path) {
-                const { error: storageError } = await supabase.storage.from('udms').remove([documentToDelete.storage_path]);
+            if (documentToDelete.storagePath) {
+                const { error: storageError } = await supabase.storage.from('udms').remove([documentToDelete.storagePath]);
                 if (storageError) {
                     console.error("Error deleting file from Supabase:", storageError);
                     showNotification('Failed to delete file from storage.', 'error');

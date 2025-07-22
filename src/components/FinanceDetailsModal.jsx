@@ -8,7 +8,7 @@ const FinanceDetailsModal = ({ isOpen, onClose, title, transactions, students, g
 
     if (!isOpen) return null;
 
-    const getStudentName = (studentId) => students.find(s => s.id === studentId)?.full_name || 'N/A';
+    const getStudentName = (studentId) => students.find(s => s.id === studentId)?.fullName || 'N/A';
     const getGroupName = (groupId) => groups.find(g => g.id === groupId)?.group_name || 'N/A';
 
     const renderTransactions = () => (

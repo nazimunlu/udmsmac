@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
@@ -28,28 +28,23 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         }
         setIsLoading(true);
 
-        let query = supabase.from('lessons');
+        try {
+            const allLessons = await apiClient.getAll('lessons');
+            let filteredLessons = [];
 
-        if (currentStudent.isTutoring) {
-            query = query.select('*').eq('student_id', currentStudent.id);
-        } else if (currentStudent.group_id) {
-            query = query.select('*').eq('group_id', currentStudent.group_id);
-        } else {
-            setIsLoading(false);
-            setLessons([]);
-            return;
-        }
+            if (currentStudent.isTutoring) {
+                filteredLessons = allLessons.filter(l => l.studentId === currentStudent.id);
+            } else if (currentStudent.groupId) {
+                filteredLessons = allLessons.filter(l => l.groupId === currentStudent.groupId);
+            }
 
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('Error fetching lessons:', error);
-        } else {
-            data.sort((a,b) => new Date(a.lessonDate) - new Date(b.lessonDate));
-            setLessons(data.map(l => ({
+            filteredLessons.sort((a, b) => new Date(a.lessonDate) - new Date(b.lessonDate));
+            setLessons(filteredLessons.map(l => ({
                 ...l,
                 attendance: l.attendance ? JSON.parse(l.attendance) : {},
             })));
+        } catch (error) {
+            console.error('Error fetching lessons:', error);
         }
         setIsLoading(false);
     };
@@ -69,10 +64,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         setCurrentStudent({
             ...initialStudent,
             installments: safeParse(initialStudent?.installments, []),
-            fee_details: safeParse(initialStudent?.fee_details, {}),
-            tutoring_details: safeParse(initialStudent?.tutoring_details, {}),
+            feeDetails: safeParse(initialStudent?.feeDetails, {}),
+            tutoringDetails: safeParse(initialStudent?.tutoringDetails, {}),
             documents: safeParse(initialStudent?.documents, {}),
-            document_names: safeParse(initialStudent?.document_names, {}),
+            documentNames: safeParse(initialStudent?.documentNames, {}),
         });
 
         if (isOpen) {
@@ -87,11 +82,11 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     }, [currentStudent?.id]);
 
     const fetchGroups = async () => {
-        const { data, error } = await supabase.from('groups').select('*');
-        if (error) {
+        try {
+            const groupsData = await apiClient.getAll('groups');
+            setGroups(groupsData);
+        } catch (error) {
             console.error('Error fetching groups:', error);
-        } else {
-            setGroups(data);
         }
     };
 
@@ -129,8 +124,8 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     }, [lessons, currentStudent.isTutoring]);
     
     const group = useMemo(() => {
-        if (currentStudent?.group_id && groups.length > 0) {
-            return groups.find(g => g.id === currentStudent.group_id);
+        if (currentStudent?.groupId && groups.length > 0) {
+            return groups.find(g => g.id === currentStudent.groupId);
         }
         return null;
     }, [currentStudent, groups]);
@@ -160,27 +155,19 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
     const confirmDelete = async () => {
         if (lessonToDelete) {
-            const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
-            if (error) {
-                console.error('Error deleting lesson:', error);
-            } else {
-                setLessons(lessons.filter(l => l.id !== lessonToDelete.id));
-                fetchData(); // Refetch global data
-            }
-            setLessonToDelete(null);
-            setIsConfirmModalOpen(false);
+            await apiClient.delete('lessons', lessonToDelete.id);
+            setLessons(lessons.filter(l => l.id !== lessonToDelete.id));
+            fetchData(); // Refetch global data
         }
+        setLessonToDelete(null);
+        setIsConfirmModalOpen(false);
     };
 
     const handleToggleStatus = async (lesson) => {
         const newStatus = lesson.status === 'Complete' ? 'Incomplete' : 'Complete';
-        const { error } = await supabase.from('lessons').update({ status: newStatus }).match({ id: lesson.id });
-        if (error) {
-            console.error('Error updating lesson status:', error);
-        } else {
-            fetchLessonsForStudent(); // Refetch lessons for this student
-            fetchData(); // Refetch global data
-        }
+        await apiClient.update('lessons', lesson.id, { status: newStatus });
+        fetchLessonsForStudent(); // Refetch lessons for this student
+        fetchData(); // Refetch global data
     };
 
     const handleTogglePaymentStatus = async (installmentNumber) => {
@@ -189,13 +176,9 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                 ? { ...inst, status: inst.status === 'Paid' ? 'Unpaid' : 'Paid' } 
                 : inst
         );
-        const { error } = await supabase.from('students').update({ installments: updatedInstallments }).match({ id: currentStudent.id });
-        if (error) {
-            console.error('Error updating payment status:', error);
-        } else {
-            setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
-            fetchData();
-        }
+        await apiClient.update('students', currentStudent.id, { installments: updatedInstallments });
+        setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+        fetchData();
     };
 
     const handleAttendanceChange = async (lesson, studentId, currentStatus) => {
@@ -209,18 +192,14 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             [studentId]: newStatus
         };
 
-        const { error } = await supabase.from('lessons').update({ attendance: updatedAttendance }).match({ id: lesson.id });
-        if (error) {
-            console.error('Error updating attendance:', error);
-        } else {
-            fetchLessonsForStudent(); // Refetch lessons for this student
-            fetchData();
-        }
+        await apiClient.update('lessons', lesson.id, { attendance: updatedAttendance });
+        fetchLessonsForStudent(); // Refetch lessons for this student
+        fetchData();
     };
 
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{currentStudent.full_name}</h3>
+            <h3 className="text-xl font-bold">{currentStudent.fullName}</h3>
             <p className="text-sm text-white/80">Student Details</p>
         </div>
     );
@@ -244,26 +223,26 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                 <ul className="divide-y divide-gray-200">
                     <li className="py-3 flex justify-between items-center">
                         <div>
-                            <p className="font-medium text-gray-800">Student Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.student_contact)}</p>
+                            <p className="font-medium text-gray-800">Contact</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.studentContact)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Parent Contact</p>
-                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parent_contact) || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parentContact) || 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Enrollment Date</p>
-                            <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollment_date)}</p>
+                            <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollmentDate)}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
                             <p className="font-medium text-gray-800">Birth Date</p>
-                            <p className="text-sm text-gray-500">{currentStudent.birth_date ? formatDate(currentStudent.birth_date) : 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
@@ -346,7 +325,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                             <li key={lesson.id} className="py-3 flex justify-between items-center">
                                 <div>
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
-                                    <p className="text-sm text-gray-500">{formatDate(lesson.lesson_date)}</p>
+                                    <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
                                 <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                     {lesson.attendance?.[currentStudent.id] || 'N/A'}
@@ -384,7 +363,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                             <li key={lesson.id} className="py-3 flex justify-between items-center">
                                 <div>
                                     <p className="font-medium text-gray-800">{lesson.topic}</p>
-                                    <p className="text-sm text-gray-500">{formatDate(lesson.lesson_date)}</p>
+                                    <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button onClick={() => handleToggleStatus(lesson)} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.status === 'Complete' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>

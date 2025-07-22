@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import Modal from './Modal';
 import { FormSection } from './Form';
 import { ICONS, Icon } from './Icons';
@@ -38,8 +38,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
         setIsSubmitting(true);
 
         try {
-            const { error } = await supabase.from('lessons').update({ attendance: attendance }).match({ id: lesson.id });
-            if (error) throw error;
+            await apiClient.update('lessons', lesson.id, { attendance: attendance });
             fetchData();
             onClose();
         } catch (error) {
@@ -59,7 +58,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
                         {studentsToDisplay.length > 0 ? (
                             studentsToDisplay.map(s => (
                                 <div key={s.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                                    <span className="font-medium text-gray-800">{s.full_name}</span>
+                                    <span className="font-medium text-gray-800">{s.fullName}</span>
                                     <div className="flex space-x-2">
                                         <button
                                             type="button"

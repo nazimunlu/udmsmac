@@ -7,6 +7,7 @@ import CustomTimePicker from './CustomTimePicker';
 import { Icon, ICONS } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
+import apiClient from '../apiClient';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLessonSaved }) => {
     const { fetchData } = useAppContext();
@@ -25,12 +26,12 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
     useEffect(() => {
         if (lessonToEdit) {
             setFormData({
-                date: new Date(lessonToEdit.lesson_date).toISOString().split('T')[0],
+                date: new Date(lessonToEdit.lessonDate).toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
-                startTime: new Date(lessonToEdit.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                endTime: new Date(lessonToEdit.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                materialUrl: lessonToEdit.material_url || '',
-                materialName: lessonToEdit.material_name || ''
+                startTime: new Date(lessonToEdit.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                endTime: new Date(lessonToEdit.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                materialUrl: lessonToEdit.materialUrl || '',
+                materialName: lessonToEdit.materialName || ''
             });
         } else {
             const schedule = student?.tutoringDetails?.schedule || group?.schedule;
@@ -63,20 +64,20 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
         if (!formData.date || !formData.topic) return;
 
         setIsSubmitting(true);
-        let material_url = lessonToEdit?.material_url || '';
-        let material_name = lessonToEdit?.material_name || '';
+        let materialUrl = lessonToEdit?.materialUrl || '';
+        let materialName = lessonToEdit?.materialName || '';
 
         if (file) {
-            const group_id = group?.id || student?.group_id;
+            const groupId = group?.id || student?.groupId;
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 showNotification('You must be logged in to upload materials.', 'error');
                 setIsSubmitting(false);
                 return;
             }
-            const materialPath = `lesson_materials/${user.id}/${group_id}/${Date.now()}_${file.name}`;
-            material_url = await uploadFile(file, materialPath);
-            material_name = file.name;
+            const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${file.name}`;
+            materialUrl = await uploadFile(file, materialPath);
+            materialName = file.name;
         }
 
         const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
@@ -84,28 +85,26 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
 
         const lessonData = {
             topic: formData.topic,
-            lesson_date: startDateTime.toISOString(),
-            start_time: startDateTime.toISOString(),
-            end_time: endDateTime.toISOString(),
-            material_url,
-            material_name,
+            lessonDate: startDateTime.toISOString(),
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
+            materialUrl,
+            materialName,
             status: 'Incomplete'
         };
 
         if (group) {
-            lessonData.group_id = group.id;
+            lessonData.groupId = group.id;
         } else if (student) {
-            lessonData.group_id = student.group_id;
-            lessonData.student_id = student.id;
+            lessonData.groupId = student.groupId;
+            lessonData.studentId = student.id;
         }
 
         try {
             if (lessonToEdit) {
-                const { error } = await supabase.from('lessons').update(lessonData).match({ id: lessonToEdit.id });
-                if (error) throw error;
+                await apiClient.update('lessons', lessonToEdit.id, lessonData);
             } else {
-                const { error } = await supabase.from('lessons').insert([lessonData]);
-                if (error) throw error;
+                await apiClient.create('lessons', lessonData);
             }
             fetchData();
             if (onLessonSaved) onLessonSaved();

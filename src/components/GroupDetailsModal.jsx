@@ -10,6 +10,7 @@ import StudentDetailsModal from './StudentDetailsModal';
 import { FormSection } from './Form';
 import { Icon, ICONS } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
+import apiClient from '../apiClient';
 
 import { formatDate } from '../utils/formatDate';
 
@@ -31,14 +32,22 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
         if (!group?.id) return;
 
         // Fetch lessons
-        const { data: lessonsData, error: lessonsError } = await supabase.from('lessons').select('*').eq('groupId', group.id).order('lessonDate', { ascending: false });
-        if (lessonsError) console.error('Error fetching lessons:', lessonsError);
-        else setLessons(lessonsData || []);
+        try {
+            const lessonsData = await apiClient.getAll('lessons');
+            const groupLessons = lessonsData.filter(l => l.groupId === group.id);
+            setLessons(groupLessons.sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate)));
+        } catch (error) {
+            console.error('Error fetching lessons:', error);
+        }
 
         // Fetch students
-        const { data: studentsData, error: studentsError } = await supabase.from('students').select('*').eq('groupId', group.id);
-        if (studentsError) console.error('Error fetching students:', studentsError);
-        else setStudents(studentsData || []);
+        try {
+            const studentsData = await apiClient.getAll('students');
+            const groupStudents = studentsData.filter(s => s.groupId === group.id);
+            setStudents(groupStudents);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+        }
     };
 
     useEffect(() => {
@@ -56,8 +65,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
     const handleRemoveStudent = async () => {
         if (!studentToRemove) return;
         try {
-            const { error } = await supabase.from('students').update({ groupId: null }).match({ id: studentToRemove.id });
-            if (error) throw error;
+            await apiClient.update('students', studentToRemove.id, { groupId: null });
             setStudentToRemove(null);
             fetchData(); // Global refetch
             fetchGroupDetails(); // Local refetch
@@ -71,14 +79,11 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
         setIsLessonFormModalOpen(true);
     };
 
-    const handleDeleteLesson = async () => {
-        if (!lessonToDelete) return;
+    const handleDeleteLesson = async (lessonToDelete) => {
         try {
-            const { error } = await supabase.from('lessons').delete().match({ id: lessonToDelete.id });
-            if (error) throw error;
-            setLessonToDelete(null);
-            fetchData(); // Global refetch
-            fetchGroupDetails(); // Local refetch
+            await apiClient.delete('lessons', lessonToDelete.id);
+            fetchData();
+            fetchGroupDetails();
         } catch (error) {
             console.error("Error deleting lesson: ", error);
         }
@@ -137,7 +142,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                         {students.map(student => (
                                             <li key={student.id} className="p-3 bg-white rounded-lg shadow-sm flex items-center justify-between border border-gray-200 hover:border-blue-400 transition-all">
                                                 <div>
-                                                    <p className="font-semibold text-gray-800">{student.full_name}</p>
+                                                    <p className="font-semibold text-gray-800">{student.fullName}</p>
                                                     <p className="text-sm text-gray-500">{student.studentContact}</p>
                                                 </div>
                                                 <div className="flex items-center space-x-1">
@@ -182,8 +187,8 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                 </div>
             </Modal>
 
-            {studentToRemove && <ConfirmationModal isOpen={!!studentToRemove} onClose={() => setStudentToRemove(null)} onConfirm={handleRemoveStudent} title="Remove Student" message={`Are you sure you want to remove ${studentToRemove.full_name} from this group?`} />}
-            {lessonToDelete && <ConfirmationModal isOpen={!!lessonToDelete} onClose={() => setLessonToDelete(null)} onConfirm={handleDeleteLesson} title="Delete Lesson" message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"? This action cannot be undone.`} />}
+            {studentToRemove && <ConfirmationModal isOpen={!!studentToRemove} onClose={() => setStudentToRemove(null)} onConfirm={handleRemoveStudent} title="Remove Student" message={`Are you sure you want to remove ${studentToRemove.fullName} from this group?`} />}
+            {lessonToDelete && <ConfirmationModal isOpen={!!lessonToDelete} onClose={() => setLessonToDelete(null)} onConfirm={() => handleDeleteLesson(lessonToDelete)} title="Delete Lesson" message={`Are you sure you want to delete the lesson "${lessonToDelete.topic}"? This action cannot be undone.`} />}
             
             <AddStudentToGroupModal isOpen={isAddStudentModalOpen} onClose={() => setIsAddStudentModalOpen(false)} group={group} onStudentAdded={() => { fetchData(); fetchGroupDetails(); }} />
             {studentToView && <StudentDetailsModal isOpen={!!studentToView} onClose={() => setStudentToView(null)} student={studentToView} />}

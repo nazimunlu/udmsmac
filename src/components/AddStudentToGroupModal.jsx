@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import apiClient from '../apiClient';
 import Modal from './Modal';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
@@ -15,18 +15,18 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
 
     useEffect(() => {
         const fetchStudents = async () => {
-            const { data, error } = await supabase.from('students').select('*');
-            if (error) {
-                console.error('Error fetching students:', error);
-            } else {
-                setAllStudents(data.map(s => ({
+            try {
+                const studentsData = await apiClient.getAll('students');
+                setAllStudents(studentsData.map(s => ({
                     ...s,
                     installments: s.installments ? JSON.parse(s.installments) : [],
-                    feeDetails: s.fee_details ? JSON.parse(s.fee_details) : {},
-                    tutoringDetails: s.tutoring_details ? JSON.parse(s.tutoring_details) : {},
+                    feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
+                    tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
                     documents: s.documents ? JSON.parse(s.documents) : {},
-                    documentNames: s.document_names ? JSON.parse(s.document_names) : {},
+                    documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
                 })));
+            } catch (error) {
+                console.error('Error fetching students:', error);
             }
         };
 
@@ -38,9 +38,9 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
     useEffect(() => {
         if (isOpen) {
             const filtered = allStudents.filter(s => 
-                !s.group_id && 
+                !s.groupId && 
                 !s.isTutoring && 
-                s.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+                s.fullName.toLowerCase().includes(searchTerm.toLowerCase())
             );
             setUnassignedStudents(filtered);
         }
@@ -49,8 +49,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
     const handleAddStudent = async (studentId) => {
         setIsSubmitting(true);
         try {
-            const { error } = await supabase.from('students').update({ group_id: group.id }).match({ id: studentId });
-            if (error) throw error;
+            await apiClient.update('students', studentId, { groupId: group.id });
             setSearchTerm(''); // Clear search after adding
             fetchData();
             onClose();
@@ -77,7 +76,7 @@ const AddStudentToGroupModal = ({ isOpen, onClose, group, currentStudents }) => 
                     {unassignedStudents.length > 0 ? (
                         unassignedStudents.map(student => (
                             <div key={student.id} className="flex justify-between items-center p-2 hover:bg-gray-100 rounded-md">
-                                <span>{student.full_name}</span>
+                                <span>{student.fullName}</span>
                                 <button
                                     onClick={() => handleAddStudent(student.id)}
                                     disabled={isSubmitting}
