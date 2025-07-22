@@ -27,7 +27,7 @@ const FinancialReports = ({ formatCurrency }) => {
 
             if (start && transactionDate < start) return false;
             if (end && transactionDate > end) return false;
-            if (filters.type !== 'all' && t.type !== filters.type) return false;
+            if (filters.type !== 'all' && t.expense_type !== filters.type) return false;
             if (filters.category !== 'all' && t.category !== filters.category) return false;
 
             return true;
@@ -35,11 +35,11 @@ const FinancialReports = ({ formatCurrency }) => {
     }, [transactions, filters]);
 
     const totalIncome = filteredTransactions
-        .filter(t => t.type.startsWith('income'))
+        .filter(t => t.expense_type.startsWith('income'))
         .reduce((sum, t) => sum + t.amount, 0);
 
     const totalExpenses = filteredTransactions
-        .filter(t => t.type.startsWith('expense'))
+        .filter(t => t.expense_type.startsWith('expense'))
         .reduce((sum, t) => sum + t.amount, 0);
 
     const allCategories = useMemo(() => {
@@ -103,10 +103,10 @@ const FinancialReports = ({ formatCurrency }) => {
                                 filteredTransactions.map(t => (
                                     <tr key={t.id} className="hover:bg-gray-50">
                                         <td className="p-3 text-gray-800">{formatDate(t.date)}</td>
-                                        <td className="p-3 text-gray-800">{t.type}</td>
+                                        <td className="p-3 text-gray-800">{t.expense_type}</td>
                                         <td className="p-3 text-gray-800">{t.category || 'N/A'}</td>
                                         <td className="p-3 text-gray-800">{t.description || 'N/A'}</td>
-                                        <td className={`p-3 text-right font-semibold ${t.type.startsWith('income') ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
+                                        <td className={`p-3 text-right font-semibold ${t.expense_type.startsWith('income') ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
                                     </tr>
                                 ))
                             ) : (

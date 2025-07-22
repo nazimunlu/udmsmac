@@ -33,7 +33,7 @@ const FinancialCharts = ({ payments, expenses, isDataHidden }) => {
             if (!acc[date]) {
                 acc[date] = { date, income: 0, expenses: 0 };
             }
-            if (t.type.startsWith('income')) {
+            if (t.expense_type.startsWith('income')) {
                 acc[date].income += t.amount;
             } else {
                 acc[date].expenses += t.amount;

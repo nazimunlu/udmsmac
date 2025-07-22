@@ -6,7 +6,7 @@ import { formatDate } from '../utils/formatDate';
 const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group }) => {
     if (!isOpen || !transaction) return null;
 
-    const isIncome = transaction.type.startsWith('income');
+    const isIncome = transaction.expense_type.startsWith('income');
     const title = isIncome ? 'Income Details' : 'Expense Details';
     const colorClass = isIncome ? 'text-green-600' : 'text-red-600';
     const bgColorClass = isIncome ? 'bg-green-100' : 'bg-red-100';

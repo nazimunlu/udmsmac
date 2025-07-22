@@ -102,14 +102,14 @@ const AppProvider = ({ children }) => {
         endTime: e.end_time,
         isAllDay: e.is_all_day,
       })));
-      setPayments(transactionsData.filter(t => t.type.startsWith('income')).map(t => ({
+      setPayments(transactionsData.filter(t => t.expense_type.startsWith('income')).map(t => ({
         ...t,
         transactionDate: t.transaction_date,
         invoiceUrl: t.invoice_url,
         invoiceName: t.invoice_name,
         studentId: t.student_id,
       })));
-      setExpenses(transactionsData.filter(t => t.type.startsWith('expense')).map(t => ({
+      setExpenses(transactionsData.filter(t => t.expense_type.startsWith('expense')).map(t => ({
         ...t,
         transactionDate: t.transaction_date,
         invoiceUrl: t.invoice_url,

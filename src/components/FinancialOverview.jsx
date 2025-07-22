@@ -5,20 +5,20 @@ import { Icon, ICONS } from './Icons';
 const FinancialOverview = ({ payments, students, isDataHidden }) => {
 
     const { income, expenses, profit, incomeBySource, expensesByCategory } = useMemo(() => {
-        const income = payments.filter(p => p.type.startsWith('income')).reduce((acc, p) => acc + p.amount, 0);
-        const expenses = payments.filter(p => p.type.startsWith('expense')).reduce((acc, p) => acc + p.amount, 0);
+        const income = payments.filter(p => p.expense_type.startsWith('income')).reduce((acc, p) => acc + p.amount, 0);
+        const expenses = payments.filter(p => p.expense_type.startsWith('expense')).reduce((acc, p) => acc + p.amount, 0);
         const profit = income - expenses;
 
         const incomeBySource = payments
-            .filter(p => p.type.startsWith('income'))
+            .filter(p => p.expense_type.startsWith('income'))
             .reduce((acc, p) => {
-                const source = p.type === 'income-group' ? 'Group' : 'Tutoring';
+                const source = p.expense_type === 'income-group' ? 'Group' : 'Tutoring';
                 acc[source] = (acc[source] || 0) + p.amount;
                 return acc;
             }, {});
 
         const expensesByCategory = payments
-            .filter(p => p.type.startsWith('expense'))
+            .filter(p => p.expense_type.startsWith('expense'))
             .reduce((acc, p) => {
                 const category = p.category || 'Other';
                 acc[category] = (acc[category] || 0) + p.amount;

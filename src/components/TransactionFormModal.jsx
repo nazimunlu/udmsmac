@@ -9,7 +9,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
     const { fetchData } = useAppContext();
     const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
     const [formData, setFormData] = useState({
-        type: 'income-group',
+        expense_type: 'income-group',
         amount: '',
         date: new Date().toISOString().split('T')[0],
         description: '',
@@ -24,7 +24,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
     useEffect(() => {
         if (transactionToEdit) {
             setFormData({
-                type: transactionToEdit.type || '',
+                expense_type: transactionToEdit.expense_type || '',
                 amount: transactionToEdit.amount || '',
                 date: new Date(transactionToEdit.transaction_date).toISOString().split('T')[0],
                 description: transactionToEdit.description || '',
@@ -34,7 +34,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
             });
         } else {
             setFormData(prev => ({
-                type: defaultCategory ? (defaultCategory.includes('business') ? 'expense-business' : 'expense-personal') : 'income-group',
+                expense_type: defaultCategory ? (defaultCategory.includes('business') ? 'expense-business' : 'expense-personal') : 'income-group',
                 amount: '',
                 date: new Date().toISOString().split('T')[0],
                 description: '',
@@ -71,7 +71,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
         setStatusMessage(null);
 
         const mandatoryInvoiceCategories = ['Rent', 'Materials', 'Bills'];
-        const isBusinessExpense = formData.type === 'expense-business';
+        const isBusinessExpense = formData.expense_type === 'expense-business';
         const isMandatoryCategory = mandatoryInvoiceCategories.includes(formData.category);
 
         if (isBusinessExpense && isMandatoryCategory && !invoiceFile && !formData.invoice_url) {
@@ -130,7 +130,7 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
             <form onSubmit={handleSubmit}>
                 <FormSection title="Transaction Details">
                     <div className="sm:col-span-6">
-                        <FormSelect label="Type" name="type" value={formData.type} onChange={handleChange}>
+                        <FormSelect label="Type" name="expense_type" value={formData.expense_type} onChange={handleChange}>
                             {transactionTypes.map(option => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
@@ -145,20 +145,20 @@ const TransactionFormModal = ({ isOpen, onClose, transactionToEdit, defaultCateg
                     <div className="sm:col-span-6">
                         <FormInput label="Description" name="description" value={formData.description} onChange={handleChange} />
                     </div>
-                    {(formData.type === 'expense-business' || formData.type === 'expense-personal') && (
+                    {(formData.expense_type === 'expense-business' || formData.expense_type === 'expense-personal') && (
                         <div className="sm:col-span-6">
                             <FormSelect label="Category" name="category" value={formData.category} onChange={handleChange} required>
                                 <option value="">Select a category</option>
-                                {formData.type === 'expense-business' && businessCategories.map(cat => (
+                                {formData.expense_type === 'expense-business' && businessCategories.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
-                                {formData.type === 'expense-personal' && personalCategories.map(cat => (
+                                {formData.expense_type === 'expense-personal' && personalCategories.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </FormSelect>
                         </div>
                     )}
-                    {(formData.type === 'expense-business' && mandatoryInvoiceCategories.includes(formData.category)) && (
+                    {(formData.expense_type === 'expense-business' && mandatoryInvoiceCategories.includes(formData.category)) && (
                         <div className="sm:col-span-6">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
                             <input type="file" name="invoice" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />

@@ -19,7 +19,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
 
     const tutoringPayments = useMemo(() => {
         return transactions
-            .filter(t => t.type === 'income-tutoring' && t.studentId === student.id)
+            .filter(t => t.expense_type === 'income-tutoring' && t.studentId === student.id)
             .sort((a,b) => new Date(b.date) - new Date(a.date));
     }, [transactions, student.id]);
 
@@ -46,7 +46,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
                 studentName: student.full_name,
                 amount: installmentToLog.amount,
                 date: new new Date().toISOString(), 
-                type: 'income-group',
+                expense_type: 'income-group',
                 description: `Installment #${installmentNumber} for ${student.full_name}`,
                 installmentId: `${student.id}-${installmentNumber}`
             }]);
@@ -133,7 +133,7 @@ const StudentPaymentDetailsModal = ({ isOpen, onClose, student, onUpdateStudent 
                 studentName: student.full_name,
                 amount: totalAmount,
                 date: new Date().toISOString(),
-                type: 'income-tutoring',
+                expense_type: 'income-tutoring',
                 description: `Tutoring payment for ${numHours} hour(s).`
             }]);
             setHours(1);
