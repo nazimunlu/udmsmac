@@ -65,7 +65,7 @@ const StudentsModule = () => {
                 await apiClient.delete('students', studentToDelete.id);
                 showNotification('Student permanently deleted!', 'success');
             } else {
-                await apiClient.update('students', studentToDelete.id, { isArchived: true });
+                await apiClient.update('students', studentToDelete.id, { is_archived: true });
                 showNotification('Student archived successfully!', 'success');
             }
             fetchData();
@@ -80,7 +80,7 @@ const StudentsModule = () => {
 
     const handleUnarchiveStudent = async (student) => {
         try {
-            await apiClient.update('students', student.id, { isArchived: false });
+            await apiClient.update('students', student.id, { is_archived: false });
             showNotification('Student unarchived successfully!', 'success');
             fetchData();
         } catch (error) {

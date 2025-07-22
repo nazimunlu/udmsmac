@@ -49,7 +49,7 @@ const GroupsModule = () => {
                 await apiClient.delete('groups', groupToDelete.id);
                 showNotification('Group permanently deleted!', 'success');
             } else {
-                await apiClient.update('groups', groupToDelete.id, { isArchived: true });
+                await apiClient.update('groups', groupToDelete.id, { is_archived: true });
                 showNotification('Group archived successfully!', 'success');
             }
             // Unassign students from this group
@@ -70,7 +70,7 @@ const GroupsModule = () => {
 
     const handleUnarchiveGroup = async (group) => {
         try {
-            await apiClient.update('groups', group.id, { isArchived: false });
+            await apiClient.update('groups', group.id, { is_archived: false });
             showNotification('Group unarchived successfully!', 'success');
             fetchData();
         } catch (error) {

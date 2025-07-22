@@ -80,7 +80,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             fee_details: safeParse(studentToEdit?.fee_details, { totalFee: '12000', numberOfInstallments: '3' }),
             tutoringDetails: defaultTutoringDetails,
             installments: safeParse(studentToEdit?.installments, []),
-            isArchived: studentToEdit?.isArchived || false
+            is_archived: studentToEdit?.is_archived || false
         };
     }, [studentToEdit, defaultPricePerLesson]);
 

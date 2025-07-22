@@ -57,8 +57,8 @@ const AppProvider = ({ children }) => {
         parsedStudent.isArchived = !!s.is_archived;
         return parsedStudent;
       });
-      setStudents(allStudents.filter(s => !s.isArchived));
-      setArchivedStudents(allStudents.filter(s => s.isArchived));
+      setStudents(allStudents.filter(s => !s.is_archived));
+      setArchivedStudents(allStudents.filter(s => s.is_archived));
 
       const allGroups = groupsData.map(g => {
         let parsedGroup = {
@@ -72,8 +72,8 @@ const AppProvider = ({ children }) => {
         try { parsedGroup.schedule = g.schedule ? JSON.parse(g.schedule) : {}; } catch (e) { console.error("Error parsing group schedule:", e); parsedGroup.schedule = {}; }
         return parsedGroup;
       });
-      setGroups(allGroups.filter(g => !g.isArchived));
-      setArchivedGroups(allGroups.filter(g => g.isArchived));
+      setGroups(allGroups.filter(g => !g.is_archived));
+      setArchivedGroups(allGroups.filter(g => g.is_archived));
 
       setLessons(lessonsData.map(l => {
         let parsedLesson = {
