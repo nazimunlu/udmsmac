@@ -49,7 +49,7 @@ const GroupsModule = () => {
                 await apiClient.delete('groups', groupToDelete.id);
                 showNotification('Group permanently deleted!', 'success');
             } else {
-                await apiClient.update('groups', groupToDelete.id, { is_archived: true });
+                await apiClient.update('groups', groupToDelete.id, { isArchived: true });
                 showNotification('Group archived successfully!', 'success');
             }
             // Unassign students from this group
@@ -68,9 +68,18 @@ const GroupsModule = () => {
         }
     };
 
+    const handleArchiveGroup = async (groupToDelete) => {
+        try {
+            await apiClient.update('groups', groupToDelete.id, { isArchived: true });
+            fetchData();
+        } catch (error) {
+            console.error('Error archiving group:', error);
+        }
+    };
+
     const handleUnarchiveGroup = async (group) => {
         try {
-            await apiClient.update('groups', group.id, { is_archived: false });
+            await apiClient.update('groups', group.id, { isArchived: false });
             showNotification('Group unarchived successfully!', 'success');
             fetchData();
         } catch (error) {
@@ -104,14 +113,14 @@ const GroupsModule = () => {
                     {filteredGroups.length > 0 ? (
                         filteredGroups.map(group => (
                             <div key={group.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col group" style={{borderTop: `5px solid ${group.color}`}}>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">{group.group_name}</h3>
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">{group.groupName}</h3>
                                 <div className="text-gray-600 mb-4">
                                     {group.schedule && group.schedule.days && group.schedule.days.length > 0 && (
                                         <div>{group.schedule.days.join(', ')}: {group.schedule.startTime} - {group.schedule.endTime}</div>
                                     )}
                                     <div className="text-sm text-gray-500 mt-2">
-                                        {group.start_date && group.end_date && 
-                                            <span>{formatDate(group.start_date)} - {formatDate(group.end_date)}</span>
+                                        {group.startDate && group.endDate && 
+                                            <span>{formatDate(group.startDate)} - {formatDate(group.endDate)}</span>
                                         }
                                     </div>
                                 </div>
@@ -142,7 +151,7 @@ const GroupsModule = () => {
                     onClose={() => setIsConfirmModalOpen(false)}
                     onConfirm={handleDeleteGroup}
                     title="Delete Group"
-                    message={`Are you sure you want to ${showArchivedGroups ? 'permanently delete' : 'archive'} the group "${groupToDelete.group_name}"? ${!showArchivedGroups ? 'This will also unassign all students from this group.' : 'This action cannot be undone.'}`}
+                    message={`Are you sure you want to ${showArchivedGroups ? 'permanently delete' : 'archive'} the group "${groupToDelete.groupName}"? ${!showArchivedGroups ? 'This will also unassign all students from this group.' : 'This action cannot be undone.'}`}
                 />
             )}
         </div>

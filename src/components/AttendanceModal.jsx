@@ -50,8 +50,51 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
 
     const studentsToDisplay = studentsInGroup || (student ? [student] : []);
 
+    const generateAttendanceMessage = (student, lesson, attendanceStatus) => {
+        const lessonDate = new Date(lesson.date).toLocaleDateString('tr-TR');
+        const lessonTime = new Date(lesson.date).toLocaleTimeString('tr-TR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        if (attendanceStatus === 'Absent') {
+            return `Sayın ${student.fullName},
+
+${lessonDate} tarihinde saat ${lessonTime}'de planlanan dersinize katılamadığınızı belirtmek isteriz.
+
+Kaçırılan derslerin telafisi için lütfen bizimle iletişime geçiniz. Telafi dersi planlaması konusunda size yardımcı olmaktan memnuniyet duyarız.
+
+Saygılarımızla,
+Ünlü Dil Management`;
+        } else {
+            return `Sayın ${student.fullName},
+
+${lessonDate} tarihinde saat ${lessonTime}'de planlanan dersinize katıldığınız için teşekkür ederiz.
+
+Dersinizin verimli geçtiğini umuyoruz. Bir sonraki dersinizde görüşmek üzere.
+
+Saygılarımızla,
+Ünlü Dil Management`;
+        }
+    };
+
+    const handleGenerateAttendanceMessage = (student, status) => {
+        const message = generateAttendanceMessage(student, lesson, status);
+        navigator.clipboard.writeText(message).then(() => {
+            // You can add notification here if you have access to showNotification
+            console.log(`Attendance message copied to clipboard for ${student.fullName}`);
+        }).catch(() => {
+            console.log(`Message generated for ${student.fullName}`);
+        });
+    };
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Log Attendance">
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title="Log Attendance"
+            headerStyle={{ backgroundColor: '#2563EB' }}
+        >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Mark Attendance">
                     <div className="sm:col-span-6 grid grid-cols-1 gap-4">
@@ -59,7 +102,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
                             studentsToDisplay.map(s => (
                                 <div key={s.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
                                     <span className="font-medium text-gray-800">{s.fullName}</span>
-                                    <div className="flex space-x-2">
+                                    <div className="flex items-center space-x-2">
                                         <button
                                             type="button"
                                             onClick={() => handleAttendanceChange(s.id, 'Present')}
@@ -70,6 +113,16 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
                                             onClick={() => handleAttendanceChange(s.id, 'Absent')}
                                             className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'Absent' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                                         >Absent</button>
+                                        {attendance[s.id] && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleGenerateAttendanceMessage(s, attendance[s.id])}
+                                                className="px-2 py-1 rounded-md text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                                title="Generate message"
+                                            >
+                                                <Icon path={ICONS.MESSAGE} className="w-3 h-3" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))

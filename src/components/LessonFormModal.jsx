@@ -8,10 +8,19 @@ import { Icon, ICONS } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
+import { sanitizeFileName } from '../utils/caseConverter';
 
 const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLessonSaved }) => {
     const { fetchData } = useAppContext();
     const { showNotification } = useNotification();
+    
+    // Time options for lesson scheduling
+    const timeOptions = [];
+    for (let h = 8; h <= 23; h++) {
+        timeOptions.push(`${h.toString().padStart(2, '0')}:00`);
+        if (h < 23) timeOptions.push(`${h.toString().padStart(2, '0')}:30`);
+    }
+    
     const [formData, setFormData] = useState({
         date: '',
         topic: '',
@@ -28,8 +37,8 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
             setFormData({
                 date: new Date(lessonToEdit.lessonDate).toISOString().split('T')[0],
                 topic: lessonToEdit.topic,
-                startTime: new Date(lessonToEdit.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                endTime: new Date(lessonToEdit.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                startTime: lessonToEdit.startTime || '09:00',
+                endTime: lessonToEdit.endTime || '10:00',
                 materialUrl: lessonToEdit.materialUrl || '',
                 materialName: lessonToEdit.materialName || ''
             });
@@ -75,19 +84,17 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
                 setIsSubmitting(false);
                 return;
             }
-            const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${file.name}`;
+            const sanitizedFileName = sanitizeFileName(file.name);
+            const materialPath = `lesson_materials/${user.id}/${groupId}/${Date.now()}_${sanitizedFileName}`;
             materialUrl = await uploadFile(file, materialPath);
             materialName = file.name;
         }
 
-        const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
-        const endDateTime = new Date(`${formData.date}T${formData.endTime}`);
-
         const lessonData = {
             topic: formData.topic,
-            lessonDate: startDateTime.toISOString(),
-            startTime: startDateTime.toISOString(),
-            endTime: endDateTime.toISOString(),
+            lessonDate: formData.date,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
             materialUrl,
             materialName,
             status: 'Incomplete'
@@ -117,13 +124,18 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={lessonToEdit ? "Edit Lesson" : "Log New Lesson"}>
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title={lessonToEdit ? "Edit Lesson" : "Log New Lesson"}
+            headerStyle={{ backgroundColor: '#2563EB' }}
+        >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Lesson Details">
                     <div className="sm:col-span-6"><FormInput label="Topic" name="topic" value={formData.topic} onChange={(e) => setFormData({...formData, topic: e.target.value})} required /></div>
                     <div className="sm:col-span-2"><CustomDatePicker label="Date" name="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} required /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="start_time" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} /></div>
-                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="end_time" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="Start Time" name="startTime" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} options={timeOptions} /></div>
+                    <div className="sm:col-span-2"><CustomTimePicker label="End Time" name="endTime" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} options={timeOptions} /></div>
                 </FormSection>
                 <FormSection title="Lesson Material">
                     <div className="sm:col-span-6">

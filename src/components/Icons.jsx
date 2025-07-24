@@ -29,13 +29,35 @@ import {
     faSave,
     faCheck,
     faExclamationTriangle,
+    faExclamationCircle,
     faMoneyBillWave,
     faBriefcase,
     faUtensils,
     faChartLine,
     faSignOutAlt,
     faWallet,
-    faExclamationCircle
+    faArrowLeft,
+    faExclamation,
+    faCar,
+    faBolt,
+    faBullhorn,
+    faTools,
+    faShield,
+    faCalculator,
+    faHeart,
+    faGraduationCap,
+    faHome,
+    faPlane,
+    faMusic,
+    faCamera,
+    faGlobe,
+    faCreditCard,
+    faMobile,
+    faSearch,
+    faBell,
+    faSpinner,
+    faEnvelope,
+    faList
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
@@ -43,7 +65,19 @@ export const Icon = ({ path, className = "" }) => {
         console.warn("Icon component received an undefined path.");
         return <FontAwesomeIcon icon={faExclamationCircle} className={className} />;
     }
-    return <FontAwesomeIcon icon={path} className={className} />;
+    
+    // Check if the icon is valid
+    if (typeof path !== 'object' || !path.iconName) {
+        console.warn("Icon component received an invalid path:", path);
+        return <FontAwesomeIcon icon={faExclamationCircle} className={className} />;
+    }
+    
+    try {
+        return <FontAwesomeIcon icon={path} className={className} />;
+    } catch (error) {
+        console.error("Error rendering icon:", error, "Path:", path);
+        return <FontAwesomeIcon icon={faExclamationCircle} className={className} />;
+    }
 };
 
 export const ICONS = {
@@ -82,4 +116,32 @@ export const ICONS = {
     LOGOUT: faSignOutAlt,
     WALLET: faWallet,
     WARNING: faExclamationTriangle,
+    ARROW_LEFT: faArrowLeft,
+    EXCLAMATION_CIRCLE: faExclamationCircle,
+    CAR: faCar,
+    BOLT: faBolt,
+    BULLHORN: faBullhorn,
+    TOOLS: faTools,
+    SHIELD: faShield,
+    CALCULATOR: faCalculator,
+    HEART: faHeart,
+    GRADUATION_CAP: faGraduationCap,
+    HOME: faHome,
+    PLANE: faPlane,
+    MUSIC: faMusic,
+    CAMERA: faCamera,
+    GLOBE: faGlobe,
+    CREDIT_CARD: faCreditCard,
+    MOBILE: faMobile,
+    BOOK_OPEN: faBookOpen,
+    MONEY_BILL_WAVE: faMoneyBillWave,
+    USER: faUserGraduate,
+    USERS: faUsers,
+    SEARCH: faSearch,
+    BELL: faBell,
+    LOADING: faSpinner,
+    CHART_LINE: faChartLine,
+    MESSAGE: faEnvelope,
+    LIST: faList,
+    UTENSILS: faUtensils
 };

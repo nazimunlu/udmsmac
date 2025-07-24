@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
-import { formatDistanceToNow, isPast } from 'date-fns';
+import { formatDistanceToNow, isPast, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import CustomTimePicker from './CustomTimePicker';
 
 const TodoModule = () => {
@@ -77,10 +77,55 @@ const TodoModule = () => {
     const getTimeRemaining = (date) => {
         if (!date) return null;
         const targetDate = new Date(date);
+        const now = new Date();
+        
         if (isPast(targetDate)) {
-            return <span className="text-red-500">Overdue</span>;
+            const overdueMinutes = Math.abs(differenceInMinutes(targetDate, now));
+            const overdueHours = Math.abs(differenceInHours(targetDate, now));
+            const overdueDays = Math.abs(differenceInDays(targetDate, now));
+            
+            let overdueText = '';
+            if (overdueDays > 0) {
+                overdueText = `${overdueDays}d overdue`;
+            } else if (overdueHours > 0) {
+                overdueText = `${overdueHours}h overdue`;
+            } else {
+                overdueText = `${overdueMinutes}m overdue`;
+            }
+            
+            return {
+                text: overdueText,
+                color: 'text-red-500'
+            };
         }
-        return `due ${formatDistanceToNow(targetDate, { addSuffix: true })}`;
+        
+        const remainingMinutes = differenceInMinutes(targetDate, now);
+        const remainingHours = differenceInHours(targetDate, now);
+        const remainingDays = differenceInDays(targetDate, now);
+        
+        let remainingText = '';
+        let color = 'text-gray-500';
+        
+        if (remainingDays > 0) {
+            remainingText = `${remainingDays}d remaining`;
+            if (remainingDays <= 1) {
+                color = 'text-orange-500';
+            }
+        } else if (remainingHours > 0) {
+            remainingText = `${remainingHours}h remaining`;
+            color = 'text-orange-500';
+        } else if (remainingMinutes > 0) {
+            remainingText = `${remainingMinutes}m remaining`;
+            color = 'text-red-500';
+        } else {
+            remainingText = 'Due now';
+            color = 'text-red-500';
+        }
+        
+        return {
+            text: remainingText,
+            color
+        };
     };
 
     return (
@@ -113,32 +158,37 @@ const TodoModule = () => {
                 </div>
             </form>
             <ul className="space-y-2 overflow-y-auto flex-grow">
-                {todos.map(todo => (
-                    <li key={todo.id} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 group">
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                checked={todo.is_completed}
-                                onChange={() => handleToggleComplete(todo.id, todo.is_completed)}
-                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                            />
-                            <div className="ml-3">
-                                <span className={`${todo.is_completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                                    {todo.task}
-                                </span>
-                                {todo.due_date && (
-                                    <p className="text-xs text-gray-500">{getTimeRemaining(todo.due_date)}</p>
-                                )}
+                {todos.map(todo => {
+                    const timeInfo = getTimeRemaining(todo.dueDate);
+                    return (
+                        <li key={todo.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 group border border-gray-100">
+                            <div className="flex items-center flex-1">
+                                <input
+                                    type="checkbox"
+                                    checked={todo.isCompleted}
+                                    onChange={() => toggleTask(todo.id, todo.isCompleted)}
+                                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <div className="ml-3 flex-1">
+                                    <span className={`${todo.isCompleted ? 'line-through text-gray-500' : 'text-gray-800'} font-medium`}>
+                                        {todo.task}
+                                    </span>
+                                    {todo.dueDate && timeInfo && (
+                                        <p className={`text-xs ${timeInfo.color} mt-1`}>
+                                            {timeInfo.text}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                        <button 
-                            onClick={() => handleDeleteTask(todo.id)}
-                            className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100"
-                        >
-                            <Icon path={ICONS.DELETE} className="w-4 h-4" />
-                        </button>
-                    </li>
-                ))}
+                            <button 
+                                onClick={() => deleteTask(todo.id)}
+                                className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <Icon path={ICONS.DELETE} className="w-4 h-4" />
+                            </button>
+                        </li>
+                    );
+                })}
                 {todos.length === 0 && (
                     <div className="text-center text-gray-500 py-4 flex flex-col items-center justify-center h-full">
                         <Icon path={ICONS.CHECK} className="w-12 h-12 text-green-500 mb-2" />

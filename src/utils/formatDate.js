@@ -2,18 +2,15 @@ export const formatDate = (dateString, options = {}) => {
     const { format = 'long' } = options;
     const date = new Date(dateString);
 
-    const formatterOptions = {
-        timeZone: 'Europe/Istanbul',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    };
-
     if (format === 'short') {
-        const day = new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit' }).format(date);
-        const month = new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', month: '2-digit' }).format(date);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
         return `${day}/${month}`;
     }
     
-    return new Intl.DateTimeFormat('tr-TR', formatterOptions).format(date);
+    // For long format, use DD/MM/YYYY
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 };

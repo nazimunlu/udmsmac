@@ -71,10 +71,14 @@ CREATE TABLE public.documents (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   name TEXT NOT NULL,
-  type TEXT NOT NULL, -- e.g., 'nationalId', 'agreement', 'certificate', 'invoice', 'other'
+  type TEXT NOT NULL,
+  category TEXT NOT NULL,
+  student_id UUID REFERENCES public.students(id),
+  description TEXT,
   url TEXT NOT NULL,
   upload_date DATE,
-  storage_path TEXT -- Path in Supabase Storage
+  storage_path TEXT,
+  CONSTRAINT documents_pkey PRIMARY KEY (id)
 );
 
 -- Table: public.events
@@ -84,7 +88,8 @@ CREATE TABLE public.events (
   event_name TEXT NOT NULL,
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  is_all_day BOOLEAN DEFAULT FALSE NOT NULL
+  is_all_day BOOLEAN DEFAULT FALSE NOT NULL,
+  category TEXT DEFAULT 'other'
 );
 
 -- Table: public.settings

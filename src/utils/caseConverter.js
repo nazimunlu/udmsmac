@@ -54,4 +54,34 @@ export const convertKeysToSnakeCase = (obj) => {
     converted[snakeKey] = convertKeysToSnakeCase(value);
   }
   return converted;
+};
+
+/**
+ * Sanitize a string for use as a file name in Supabase Storage
+ * Removes or replaces special characters that are not allowed in storage keys
+ * @param {string} str - The string to sanitize
+ * @returns {string} - The sanitized string safe for storage
+ */
+export const sanitizeFileName = (str) => {
+  if (!str) return '';
+  
+  return str
+    // Convert to lowercase
+    .toLowerCase()
+    // Replace Turkish characters with their ASCII equivalents
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/İ/g, 'i')
+    // Replace spaces and other problematic characters with underscores
+    .replace(/[^a-z0-9.-]/g, '_')
+    // Remove multiple consecutive underscores
+    .replace(/_+/g, '_')
+    // Remove leading and trailing underscores
+    .replace(/^_+|_+$/g, '')
+    // Limit length to avoid overly long file names (more restrictive)
+    .substring(0, 50);
 }; 

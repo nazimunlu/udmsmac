@@ -65,7 +65,7 @@ const StudentsModule = () => {
                 await apiClient.delete('students', studentToDelete.id);
                 showNotification('Student permanently deleted!', 'success');
             } else {
-                await apiClient.update('students', studentToDelete.id, { is_archived: true });
+                await apiClient.update('students', studentToDelete.id, { isArchived: true });
                 showNotification('Student archived successfully!', 'success');
             }
             fetchData();
@@ -78,14 +78,21 @@ const StudentsModule = () => {
         }
     };
 
-    const handleUnarchiveStudent = async (student) => {
+    const handleArchiveStudent = async (studentToDelete) => {
         try {
-            await apiClient.update('students', student.id, { is_archived: false });
-            showNotification('Student unarchived successfully!', 'success');
+            await apiClient.update('students', studentToDelete.id, { isArchived: true });
             fetchData();
         } catch (error) {
-            console.error("Error unarchiving student:", error);
-            showNotification('Error unarchiving student.', 'error');
+            console.error('Error archiving student:', error);
+        }
+    };
+
+    const handleUnarchiveStudent = async (student) => {
+        try {
+            await apiClient.update('students', student.id, { isArchived: false });
+            fetchData();
+        } catch (error) {
+            console.error('Error unarchiving student:', error);
         }
     };
 
@@ -152,7 +159,12 @@ const StudentsModule = () => {
                                             {student.isTutoring ? (
                                                 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-500 text-white">Tutoring</span>
                                             ) : student.groupId ? (
-                                                <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: groups.find(g => g.id === student.groupId)?.color, color: 'white'}}>{groups.find(g => g.id === student.groupId)?.groupName || 'N/A'}</span>
+                                                (() => {
+                                                    const foundGroup = groups.find(g => g.id === student.groupId);
+                                                    return (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: foundGroup?.color, color: 'white'}}>{foundGroup?.groupName || 'N/A'}</span>
+                                                    );
+                                                })()
                                             ) : (
                                                 'N/A'
                                             )}

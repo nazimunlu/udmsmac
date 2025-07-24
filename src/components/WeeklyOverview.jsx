@@ -18,6 +18,21 @@ const WeeklyOverview = ({ events }) => {
     
     const getEventColor = (event) => {
         if (event.color) return event.color;
+        
+        // For events, use category color if available
+        if (event.type === 'event' && event.category) {
+            const categoryColors = {
+                meeting: '#3B82F6',
+                workshop: '#10B981',
+                presentation: '#F59E0B',
+                exam: '#EF4444',
+                celebration: '#EC4899',
+                maintenance: '#8B5CF6',
+                other: '#6B7280',
+            };
+            return categoryColors[event.category] || 'rgb(16, 185, 129)';
+        }
+        
         switch(event.type) {
             case 'lesson': return 'rgb(59, 130, 246)';
             case 'birthday': return 'rgb(236, 72, 153)';
@@ -50,10 +65,21 @@ const WeeklyOverview = ({ events }) => {
                     ))}
 
                     {events.map(event => {
-                        const startTime = new Date(event.startTime);
-                        const endTime = event.endTime 
-                            ? new Date(event.endTime) 
-                            : new Date(startTime.getTime() + 60 * 60 * 1000);
+                        let startTime, endTime;
+                        
+                        if (event.type === 'lesson') {
+                            // For lessons, combine date with original time strings
+                            const lessonDate = event.startTime instanceof Date ? event.startTime : new Date(event.startTime);
+                            const dateStr = lessonDate.toISOString().split('T')[0];
+                            startTime = new Date(`${dateStr}T${event.originalStartTime || '09:00'}:00`);
+                            endTime = new Date(`${dateStr}T${event.originalEndTime || '10:00'}:00`);
+                        } else {
+                            // For events, use existing logic
+                            startTime = event.startTime instanceof Date ? event.startTime : new Date(event.startTime);
+                            endTime = event.endTime 
+                                ? (event.endTime instanceof Date ? event.endTime : new Date(event.endTime))
+                                : new Date(startTime.getTime() + 60 * 60 * 1000);
+                        }
                         
                         const dayIndex = getDayIndex(startTime);
                         
@@ -78,7 +104,7 @@ const WeeklyOverview = ({ events }) => {
                                  }}>
                                 <p className="font-bold leading-tight">{event.eventName}</p>
                                 {event.groupName && <p className="text-[0.6rem] text-white/80">{event.groupName}</p>}
-                                <p className="text-[0.6rem] text-white/80">{new Date(startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})} - {new Date(endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hourCycle: 'h23'})}</p>
+                                <p className="text-[0.6rem] text-white/80">{new Date(startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: false})} - {new Date(endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: false})}</p>
                             </div>
                         )
                     })}

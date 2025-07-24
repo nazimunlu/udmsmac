@@ -8,7 +8,8 @@ import CustomDatePicker from './CustomDatePicker';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import { Icon, ICONS } from './Icons';
 import { AppContext } from '../contexts/AppContext';
-import { calculateLessonsWithinRange, generateMonthlyInstallments } from '../utils/lessonCalculator';
+import { calculateLessonsWithinRange, generateInstallments } from '../utils/lessonCalculator';
+import { sanitizeFileName } from '../utils/caseConverter';
 
 const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const { showNotification } = useNotification();
@@ -65,24 +66,25 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             schedule: { 
                 days: [], 
                 ...studentTutoringDetails.schedule
-            }
+            },
+            installmentFrequency: studentTutoringDetails.installmentFrequency || 'monthly'
         };
 
         if (studentToEdit) {
-            return {
+        return {
                 fullName: studentToEdit?.fullName || '',
                 studentContact: studentToEdit?.studentContact || '',
                 parentName: studentToEdit?.parentName || '',
                 parentContact: studentToEdit?.parentContact || '',
                 enrollmentDate: getSafeDateString(studentToEdit?.enrollmentDate) || new Date().toISOString().split('T')[0],
                 birthDate: getSafeDateString(studentToEdit?.birthDate) || '',
-                isTutoring: studentToEdit?.isTutoring || false,
+            isTutoring: studentToEdit?.isTutoring || false,
                 groupId: studentToEdit?.groupId || null,
-                documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
+            documents: safeParse(studentToEdit?.documents, { nationalIdUrl: '', agreementUrl: '' }),
                 documentNames: safeParse(studentToEdit?.documentNames, { nationalId: '', agreement: '' }),
                 feeDetails: safeParse(studentToEdit?.feeDetails, { totalFee: '12000', numberOfInstallments: '3' }),
-                tutoringDetails: defaultTutoringDetails,
-                installments: safeParse(studentToEdit?.installments, []),
+            tutoringDetails: defaultTutoringDetails,
+            installments: safeParse(studentToEdit?.installments, []),
             };
         } else {
             return {
@@ -200,7 +202,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         setIsSubmitting(true);
 
         if (!formData.isTutoring && (!files.nationalId && !studentToEdit?.documents?.nationalIdUrl || !files.agreement && !studentToEdit?.documents?.agreementUrl)) {
-            showNotification('National ID and Agreement are mandatory for group students.', 'error');
+            showNotification('National ID and Agreement are mandatory for group students. Please try uploading the files again.', 'error');
             setIsSubmitting(false);
             return;
         }
@@ -221,7 +223,9 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     studentToEdit.enrollmentDate !== formData.enrollmentDate ||
                     originalTutoring.endDate !== currentTutoring.endDate ||
                     JSON.stringify(originalSchedule.days || []) !== JSON.stringify(currentSchedule.days || []) ||
-                    parseFloat(originalTutoring.pricePerLesson) !== parseFloat(currentTutoring.pricePerLesson)
+                    parseFloat(originalTutoring.pricePerLesson) !== parseFloat(currentTutoring.pricePerLesson) ||
+                    currentTutoring.installmentFrequency !== originalTutoring.installmentFrequency ||
+                    parseFloat(currentTutoring.installmentAmount) !== parseFloat(originalTutoring.installmentAmount)
                 ) {
                     feeStructureChanged = true;
                 }
@@ -238,10 +242,12 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
         if (feeStructureChanged) {
             if (dataToSave.isTutoring) {
-                dataToSave.installments = generateMonthlyInstallments(
-                    dataToSave.tutoringDetails.totalCalculatedFee,
+                dataToSave.installments = generateInstallments(
+                    parseFloat(dataToSave.tutoringDetails.pricePerLesson),
                     dataToSave.enrollmentDate,
-                    dataToSave.tutoringDetails.endDate
+                    dataToSave.tutoringDetails.endDate,
+                    dataToSave.tutoringDetails.installmentFrequency,
+                    dataToSave.tutoringDetails.schedule.days
                 );
             } else {
                 const totalFee = parseFloat(dataToSave.feeDetails.totalFee) || 0;
@@ -269,6 +275,18 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         dataToSave.documentNames = JSON.stringify(dataToSave.documentNames);
         dataToSave.tutoringDetails = JSON.stringify(dataToSave.tutoringDetails);
 
+        // Ensure all required fields are present
+        if (!dataToSave.fullName) {
+            showNotification('Full name is required.', 'error');
+            setIsSubmitting(false);
+            return;
+        }
+
+        // Add created_at if it's a new student
+        if (!studentToEdit) {
+            dataToSave.createdAt = new Date().toISOString();
+        }
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -278,29 +296,60 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             }
             const userId = user.id;
 
-            const nationalIdPath = `student_documents/${userId}/${dataToSave.fullName}_nationalId_${files.nationalId?.name || Date.now()}`;
-            const agreementPath = `student_documents/${userId}/${dataToSave.fullName}_agreement_${files.agreement?.name || Date.now()}`;
+            const sanitizedFullName = sanitizeFileName(dataToSave.fullName);
+            const nationalIdFileName = files.nationalId ? sanitizeFileName(files.nationalId.name) : `${Date.now()}.pdf`;
+            const agreementFileName = files.agreement ? sanitizeFileName(files.agreement.name) : `${Date.now()}.pdf`;
+            const nationalIdPath = `students/${userId}/nationalId_${Date.now()}.pdf`;
+            const agreementPath = `students/${userId}/agreement_${Date.now()}.pdf`;
 
             if (files.nationalId) {
+                try {
                 const nationalIdUrl = await uploadFile(files.nationalId, nationalIdPath);
                 let docs = JSON.parse(dataToSave.documents);
                 docs.nationalIdUrl = nationalIdUrl;
                 dataToSave.documents = JSON.stringify(docs);
+                } catch (uploadError) {
+                    console.error("File upload error details:", uploadError);
+                    console.error("Error message:", uploadError.message);
+                    console.error("Error code:", uploadError.code);
+                    showNotification('File upload failed, but continuing with student save.', 'warning');
+                }
             }
 
             if (files.agreement) {
+                try {
                 const agreementUrl = await uploadFile(files.agreement, agreementPath);
                 let docs = JSON.parse(dataToSave.documents);
                 docs.agreementUrl = agreementUrl;
                 dataToSave.documents = JSON.stringify(docs);
+                } catch (uploadError) {
+                    console.error("File upload error details:", uploadError);
+                    console.error("Error message:", uploadError.message);
+                    console.error("Error code:", uploadError.code);
+                    showNotification('File upload failed, but continuing with student save.', 'warning');
+                }
             }
 
             if (studentToEdit) {
-                await apiClient.update('students', studentToEdit.id, dataToSave);
+                try {
+                    await apiClient.update('students', studentToEdit.id, dataToSave);
                 showNotification('Student updated successfully!', 'success');
+                } catch (dbError) {
+                    console.error("Database update error:", dbError);
+                    showNotification(`Failed to update student: ${dbError.message}`, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
             } else {
-                await apiClient.create('students', dataToSave);
+                try {
+                    await apiClient.create('students', dataToSave);
                 showNotification('Student enrolled successfully!', 'success');
+                } catch (dbError) {
+                    console.error("Database create error:", dbError);
+                    showNotification(`Failed to create student: ${dbError.message}`, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
             }
             fetchData();
             onClose();
@@ -313,7 +362,12 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={studentToEdit ? "Edit Student" : "Enroll New Student"}>
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title={studentToEdit ? "Edit Student" : "Enroll New Student"}
+            headerStyle={{ backgroundColor: '#2563EB' }}
+        >
             <form onSubmit={handleSubmit}>
                 <FormSection title="General Information">
                     <div className="sm:col-span-6"><FormInput label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} required /></div>
@@ -355,16 +409,244 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                 ))}
                             </div>
                         </div>
-                        <div className="sm:col-span-6 mt-4 p-4 bg-blue-50 rounded-lg">
-                            <h4 className="text-md font-semibold text-gray-800">Calculated Plan</h4>
-                            <div className="grid grid-cols-2 gap-4 mt-2">
-                                <div>
-                                    <p className="text-sm text-gray-600">Total Lessons</p>
-                                    <p className="text-xl font-bold text-blue-800">{formData.tutoringDetails.numberOfLessons}</p>
+                        <div className="sm:col-span-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Installment Frequency</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                <label className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                    formData.tutoringDetails.installmentFrequency === 'daily' 
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}>
+                                    <input 
+                                        type="radio" 
+                                        name="installmentFrequency" 
+                                        value="daily" 
+                                        checked={formData.tutoringDetails.installmentFrequency === 'daily'} 
+                                        onChange={handleTutoringChange} 
+                                        className="sr-only" 
+                                    />
+                                    <div className="text-center">
+                                        <div className="font-medium">Daily</div>
+                                        <div className="text-xs text-gray-500">Every day</div>
+                                    </div>
+                                </label>
+                                <label className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                    formData.tutoringDetails.installmentFrequency === 'weekly' 
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}>
+                                    <input 
+                                        type="radio" 
+                                        name="installmentFrequency" 
+                                        value="weekly" 
+                                        checked={formData.tutoringDetails.installmentFrequency === 'weekly'} 
+                                        onChange={handleTutoringChange} 
+                                        className="sr-only" 
+                                    />
+                                    <div className="text-center">
+                                        <div className="font-medium">Weekly</div>
+                                        <div className="text-xs text-gray-500">Every week</div>
+                                    </div>
+                                </label>
+                                <label className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                    formData.tutoringDetails.installmentFrequency === 'monthly' 
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}>
+                                    <input 
+                                        type="radio" 
+                                        name="installmentFrequency" 
+                                        value="monthly" 
+                                        checked={formData.tutoringDetails.installmentFrequency === 'monthly'} 
+                                        onChange={handleTutoringChange} 
+                                        className="sr-only" 
+                                    />
+                                    <div className="text-center">
+                                        <div className="font-medium">Monthly</div>
+                                        <div className="text-xs text-gray-500">Every month</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="sm:col-span-6 mt-6">
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-lg font-bold text-gray-800 flex items-center">
+                                        <Icon path={ICONS.CALCULATOR} className="w-5 h-5 mr-2 text-blue-600" />
+                                        Calculated Plan
+                                    </h4>
+                                    <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                        Auto-calculated
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Total Fee</p>
-                                    <p className="text-xl font-bold text-blue-800">{(formData.tutoringDetails.totalCalculatedFee || 0).toFixed(2)} ₺</p>
+                                
+                                {/* Main Stats Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                    <div className="bg-white rounded-lg p-3 border border-blue-100 shadow-sm">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Lessons</p>
+                                            <p className="text-lg font-bold text-blue-600">{formData.tutoringDetails.numberOfLessons}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-lg p-3 border border-green-100 shadow-sm">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Fee</p>
+                                            <p className="text-lg font-bold text-green-600">{(formData.tutoringDetails.totalCalculatedFee || 0).toFixed(2)} ₺</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-lg p-3 border border-purple-100 shadow-sm">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Per Lesson</p>
+                                            <p className="text-lg font-bold text-purple-600">{parseFloat(formData.tutoringDetails.pricePerLesson || 0).toFixed(2)} ₺</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-lg p-3 border border-orange-100 shadow-sm">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Weekly</p>
+                                            <p className="text-lg font-bold text-orange-600">{formData.tutoringDetails.schedule.days.length} days</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Installment Summary */}
+                                {formData.tutoringDetails.schedule.days.length > 0 && formData.tutoringDetails.pricePerLesson > 0 && (
+                                    <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm mb-6">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Installment Plan</p>
+                                            <p className="text-base font-bold text-indigo-600 capitalize mb-2">
+                                                {formData.tutoringDetails.installmentFrequency} Payments
+                                            </p>
+                                            <p className="text-xs text-gray-600">
+                                                {(() => {
+                                                    const installments = generateInstallments(
+                                                        parseFloat(formData.tutoringDetails.pricePerLesson),
+                                                        formData.enrollmentDate,
+                                                        formData.tutoringDetails.endDate,
+                                                        formData.tutoringDetails.installmentFrequency,
+                                                        formData.tutoringDetails.schedule.days
+                                                    );
+                                                    const frequencyText = formData.tutoringDetails.installmentFrequency === 'weekly' 
+                                                        ? `every ${new Date(installments[0]?.dueDate).toLocaleDateString('en-GB', { weekday: 'long' })}`
+                                                        : formData.tutoringDetails.installmentFrequency;
+                                                    return `${installments.length} installments of ${installments[0]?.amount.toFixed(2) || 0} ₺ ${frequencyText}`;
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Detailed Breakdown */}
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+                                    <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                        <Icon path={ICONS.INFO} className="w-4 h-4 mr-2 text-gray-500" />
+                                        Calculation Breakdown
+                                    </h5>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between items-center py-1">
+                                            <span className="text-gray-600">Enrollment Date:</span>
+                                            <span className="font-medium text-gray-800">{formData.enrollmentDate ? new Date(formData.enrollmentDate).toLocaleDateString('en-GB') : 'Not set'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1">
+                                            <span className="text-gray-600">End Date:</span>
+                                            <span className="font-medium text-gray-800">{formData.tutoringDetails.endDate ? new Date(formData.tutoringDetails.endDate).toLocaleDateString('en-GB') : 'Not set'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1">
+                                            <span className="text-gray-600">Schedule:</span>
+                                            <span className="font-medium text-gray-800">
+                                                {formData.tutoringDetails.schedule.days.length > 0 
+                                                    ? formData.tutoringDetails.schedule.days.join(', ') 
+                                                    : 'No days selected'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1">
+                                            <span className="text-gray-600">Duration:</span>
+                                            <span className="font-medium text-gray-800">
+                                                {formData.enrollmentDate && formData.tutoringDetails.endDate 
+                                                    ? `${Math.ceil((new Date(formData.tutoringDetails.endDate) - new Date(formData.enrollmentDate)) / (1000 * 60 * 60 * 24 * 7))} weeks`
+                                                    : 'Not calculated'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Monthly Installment Preview */}
+                                {formData.tutoringDetails.schedule.days.length > 0 && formData.tutoringDetails.pricePerLesson > 0 && (
+                                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                            <Icon path={ICONS.CREDIT_CARD} className="w-4 h-4 mr-2 text-green-600" />
+                                            {formData.tutoringDetails.installmentFrequency.charAt(0).toUpperCase() + formData.tutoringDetails.installmentFrequency.slice(1)} Installment Preview
+                                        </h5>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {(() => {
+                                                const installments = generateInstallments(
+                                                    parseFloat(formData.tutoringDetails.pricePerLesson),
+                                                    formData.enrollmentDate,
+                                                    formData.tutoringDetails.endDate,
+                                                    formData.tutoringDetails.installmentFrequency,
+                                                    formData.tutoringDetails.schedule.days
+                                                );
+                                                return installments.slice(0, 6).map((inst, index) => (
+                                                    <div key={index} className="bg-white rounded-md p-3 border border-green-100">
+                                                        <div className="text-xs text-gray-500 capitalize">
+                                                            {formData.tutoringDetails.installmentFrequency === 'weekly' 
+                                                                ? `${new Date(inst.dueDate).toLocaleDateString('en-GB', { weekday: 'short' })} ${inst.number}`
+                                                                : `${formData.tutoringDetails.installmentFrequency} ${inst.number}`
+                                                            }
+                                                        </div>
+                                                        <div className="text-sm font-semibold text-green-700">{inst.amount.toFixed(2)} ₺</div>
+                                                        <div className="text-xs text-gray-400">{new Date(inst.dueDate).toLocaleDateString('en-GB')}</div>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                        {(() => {
+                                            const totalInstallments = generateInstallments(
+                                                parseFloat(formData.tutoringDetails.pricePerLesson),
+                                                formData.enrollmentDate,
+                                                formData.tutoringDetails.endDate,
+                                                formData.tutoringDetails.installmentFrequency,
+                                                formData.tutoringDetails.schedule.days
+                                            ).length;
+                                            if (totalInstallments > 6) {
+                                                return (
+                                                    <div className="text-xs text-gray-500 mt-2 text-center">
+                                                        +{totalInstallments - 6} more {formData.tutoringDetails.installmentFrequency} installments
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                )}
+                                
+                                {/* Validation Messages */}
+                                <div className="mt-4 space-y-2">
+                                    {!formData.tutoringDetails.endDate && (
+                                        <div className="flex items-center text-amber-600 bg-amber-50 rounded-md p-3">
+                                            <Icon path={ICONS.WARNING} className="w-4 h-4 mr-2" />
+                                            <span className="text-sm">Please set an end date to calculate the plan</span>
+                                        </div>
+                                    )}
+                                    {formData.tutoringDetails.schedule.days.length === 0 && (
+                                        <div className="flex items-center text-amber-600 bg-amber-50 rounded-md p-3">
+                                            <Icon path={ICONS.WARNING} className="w-4 h-4 mr-2" />
+                                            <span className="text-sm">Please select at least one day for the schedule</span>
+                                        </div>
+                                    )}
+                                    {formData.tutoringDetails.pricePerLesson <= 0 && (
+                                        <div className="flex items-center text-amber-600 bg-amber-50 rounded-md p-3">
+                                            <Icon path={ICONS.WARNING} className="w-4 h-4 mr-2" />
+                                            <span className="text-sm">Please set a price per lesson</span>
+                                        </div>
+                                    )}
+                                    {formData.tutoringDetails.numberOfLessons > 0 && formData.tutoringDetails.totalCalculatedFee > 0 && (
+                                        <div className="flex items-center text-green-600 bg-green-50 rounded-md p-3">
+                                            <Icon path={ICONS.CHECK} className="w-4 h-4 mr-2" />
+                                            <span className="text-sm">Plan calculated successfully! Ready to enroll.</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -4,7 +4,12 @@ import Modal from './Modal';
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
     if (!isOpen) return null;
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title}>
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title={title}
+            headerStyle={{ backgroundColor: '#DC2626' }}
+        >
             <p className="text-gray-700 mb-6">{message}</p>
             <div className="flex justify-end space-x-4">
                 <button onClick={onClose} className="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>

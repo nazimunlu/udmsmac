@@ -25,7 +25,7 @@ const NotificationCard = ({ message, details, type, onDismiss }) => {
 
     const iconType = {
         info: ICONS.INFO,
-        warning: ICONS.EXCLAMATION,
+        warning: ICONS.WARNING,
         error: ICONS.CLOSE,
         success: ICONS.CHECK,
     }[type] || ICONS.INFO;

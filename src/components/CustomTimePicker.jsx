@@ -3,19 +3,23 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { FormInput } from './Form';
 import { Icon, ICONS } from './Icons';
 
-const CustomTimePicker = ({ label, value, onChange, name }) => {
+const CustomTimePicker = ({ label, value, onChange, name, options }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [openUpwards, setOpenUpwards] = useState(false);
     const pickerRef = useRef(null);
     const inputRef = useRef(null);
 
-    const timeOptions = [];
-    for (let h = 8; h <= 23; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            if (h === 8 && m === 0) continue; // Skip 8:00
-            timeOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    // Use provided options or fall back to default time options
+    const timeOptions = options || (() => {
+        const defaultOptions = [];
+        for (let h = 8; h <= 23; h++) {
+            for (let m = 0; m < 60; m += 30) {
+                if (h === 8 && m === 0) continue; // Skip 8:00
+                defaultOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            }
         }
-    }
+        return defaultOptions;
+    })();
 
     useClickOutside(pickerRef, () => setIsOpen(false));
 
@@ -47,7 +51,7 @@ const CustomTimePicker = ({ label, value, onChange, name }) => {
                 placeholder="Select Time"
                 readOnly 
                 onClick={() => setIsOpen(!isOpen)} 
-                icon={<Icon path={ICONS.CLOCK} className="w-5 h-5 text-gray-400"/>}
+                icon={ICONS.CLOCK}
                 className="cursor-pointer"
                 ref={inputRef}
             />

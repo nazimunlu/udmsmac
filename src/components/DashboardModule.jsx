@@ -14,6 +14,9 @@ import SettingsModule from './SettingsModule';
 import LoadingSpinner from './LoadingSpinner';
 import TodoModule from './TodoModule';
 import apiClient from '../apiClient';
+import { generateAllLessons } from '../utils/lessonCalculator';
+import CustomDatePicker from './CustomDatePicker';
+import CustomTimePicker from './CustomTimePicker';
 
 const DashboardModule = ({ setActiveModule }) => {
     const { showNotification } = useNotification();
@@ -30,6 +33,14 @@ const DashboardModule = ({ setActiveModule }) => {
     const [weekEvents, setWeekEvents] = useState([]);
     const [allEvents, setAllEvents] = useState({ lessons: [], events: [], birthdays: [] });
     const [duePayments, setDuePayments] = useState([]);
+    const [isLessonGenerationModalOpen, setIsLessonGenerationModalOpen] = useState(false);
+    const [lessonGenerationData, setLessonGenerationData] = useState({
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '10:00'
+    });
+    const [isGeneratingLessons, setIsGeneratingLessons] = useState(false);
 
     const generateColorForString = (id) => {
         if (!id) return '#6B7280'; // default gray
@@ -68,9 +79,12 @@ const DashboardModule = ({ setActiveModule }) => {
                         color = group.color;
                     }
                 }
-                return {...l, type: 'lesson', eventName, startTime: new Date(l.lessonDate), color};
+                // For lessons, properly combine date with start time for accurate time calculations
+                const lessonDate = new Date(l.lessonDate);
+                const lessonStartTime = new Date(`${l.lessonDate}T${l.startTime || '09:00'}:00`);
+                return {...l, type: 'lesson', eventName, startTime: lessonStartTime, originalStartTime: l.startTime, originalEndTime: l.endTime, color};
             }),
-            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay, color: 'rgb(16, 185, 129)'})),
+            ...(events || []).map(e => ({...e, type: 'event', eventName: e.eventName, startTime: new Date(e.startTime), endTime: e.endTime ? new Date(e.endTime) : null, isAllDay: e.isAllDay, color: 'rgb(16, 185, 129)', category: e.category})),
             ...(students || []).filter(s => s.birthDate).map(s => {
                 const birthDate = new Date(s.birthDate);
                 let nextBirthday = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -91,7 +105,11 @@ const DashboardModule = ({ setActiveModule }) => {
         const eventsWithEndTimes = allItems.map(item => {
             let effectiveEndTime = item.startTime.getTime(); // Default to start time
             if (item.type === 'lesson') {
-                effectiveEndTime = item.startTime.getTime() + 2 * 60 * 60 * 1000; // 2 hours for lessons
+                // For lessons, calculate end time from original time strings
+                const lessonDate = item.startTime instanceof Date ? item.startTime : new Date(item.startTime);
+                const dateStr = lessonDate.toISOString().split('T')[0];
+                const endTime = new Date(`${dateStr}T${item.originalEndTime || '10:00'}:00`);
+                effectiveEndTime = endTime.getTime();
             } else if (item.type === 'event' && item.endTime) {
                 effectiveEndTime = new Date(item.endTime).getTime();
             } else if (item.type === 'event' && !item.endTime) { // Default 1 hour for events if no endTime
@@ -140,13 +158,31 @@ const DashboardModule = ({ setActiveModule }) => {
 
     }, [students, groups, lessons, events, payments]);
     
-    const EventIcon = ({type, color}) => {
+    const EventIcon = ({type, color, category}) => {
         const iconMap = {
             lesson: { path: ICONS.LESSON, defaultColor: 'bg-blue-100 text-blue-600' },
             birthday: { path: ICONS.CAKE, defaultColor: 'bg-pink-100 text-pink-600' },
             event: { path: ICONS.CALENDAR, defaultColor: 'bg-green-100 text-green-600' },
         };
+        
+        // For events, use category color if available
+        if (type === 'event' && category) {
+            const categoryColors = {
+                meeting: '#3B82F6',
+                workshop: '#10B981',
+                presentation: '#F59E0B',
+                exam: '#EF4444',
+                celebration: '#EC4899',
+                maintenance: '#8B5CF6',
+                other: '#6B7280',
+            };
+            const eventColor = categoryColors[category] || '#10B981';
+            return <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-4" style={{ backgroundColor: eventColor }}><Icon path={ICONS.CALENDAR} className="w-5 h-5 text-white"/></div>;
+        }
+        
         const { path, defaultColor } = iconMap[type] || { path: ICONS.INFO, defaultColor: 'bg-gray-100 text-gray-600' };
+        
+
         
         const style = color ? { backgroundColor: color, color: 'white' } : {};
         const className = color ? '' : defaultColor;
@@ -158,6 +194,8 @@ const DashboardModule = ({ setActiveModule }) => {
         const now = Date.now();
         const startTime = item.startTime.getTime();
         const endTime = item.effectiveEndTime;
+        
+
     
         if (item.type === 'birthday') {
             const diff = startTime - now;
@@ -284,10 +322,16 @@ const DashboardModule = ({ setActiveModule }) => {
                                 {todaysSchedule.map(item => (
                                     <li key={item.id} className="flex items-center justify-between group">
                                         <div className="flex items-center">
-                                            <EventIcon type={item.type} color={item.color} />
+                                            <EventIcon type={item.type} color={item.color} category={item.category} />
                                             <div>
                                                 <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                                <p className="text-sm text-gray-500">{item.allDay ? 'All Day' : item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Istanbul'})}</p>
+                                                <p className="text-sm text-gray-500">
+                                                    {item.allDay ? 'All Day' : 
+                                                     item.type === 'lesson' ? 
+                                                        `${item.originalStartTime || '09:00'} - ${item.originalEndTime || '10:00'}` :
+                                                        item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Europe/Istanbul'})
+                                                    }
+                                                </p>
                                             </div>
                                         </div>
                                         {(item.type === 'event' || item.type === 'lesson') && (
@@ -310,7 +354,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 {upcomingEvents.slice(0, 5).map((item, index) => (
                                     <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
                                         <div className="flex items-center">
-                                            <EventIcon type={item.type} color={item.color} />
+                                            <EventIcon type={item.type} color={item.color} category={item.category} />
                                             <div>
                                                 <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
                                                 <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>

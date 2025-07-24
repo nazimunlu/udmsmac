@@ -17,7 +17,7 @@ const Notification = () => {
     const iconType = {
         info: ICONS.INFO,
         success: ICONS.CHECK,
-        warning: ICONS.EXCLAMATION,
+        warning: ICONS.WARNING,
         error: ICONS.CLOSE,
     }[notification.type] || ICONS.INFO;
 

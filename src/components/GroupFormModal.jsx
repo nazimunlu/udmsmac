@@ -37,12 +37,12 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     ];
 
     const getInitialData = useCallback(() => ({
-        group_name: groupToEdit?.group_name || '',
+        groupName: groupToEdit?.groupName || '',
         schedule: groupToEdit?.schedule || { days: [], startTime: '10:00', endTime: '12:00' },
         color: groupToEdit?.color || vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
-        start_date: groupToEdit?.start_date ? new Date(groupToEdit.start_date).toISOString().split('T')[0] : '',
-        program_length: groupToEdit?.program_length || '12', // Default to 12 weeks
-        is_archived: groupToEdit?.is_archived || false,
+        startDate: groupToEdit?.startDate ? new Date(groupToEdit.startDate).toISOString().split('T')[0] : '',
+        programLength: groupToEdit?.programLength || '12', // Default to 12 weeks
+        isArchived: groupToEdit?.isArchived || false,
     }), [groupToEdit]);
 
     const [formData, setFormData] = useState(getInitialData());
@@ -83,11 +83,11 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        const { start_date, program_length, schedule } = formData;
+        const { startDate, programLength, schedule } = formData;
         let calculatedEndDate = null;
 
-        if (start_date && program_length && schedule.days.length > 0) {
-            const start = new Date(start_date);
+        if (startDate && programLength && schedule.days.length > 0) {
+            const start = new Date(startDate);
             let current = new Date(start);
             let weeksCounted = 0;
             let daysInWeek = 0;
@@ -97,27 +97,27 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             };
             const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
 
-            while (weeksCounted < parseInt(program_length, 10)) {
+            while (weeksCounted < parseInt(programLength, 10)) {
                 if (scheduledDayNumbers.includes(current.getDay())) {
                     daysInWeek++;
                 }
                 current.setDate(current.getDate() + 1);
-                if (current.getDay() === dayMap['Sun']) { // Assuming week starts on Sunday for counting weeks
+                if (daysInWeek >= schedule.days.length) {
                     weeksCounted++;
-                    daysInWeek = 0; // Reset for next week
+                    daysInWeek = 0;
                 }
             }
-            // Go back one day to get the last day of the last counted week
-            current.setDate(current.getDate() - 1);
-            calculatedEndDate = current;
+            calculatedEndDate = current.toISOString().split('T')[0];
         }
 
         const dataToSave = {
-            ...formData,
-            is_archived: formData.is_archived || false,
-            schedule: JSON.stringify(formData.schedule),
-            start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
-            endDate: calculatedEndDate ? calculatedEndDate.toISOString() : null,
+            groupName: formData.groupName,
+            schedule: formData.schedule,
+            color: formData.color,
+            startDate: formData.startDate,
+            endDate: calculatedEndDate,
+            programLength: formData.programLength,
+            isArchived: formData.isArchived,
         };
 
         try {
@@ -138,14 +138,19 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={groupToEdit ? "Edit Group" : "Add New Group"}>
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title={groupToEdit ? "Edit Group" : "Add New Group"}
+            headerStyle={{ backgroundColor: '#2563EB' }}
+        >
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
-                    <FormInput label="Group Name" name="group_name" value={formData.group_name} onChange={handleChange} required />
+                    <FormInput label="Group Name" name="groupName" value={formData.groupName} onChange={handleChange} required />
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <CustomDatePicker label="Start Date" name="start_date" value={formData.start_date} onChange={(e) => handleDateChange('start_date', e.target.value)} />
-                        <FormSelect label="Program Length (Weeks)" name="program_length" value={formData.program_length} onChange={handleChange}>
+                        <CustomDatePicker label="Start Date" name="startDate" value={formData.startDate} onChange={(e) => handleDateChange('startDate', e.target.value)} />
+                        <FormSelect label="Program Length (Weeks)" name="programLength" value={formData.programLength} onChange={handleChange}>
                             {[4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48].map(length => (
                                 <option key={length} value={length}>{length} Weeks</option>
                             ))}

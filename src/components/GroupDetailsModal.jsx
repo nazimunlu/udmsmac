@@ -101,7 +101,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
 
     const modalTitle = (
         <div>
-            <h3 className="text-xl font-bold">{group?.group_name}</h3>
+            <h3 className="text-xl font-bold">{group?.groupName}</h3>
             <p className="text-sm text-white/80">{students.length} Students</p>
         </div>
     );

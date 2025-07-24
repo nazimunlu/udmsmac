@@ -54,7 +54,12 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
     ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Edit Document">
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title="Edit Document"
+            headerStyle={{ backgroundColor: '#2563EB' }}
+        >
             <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
                     <FormInput label="Document Name" name="name" value={formData.name} onChange={handleChange} required />

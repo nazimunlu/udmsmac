@@ -70,7 +70,7 @@ const CustomDatePicker = ({ label, value, onChange, name }) => {
                 value={value ? formatDate(value) : ''}
                 readOnly 
                 onClick={() => setIsOpen(!isOpen)} 
-                icon={<Icon path={ICONS.CALENDAR} className="w-5 h-5 text-gray-400"/>}
+                icon={ICONS.CALENDAR}
                 className="cursor-pointer"
             />
             {isOpen && (

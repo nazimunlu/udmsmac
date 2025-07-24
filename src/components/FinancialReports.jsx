@@ -4,15 +4,22 @@ import { formatDate } from '../utils/formatDate';
 import CustomDatePicker from './CustomDatePicker';
 import { FormSelect } from './Form';
 import { useAppContext } from '../contexts/AppContext';
+import ConfirmationModal from './ConfirmationModal';
+import { Icon, ICONS } from './Icons';
+import { useNotification } from '../contexts/NotificationContext';
+import apiClient from '../apiClient';
 
 const FinancialReports = ({ formatCurrency }) => {
     const { transactions } = useAppContext();
+    const { showNotification } = useNotification();
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
         type: 'all',
         category: 'all',
     });
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [actionToConfirm, setActionToConfirm] = useState(null);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -49,6 +56,37 @@ const FinancialReports = ({ formatCurrency }) => {
         });
         return ['all', ...Array.from(categories)];
     }, [transactions]);
+
+    const handleEdit = (transaction) => {
+        // For now, we'll show a notification that editing should be done in the respective sections
+        // This maintains the edit functionality while directing users to the proper forms
+        showNotification('Please edit this transaction in its respective section (Payments, Business Expenses, or Personal Expenses).', 'info');
+    };
+
+    const handleDelete = (transaction) => {
+        setActionToConfirm({
+            type: 'delete',
+            transaction,
+            message: `Are you sure you want to delete the transaction "${transaction.description}"? This action cannot be undone.`
+        });
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmAction = async () => {
+        if (actionToConfirm?.type === 'delete') {
+            try {
+                await apiClient.delete('transactions', actionToConfirm.transaction.id);
+                showNotification('Transaction deleted successfully!', 'success');
+                // Refresh data by calling the parent's fetchData
+                window.location.reload(); // Simple refresh for now
+            } catch (error) {
+                console.error("Error deleting transaction:", error);
+                showNotification('Failed to delete transaction.', 'error');
+            }
+        }
+        setIsConfirmModalOpen(false);
+        setActionToConfirm(null);
+    };
 
     return (
         <div className="space-y-6">
@@ -96,6 +134,7 @@ const FinancialReports = ({ formatCurrency }) => {
                                 <th className="p-3 font-semibold text-gray-600 uppercase">Category</th>
                                 <th className="p-3 font-semibold text-gray-600 uppercase">Description</th>
                                 <th className="p-3 font-semibold text-gray-600 uppercase text-right">Amount</th>
+                                <th className="p-3 font-semibold text-gray-600 uppercase">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -107,15 +146,47 @@ const FinancialReports = ({ formatCurrency }) => {
                                         <td className="p-3 text-gray-800">{t.category || 'N/A'}</td>
                                         <td className="p-3 text-gray-800">{t.description || 'N/A'}</td>
                                         <td className={`p-3 text-right font-semibold ${t.expense_type.startsWith('income') ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
+                                        <td className="p-3 text-gray-800">
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleEdit(t)}
+                                                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                                    title="Edit transaction in respective section"
+                                                >
+                                                    <Icon path={ICONS.INFO} className="w-3 h-3 mr-1" />
+                                                    Info
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(t)}
+                                                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                                                    title="Delete transaction"
+                                                >
+                                                    <Icon path={ICONS.DELETE} className="w-3 h-3 mr-1" />
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan="5" className="p-3 text-center text-gray-500">No transactions found for the selected filters.</td></tr>
+                                <tr><td colSpan="6" className="p-3 text-center text-gray-500">No transactions found for the selected filters.</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+                    {/* Modals */}
+        <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={confirmAction}
+                title="Confirm Deletion"
+                message={actionToConfirm?.message}
+                confirmText="Delete"
+                cancelText="Cancel"
+                confirmButtonStyle="bg-red-600 hover:bg-red-700"
+            />
         </div>
     );
 };

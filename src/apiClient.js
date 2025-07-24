@@ -20,10 +20,15 @@ const apiClient = {
 
     // Create a new record
     create: async (tableName, newData) => {
+        console.log('apiClient.create called with:', { tableName, newData: JSON.stringify(newData, null, 2) });
         const snakeCaseData = convertKeysToSnakeCase(newData);
-        const { data, error } = await supabase.from(tableName).insert(snakeCaseData).single();
+        console.log('Converted to snake_case:', JSON.stringify(snakeCaseData, null, 2));
+        const { data, error } = await supabase.from(tableName).insert(snakeCaseData).select().single();
+        console.log('Supabase response:', { data, error });
         if (error) throw error;
-        return convertKeysToCamelCase(data);
+        const result = convertKeysToCamelCase(data);
+        console.log('Final result:', result);
+        return result;
     },
 
     // Update a record by ID
