@@ -4,6 +4,7 @@ import Modal from './Modal';
 import { FormSection } from './Form';
 import { ICONS, Icon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
+import { generateMessage } from '../utils/messageTemplates';
 
 const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) => {
     const { fetchData } = useAppContext();
@@ -51,6 +52,11 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
     const studentsToDisplay = studentsInGroup || (student ? [student] : []);
 
     const generateAttendanceMessage = (student, lesson, attendanceStatus) => {
+        // Only generate message for absent students
+        if (attendanceStatus !== 'Absent') {
+            return null;
+        }
+
         // Fix date formatting by using lessonDate and startTime properly
         const lessonDate = new Date(lesson.lessonDate);
         const startTime = lesson.startTime || '09:00';
@@ -66,11 +72,12 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
         const timeParts = startTime.split(':');
         const formattedTime = `${timeParts[0]}:${timeParts[1]}`;
         
-        if (attendanceStatus === 'Absent') {
-            return `Sayın velimiz, öğrencimiz ${student.fullName}, ${formattedDate} tarihindeki dersine katılmamıştır. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
-        } else {
-            return `Sayın velimiz, öğrencimiz ${student.fullName}, ${formattedDate} tarihindeki dersine katılmıştır. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
-        }
+        // Use the message template utility
+        return generateMessage('absence', {
+            studentName: student.fullName,
+            lessonDate: formattedDate,
+            lessonTime: formattedTime
+        });
     };
 
     const handleGenerateAttendanceMessage = (student, status) => {

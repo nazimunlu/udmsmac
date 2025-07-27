@@ -7,6 +7,7 @@ import CustomTimePicker from './CustomTimePicker';
 import { useAppContext } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
+import { Icon, ICONS } from './Icons';
 
 const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const { fetchData } = useAppContext();
@@ -52,6 +53,94 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         if(isOpen) setFormData(getInitialData());
     }, [isOpen, getInitialData]);
 
+    // Recalculate end date whenever relevant fields change
+    useEffect(() => {
+        const { startDate, programLength, schedule } = formData;
+        if (startDate && programLength && schedule.days && schedule.days.length > 0) {
+            const calculatedEndDate = calculateEndDate(startDate, programLength, schedule);
+            setFormData(prev => ({ ...prev, endDate: calculatedEndDate }));
+        }
+    }, [formData.startDate, formData.programLength, formData.schedule.days, formData.schedule.startTime, formData.schedule.endTime]);
+
+    // Helper function to calculate end date based on schedule and program length
+    const calculateEndDate = (startDate, programLength, schedule) => {
+        if (!startDate || !programLength || !schedule.days || schedule.days.length === 0) {
+            return null;
+        }
+
+        const start = new Date(startDate);
+        const dayMap = {
+            'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+        };
+        const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
+        
+        console.log('Calculating end date:', {
+            startDate,
+            programLength,
+            scheduleDays: schedule.days,
+            scheduledDayNumbers
+        });
+        
+        // Calculate the end date by finding the last lesson of the program length weeks
+        let currentDate = new Date(start);
+        let weeksCompleted = 0;
+        let lessonsInCurrentWeek = 0;
+        let lastLessonDate = null;
+        let totalLessons = 0;
+        
+        // Find the first lesson day (start date might not be a lesson day)
+        while (!scheduledDayNumbers.includes(currentDate.getDay())) {
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        console.log('First lesson day:', currentDate.toISOString().split('T')[0]);
+        
+        // Now iterate through weeks until we reach the program length
+        while (weeksCompleted < parseInt(programLength, 10)) {
+            // Check if current date is a lesson day
+            if (scheduledDayNumbers.includes(currentDate.getDay())) {
+                lessonsInCurrentWeek++;
+                lastLessonDate = new Date(currentDate);
+                totalLessons++;
+                console.log(`Week ${weeksCompleted + 1}, Lesson ${lessonsInCurrentWeek}: ${currentDate.toISOString().split('T')[0]}`);
+                
+                // If we've completed all lessons for this week, move to next week
+                if (lessonsInCurrentWeek >= schedule.days.length) {
+                    weeksCompleted++;
+                    lessonsInCurrentWeek = 0;
+                    console.log(`Completed week ${weeksCompleted}, total lessons so far: ${totalLessons}`);
+                    
+                    // If we haven't reached the program length, move to the next week's first lesson day
+                    if (weeksCompleted < parseInt(programLength, 10)) {
+                        // Find the next lesson day after the current week ends
+                        let nextWeekDate = new Date(currentDate);
+                        nextWeekDate.setDate(nextWeekDate.getDate() + 1);
+                        
+                        // Find the next scheduled lesson day
+                        while (!scheduledDayNumbers.includes(nextWeekDate.getDay())) {
+                            nextWeekDate.setDate(nextWeekDate.getDate() + 1);
+                        }
+                        currentDate = nextWeekDate;
+                        continue; // Skip the automatic date increment below
+                    }
+                }
+            }
+            
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // The end date should be the last lesson date found
+        const result = lastLessonDate ? lastLessonDate.toISOString().split('T')[0] : null;
+        console.log('End date calculation result:', {
+            endDate: result,
+            totalLessons,
+            totalWeeks: weeksCompleted
+        });
+        
+        return result;
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -65,9 +154,17 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
     const handleDateChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
         if (name === 'startDate') {
-            const startDate = new Date(value);
-            const endDate = new Date(startDate.getTime() + 12 * 7 * 24 * 60 * 60 * 1000);
-            setFormData(prev => ({ ...prev, endDate: endDate.toISOString().split('T')[0] }));
+            // Calculate end date based on schedule and program length
+            const { programLength, schedule } = formData;
+            if (value && programLength && schedule.days.length > 0) {
+                const calculatedEndDate = calculateEndDate(value, programLength, schedule);
+                setFormData(prev => ({ ...prev, endDate: calculatedEndDate }));
+            } else {
+                // Fallback to simple calculation if no schedule
+                const startDate = new Date(value);
+                const endDate = new Date(startDate.getTime() + 12 * 7 * 24 * 60 * 60 * 1000);
+                setFormData(prev => ({ ...prev, endDate: endDate.toISOString().split('T')[0] }));
+            }
         }
     };
 
@@ -87,27 +184,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         let calculatedEndDate = null;
 
         if (startDate && programLength && schedule.days.length > 0) {
-            const start = new Date(startDate);
-            let current = new Date(start);
-            let weeksCounted = 0;
-            let daysInWeek = 0;
-
-            const dayMap = {
-                'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
-            };
-            const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
-
-            while (weeksCounted < parseInt(programLength, 10)) {
-                if (scheduledDayNumbers.includes(current.getDay())) {
-                    daysInWeek++;
-                }
-                current.setDate(current.getDate() + 1);
-                if (daysInWeek >= schedule.days.length) {
-                    weeksCounted++;
-                    daysInWeek = 0;
-                }
-            }
-            calculatedEndDate = current.toISOString().split('T')[0];
+            calculatedEndDate = calculateEndDate(startDate, programLength, schedule);
         }
 
         const dataToSave = {
@@ -282,6 +359,29 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
                             ))}
                         </FormSelect>
                     </div>
+                    
+                    {/* Display calculated end date */}
+                    {formData.endDate && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center">
+                                <Icon path={ICONS.CALENDAR} className="w-5 h-5 text-blue-600 mr-2" />
+                                <div>
+                                    <h4 className="text-sm font-medium text-blue-900">Calculated End Date</h4>
+                                    <p className="text-sm text-blue-800">
+                                        {new Date(formData.endDate).toLocaleDateString('tr-TR', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        Based on {formData.programLength} weeks, {formData.schedule.days.length} lessons per week ({formData.schedule.days.join(', ')})
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
                         <div className="flex flex-wrap gap-2 mb-4">

@@ -263,10 +263,10 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             // Validate required fields
             if (!formData.fullName.trim()) {
                 showNotification('Full name is required.', 'error');
-                setIsSubmitting(false);
+            setIsSubmitting(false);
                 setSubmitProgress('');
-                return;
-            }
+            return;
+        }
 
             if (!formData.studentContact.trim()) {
                 showNotification('Phone number is required.', 'error');
@@ -307,7 +307,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
 
             // Upload files in parallel for better performance
             const uploadPromises = [];
-            
+
             if (files.nationalId) {
                 const nationalIdFileName = generateFileName(formData.fullName, 'nationalId', files.nationalId.name);
                 const timestamp = Date.now();

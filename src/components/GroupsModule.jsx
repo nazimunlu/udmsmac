@@ -20,6 +20,37 @@ const GroupsModule = () => {
     const [groupToDelete, setGroupToDelete] = useState(null);
     const [showArchivedGroups, setShowArchivedGroups] = useState(false);
 
+    // Function to convert hex color to gradient background
+    const getGroupGradient = (hexColor) => {
+        // Convert hex to RGB and create a lighter version for gradient
+        const hex = hexColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Create a lighter version (80% opacity)
+        const lightR = Math.round(r + (255 - r) * 0.8);
+        const lightG = Math.round(g + (255 - g) * 0.8);
+        const lightB = Math.round(b + (255 - b) * 0.8);
+        
+        return `from-[rgb(${lightR},${lightG},${lightB})] to-white`;
+    };
+
+    // Function to get border color from hex
+    const getGroupBorder = (hexColor) => {
+        const hex = hexColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Create a lighter version for border (20% opacity)
+        const lightR = Math.round(r + (255 - r) * 0.8);
+        const lightG = Math.round(g + (255 - g) * 0.8);
+        const lightB = Math.round(b + (255 - b) * 0.8);
+        
+        return `rgb(${lightR},${lightG},${lightB})`;
+    };
+
     
 
     const openAddModal = () => {
@@ -108,14 +139,29 @@ const GroupsModule = () => {
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.GROUPS} className="w-8 h-8 mr-3"/>Groups</h2>
-                <button onClick={openAddModal} className="flex items-center px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow"><Icon path={ICONS.ADD} className="mr-2"/>Add Group</button>
+            {/* Simple Premium Header */}
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.GROUPS} className="w-7 h-7 text-white"/>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Groups</h2>
+                            <p className="text-gray-600 text-sm lg:text-base">Manage student groups and schedules</p>
+                        </div>
+                    </div>
+                    <button onClick={openAddModal} className="flex items-center px-6 py-3 rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-all duration-300 shadow-sm">
+                        <Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>
+                        <span className="font-semibold">Add Group</span>
+                    </button>
+                </div>
             </div>
-            <div className="mb-4 border-b border-gray-200">
-                <nav className="flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => setShowArchivedGroups(false)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${!showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Active Groups ({groups.length})</button>
-                    <button onClick={() => setShowArchivedGroups(true)} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${showArchivedGroups ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Archived Groups ({archivedGroups.length})</button>
+            
+            <div className="mb-6 bg-white rounded-lg p-1 shadow-sm">
+                <nav className="flex space-x-1" aria-label="Tabs">
+                    <button onClick={() => setShowArchivedGroups(false)} className={`flex-1 px-4 py-3 font-medium text-sm rounded-lg transition-all duration-300 ${!showArchivedGroups ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}>Active Groups ({groups.length})</button>
+                    <button onClick={() => setShowArchivedGroups(true)} className={`flex-1 px-4 py-3 font-medium text-sm rounded-lg transition-all duration-300 ${showArchivedGroups ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}>Archived Groups ({archivedGroups.length})</button>
                 </nav>
             </div>
             {loading ? (
@@ -124,32 +170,57 @@ const GroupsModule = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredGroups.length > 0 ? (
                         filteredGroups.map(group => (
-                            <div key={group.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col group" style={{borderTop: `5px solid ${group.color}`}}>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">{group.groupName}</h3>
-                                <div className="text-gray-600 mb-4">
-                                    {group.schedule && group.schedule.days && group.schedule.days.length > 0 && (
-                                        <div>{group.schedule.days.join(', ')}: {group.schedule.startTime} - {group.schedule.endTime}</div>
-                                    )}
-                                    <div className="text-sm text-gray-500 mt-2">
-                                        {group.startDate && group.endDate && 
-                                            <span>{formatDate(group.startDate)} - {formatDate(group.endDate)}</span>
-                                        }
+                            <div key={group.id} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group cursor-pointer">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300" style={{backgroundColor: group.color}}>
+                                        <Icon path={ICONS.GROUPS} className="w-7 h-7 text-white" />
                                     </div>
                                 </div>
-                                <div className="flex-grow"></div>
-                                <div className="flex justify-between items-center mt-4">
-                                    <span className="text-sm text-gray-500">{studentCount(group.id)} Students</span>
-                                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openDetailsModal(group)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
-                                        <button onClick={() => openEditModal(group)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                
+                                <h3 className="text-2xl font-bold text-gray-900 mb-3">{group.groupName}</h3>
+                                
+                                <div className="space-y-3 mb-6">
+                                    {group.schedule && group.schedule.days && group.schedule.days.length > 0 && (
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <Icon path={ICONS.CALENDAR} className="w-4 h-4 mr-2 text-gray-600" />
+                                            <span>{group.schedule.days.join(', ')}: {group.schedule.startTime} - {group.schedule.endTime}</span>
+                                        </div>
+                                    )}
+                                    {group.startDate && group.endDate && (
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <Icon path={ICONS.CLOCK} className="w-4 h-4 mr-2 text-gray-600" />
+                                            <span>{formatDate(group.startDate)} - {formatDate(group.endDate)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                                    <div className="flex items-center text-sm text-gray-700">
+                                        <Icon path={ICONS.USERS} className="w-4 h-4 mr-2" />
+                                        <span className="font-medium">{studentCount(group.id)} Student{studentCount(group.id) !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <button onClick={(e) => { e.stopPropagation(); openDetailsModal(group); }} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors">
+                                            <Icon path={ICONS.INFO} className="w-5 h-5" />
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); openEditModal(group); }} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors">
+                                            <Icon path={ICONS.EDIT} className="w-5 h-5" />
+                                        </button>
                                         {!showArchivedGroups && (
-                                            <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-orange-600 hover:text-orange-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.ARCHIVE} className="w-5 h-5" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); openDeleteConfirmation(group); }} className="p-2 text-orange-600 hover:text-orange-800 rounded-full hover:bg-orange-50 transition-colors">
+                                                <Icon path={ICONS.ARCHIVE} className="w-5 h-5" />
+                                            </button>
                                         )}
                                         {showArchivedGroups && (
-                                            <button onClick={() => handleUnarchiveGroup(group)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.BOX_OPEN} className="w-5 h-5" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleUnarchiveGroup(group); }} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-green-50 transition-colors">
+                                                <Icon path={ICONS.BOX_OPEN} className="w-5 h-5" />
+                                            </button>
                                         )}
                                         {showArchivedGroups && (
-                                            <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.TRASH} className="w-5 h-5" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); openDeleteConfirmation(group); }} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors">
+                                                <Icon path={ICONS.TRASH} className="w-5 h-5" />
+                                            </button>
                                         )}
                                     </div>
                                 </div>

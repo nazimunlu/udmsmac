@@ -394,22 +394,28 @@ const FinancesModule = () => {
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            {/* Responsive Header */}
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center pb-4 mb-6 border-b border-gray-200 space-y-4 lg:space-y-0">
-                <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center">
-                    <Icon path={ICONS.MONEY_BILL_WAVE} className="w-6 h-6 lg:w-8 lg:h-8 mr-2 lg:mr-3" />
-                    <span className="hidden sm:inline">Financial Management</span>
-                    <span className="sm:hidden">Finances</span>
-                </h2>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                    <DateRangePicker onDateChange={setDateRange} initialRange={dateRange} />
-                    <button 
-                        onClick={() => setIsDataHidden(!isDataHidden)} 
-                        className="p-2 rounded-full hover:bg-gray-200 transition-colors self-start sm:self-auto"
-                        title={isDataHidden ? "Show data" : "Hide data"}
-                    >
-                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
-                    </button>
+            {/* Simple Premium Header */}
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.MONEY_BILL_WAVE} className="w-7 h-7 text-white"/>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Financial Management</h2>
+                            <p className="text-gray-600 text-sm lg:text-base">Track income, expenses, and payments</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                        <DateRangePicker onDateChange={setDateRange} initialRange={dateRange} />
+                        <button 
+                            onClick={() => setIsDataHidden(!isDataHidden)} 
+                            className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-300 text-gray-700"
+                            title={isDataHidden ? "Show data" : "Hide data"}
+                        >
+                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -36,9 +36,9 @@ const TodoModule = () => {
             
             let overdueText = '';
             if (overdueDays > 0) {
-                overdueText = `${overdueDays}d overdue`;
+                overdueText = `${overdueDays}d ${overdueHours % 24}h overdue`;
             } else if (overdueHours > 0) {
-                overdueText = `${overdueHours}h overdue`;
+                overdueText = `${overdueHours}h ${overdueMinutes % 60}m overdue`;
             } else {
                 overdueText = `${overdueMinutes}m overdue`;
             }
@@ -57,12 +57,12 @@ const TodoModule = () => {
         let color = 'text-gray-500';
         
         if (remainingDays > 0) {
-            remainingText = `${remainingDays}d remaining`;
+            remainingText = `${remainingDays}d ${remainingHours % 24}h remaining`;
             if (remainingDays <= 1) {
                 color = 'text-orange-500';
             }
         } else if (remainingHours > 0) {
-            remainingText = `${remainingHours}h remaining`;
+            remainingText = `${remainingHours}h ${remainingMinutes % 60}m remaining`;
             color = 'text-orange-500';
         } else if (remainingMinutes > 0) {
             remainingText = `${remainingMinutes}m remaining`;
@@ -131,74 +131,131 @@ const TodoModule = () => {
         }
     };
 
+    // Memoize the todos list to prevent unnecessary re-renders
+    const memoizedTodos = useMemo(() => todos.map(todo => {
+        const timeInfo = getTimeRemaining(todo.dueDate);
+        return {
+            ...todo,
+            timeInfo
+        };
+    }), [todos, getTimeRemaining]);
+
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col">
-            <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-                <Icon path={ICONS.CHECK} className="w-6 h-6 mr-3 text-blue-600" />
-                To-Do List
-            </h3>
-            <form onSubmit={handleAddTask} className="flex flex-col gap-2 mb-4">
-                <input
-                    type="text"
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                    placeholder="Add a new task..."
-                    className="flex-grow p-2 border border-gray-300 rounded-md"
-                    disabled={isSubmitting}
-                />
-                <div className="flex gap-2">
-                    <CustomTimePicker
-                        value={dueTime}
-                        onChange={(e) => setDueTime(e.target.value)}
-                        options={timeOptions}
-                        className="p-2 border border-gray-300 rounded-md"
-                        disabled={isSubmitting}
-                        placeholder="Select Time"
-                    />
-                    <button type="submit" className="p-2 bg-blue-600 text-white rounded-md flex-grow" disabled={isSubmitting}>
-                        <Icon path={ICONS.ADD} className="mx-auto" />
-                    </button>
-                </div>
-            </form>
-            <ul className="space-y-2 overflow-y-auto flex-grow">
-                {useMemo(() => todos.map(todo => {
-                    const timeInfo = getTimeRemaining(todo.dueDate);
-                    return (
-                        <li key={todo.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 group border border-gray-100">
-                            <div className="flex items-center flex-1">
-                                <input
-                                    type="checkbox"
-                                    checked={todo.isCompleted}
-                                    onChange={() => toggleTask(todo.id, todo.isCompleted)}
-                                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
-                                <div className="ml-3 flex-1">
-                                    <span className={`${todo.isCompleted ? 'line-through text-gray-500' : 'text-gray-800'} font-medium`}>
-                                        {todo.task}
-                                    </span>
-                                    {todo.dueDate && timeInfo && (
-                                        <p className={`text-xs ${timeInfo.color} mt-1`}>
-                                            {timeInfo.text}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => deleteTask(todo.id)}
-                                className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Icon path={ICONS.DELETE} className="w-4 h-4" />
-                            </button>
-                        </li>
-                    );
-                }), [todos, getTimeRemaining, toggleTask, deleteTask])}
-                {todos.length === 0 && (
-                    <div className="text-center text-gray-500 py-4 flex flex-col items-center justify-center h-full">
-                        <Icon path={ICONS.CHECK} className="w-12 h-12 text-green-500 mb-2" />
-                        <p className="font-semibold">You're all caught up!</p>
+        <div className="relative p-4 md:p-8 bg-white rounded-lg shadow-lg">
+            {/* Simple Premium Header */}
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.CHECK} className="w-7 h-7 text-white"/>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Task Management</h2>
+                            <p className="text-gray-600 text-sm lg:text-base">Organize your daily tasks and priorities</p>
+                        </div>
                     </div>
-                )}
-            </ul>
+                    <div className="flex items-center space-x-3">
+                        <div className="text-sm text-gray-600">
+                            <span className="font-medium">{todos.filter(t => !t.isCompleted).length}</span> pending tasks
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Add Task Form */}
+            <div className="bg-gray-50 rounded-2xl p-6 shadow-sm border border-gray-200 mb-6">
+                <form onSubmit={handleAddTask} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">New Task</label>
+                        <input
+                            type="text"
+                            value={newTask}
+                            onChange={(e) => setNewTask(e.target.value)}
+                            placeholder="What needs to be done?"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Due Time (Optional)</label>
+                            <CustomTimePicker
+                                value={dueTime}
+                                onChange={(e) => setDueTime(e.target.value)}
+                                options={timeOptions}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
+                                disabled={isSubmitting}
+                                placeholder="Select Time"
+                            />
+                        </div>
+                        <div className="flex items-end">
+                            <button 
+                                type="submit" 
+                                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                disabled={isSubmitting || !newTask.trim()}
+                            >
+                                <Icon path={ICONS.ADD} className="w-5 h-5" />
+                                <span className="font-medium">Add Task</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {/* Tasks List */}
+            <div className="bg-gray-50 rounded-2xl shadow-sm border border-gray-200">
+                <div className="p-6 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <Icon path={ICONS.LIST} className="w-5 h-5 mr-2 text-orange-600" />
+                        Your Tasks
+                    </h3>
+                </div>
+                <div className="p-6">
+                    {todos.length > 0 ? (
+                        <ul className="space-y-3">
+                            {memoizedTodos.map(todo => (
+                                <li key={todo.id} className="flex items-center justify-between p-4 rounded-xl hover:bg-white group border border-gray-200 transition-all duration-200 bg-white">
+                                    <div className="flex items-center flex-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={todo.isCompleted}
+                                            onChange={() => toggleTask(todo.id, todo.isCompleted)}
+                                            className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer transition-colors"
+                                        />
+                                        <div className="ml-4 flex-1">
+                                            <span className={`${todo.isCompleted ? 'line-through text-gray-500' : 'text-gray-800'} font-medium text-base`}>
+                                                {todo.task}
+                                            </span>
+                                            {todo.dueDate && todo.timeInfo && (
+                                                <div className="flex items-center mt-1">
+                                                    <span className={`text-xs font-medium ${todo.timeInfo.color}`}>
+                                                        {todo.timeInfo.text}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => deleteTask(todo.id)}
+                                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                        title="Delete task"
+                                    >
+                                        <Icon path={ICONS.DELETE} className="w-4 h-4" />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="text-center py-12">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Icon path={ICONS.CHECK} className="w-8 h-8 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">You're all caught up!</h3>
+                            <p className="text-gray-600">No tasks pending. Great job!</p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

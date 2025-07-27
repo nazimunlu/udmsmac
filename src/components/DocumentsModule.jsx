@@ -325,39 +325,29 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
 const DocumentCard = ({ title, icon, color, documents, category, onViewDocuments, onUploadDocument, onOpenFolders }) => {
     const documentCount = documents.length;
     
-    // Create gradient colors based on the category color
-    const getGradientColors = (baseColor) => {
-        const colorMap = {
-            '#3B82F6': 'from-blue-500 to-blue-600', // Student
-            '#10B981': 'from-green-500 to-green-600', // Finance
-            '#F59E0B': 'from-amber-500 to-amber-600', // MEB
-            '#8B5CF6': 'from-purple-500 to-purple-600', // Default
-        };
-        return colorMap[baseColor] || 'from-blue-500 to-blue-600';
-    };
-    
-    const gradientColors = getGradientColors(color);
-    
     return (
         <div 
-            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 p-4 cursor-pointer group" 
+            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group cursor-pointer" 
             onClick={() => onOpenFolders(category, documents)}
         >
-            <div className="flex items-center mb-3">
-                <div 
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gradient-to-br ${gradientColors} shadow-sm`}
-                >
-                    <Icon path={icon} className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{title}</h3>
-                    <p className="text-sm text-gray-600">{documentCount} document{documentCount !== 1 ? 's' : ''}</p>
+            <div className="flex items-center justify-between mb-6">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300" style={{backgroundColor: color}}>
+                    <Icon path={icon} className="w-7 h-7 text-white" />
                 </div>
             </div>
             
-            <div className="flex items-center justify-between">
-                <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getGradientColors(color).replace('from-', 'bg-').replace(' to-', '')} text-white`}>
-                    <Icon path={ICONS.DOCUMENTS} className="w-3 h-3 mr-1" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">{title}</h3>
+            
+            <div className="space-y-3 mb-6">
+                <div className="flex items-center text-sm text-gray-600">
+                    <Icon path={ICONS.DOCUMENTS} className="w-4 h-4 mr-2 text-gray-500" />
+                    <span>{documentCount} document{documentCount !== 1 ? 's' : ''} available</span>
+                </div>
+            </div>
+            
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium text-white shadow-sm" style={{backgroundColor: color}}>
+                    <Icon path={ICONS.DOCUMENTS} className="w-4 h-4 mr-2" />
                     {documentCount} files
                 </div>
                 
@@ -368,9 +358,10 @@ const DocumentCard = ({ title, icon, color, documents, category, onViewDocuments
                             e.stopPropagation();
                             onUploadDocument(category, 'received');
                         }}
-                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                        className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium text-white hover:opacity-80 transition-all duration-300 shadow-sm"
+                        style={{backgroundColor: color}}
                     >
-                        <Icon path={ICONS.UPLOAD} className="w-3 h-3 mr-1" />
+                        <Icon path={ICONS.UPLOAD} className="w-4 h-4 mr-2" />
                         Upload
                     </button>
                 )}
@@ -635,8 +626,8 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
+    </div>
+);
                         })}
                     </div>
                 ) : (
@@ -733,7 +724,7 @@ const FolderModal = ({ isOpen, onClose, category, documents, onViewDocuments, on
                 </div>
             }
         >
-            <div className="space-y-4">
+        <div className="space-y-4">
                 {/* Category Description */}
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-sm text-gray-600">
@@ -783,15 +774,15 @@ const FolderModal = ({ isOpen, onClose, category, documents, onViewDocuments, on
                                     >
                                         <Icon path={ICONS.UPLOAD} className="w-3 h-3 mr-1" />
                                         Upload
-                                    </button>
+                                </button>
                                 )}
                             </div>
                         </div>
                     ))}
                 </div>
-            </div>
-        </Modal>
-    );
+        </div>
+    </Modal>
+);
 };
 
 // Main Documents Module Component
@@ -1018,13 +1009,19 @@ const DocumentsModule = () => {
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center pb-4 mb-6 border-b border-gray-200 space-y-4 lg:space-y-0">
-                <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center">
-                    <Icon path={ICONS.DOCUMENTS} className="w-6 h-6 lg:w-8 lg:h-8 mr-2 lg:mr-3" />
-                    <span className="hidden sm:inline">Document Management</span>
-                    <span className="sm:hidden">Documents</span>
-                </h2>
+            {/* Simple Premium Header */}
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.DOCUMENTS} className="w-7 h-7 text-white"/>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Document Management</h2>
+                            <p className="text-gray-600 text-sm lg:text-base">Organize and manage all documents</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Search Bar */}
@@ -1063,22 +1060,22 @@ const DocumentsModule = () => {
                         <Icon path={ICONS.SEARCH} className="w-4 h-4 mr-2 text-gray-600" />
                         Search Results
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredDocuments.map((doc, index) => (
                             <div 
                                 key={`${doc.id || index}-${doc.name}`}
-                                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 p-3 cursor-pointer group"
+                                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-4 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group"
                                 onClick={() => handleViewDocuments(doc.category || 'other', [doc], doc.name)}
                             >
                                 <div className="flex items-start space-x-3">
-                                    <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${getDocumentColor(doc)}`}>
-                                        <Icon path={getDocumentIcon(doc)} className="w-4 h-4 text-white" />
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${getDocumentColor(doc)}`}>
+                                        <Icon path={getDocumentIcon(doc)} className="w-5 h-5 text-white" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">
+                                        <h4 className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">
                                             {doc.name}
                                         </h4>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-gray-600 mt-1 font-medium">
                                             {getDocumentTypeLabel(doc)}
                                         </p>
                                         {doc.studentName && (
@@ -1087,7 +1084,7 @@ const DocumentsModule = () => {
                                             </p>
                                         )}
                                         {doc.uploadDate && (
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-xs text-gray-500 mt-1">
                                                 {formatDate(doc.uploadDate)}
                                             </p>
                                         )}

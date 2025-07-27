@@ -4,6 +4,7 @@ import { format, isAfter, isBefore, addDays, differenceInDays } from 'date-fns';
 import PaymentModal from './PaymentModal';
 import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
+import { generateMessage } from '../utils/messageTemplates';
 
 const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
     const { showNotification } = useNotification();
@@ -102,7 +103,12 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
             year: 'numeric'
         }) : 'N/A';
         
-        return `Sayın ${student.fullName}, vade tarihi ${dueDate} olan ${Math.round(overdueAmount)} ₺ tutarında ödenmemiş ${overdueCount} adet taksitiniz bulunmaktadır. Ödeme yaptıysanız lütfen bizimle iletişime geçin. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
+        return generateMessage('late_payment', {
+            studentName: student.fullName,
+            dueDate: dueDate,
+            amount: Math.round(overdueAmount),
+            installmentCount: overdueCount
+        });
     };
 
     const handleGenerateMessage = (student) => {

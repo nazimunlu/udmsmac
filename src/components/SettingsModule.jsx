@@ -1,493 +1,952 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../apiClient';
+import { useAppContext } from '../contexts/AppContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { Icon } from './Icons';
+import { ICONS } from './Icons';
+import Modal from './Modal';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { Icon, ICONS } from './Icons';
-import { useNotification } from '../contexts/NotificationContext';
-import { useAppContext } from '../contexts/AppContext';
-import Modal from './Modal';
+import { getMessageTemplates, saveMessageTemplates } from '../utils/messageTemplates';
+import { supabase } from '../supabaseClient';
 
-const SettingsModule = () => {
-    const { showNotification } = useNotification();
-    const { settings, fetchData } = useAppContext();
-    const [isExporting, setIsExporting] = useState(false);
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-    const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        businessName: '',
-        businessAddress: '',
-        businessPhone: '',
-        businessEmail: '',
-        pricePerLesson: '',
-        currency: '₺',
-        timezone: 'Europe/Istanbul',
-        dateFormat: 'DD/MM/YYYY',
-        timeFormat: '24h',
-        language: 'en',
-        notifications: {
-            email: true,
-            browser: true,
-            paymentReminders: true,
-            lessonReminders: true
-        }
-    });
+// Message Template Modal Component
+const MessageTemplateModal = ({ isOpen, onClose, template, onSave }) => {
+    const [editedTemplate, setEditedTemplate] = useState('');
+    const [templateName, setTemplateName] = useState('');
 
     useEffect(() => {
-        if (settings && Object.keys(settings).length > 0) {
-            setFormData(prev => ({
-                ...prev,
-                ...settings,
-                pricePerLesson: settings.pricePerLesson || '800',
-                currency: settings.currency || '₺',
-                timezone: settings.timezone || 'Europe/Istanbul',
-                dateFormat: settings.dateFormat || 'DD/MM/YYYY',
-                timeFormat: settings.timeFormat || '24h',
-                language: settings.language || 'en',
-                notifications: settings.notifications || {
-                    email: true,
-                    browser: true,
-                    paymentReminders: true,
-                    lessonReminders: true
-                }
-            }));
+        if (template) {
+            setEditedTemplate(template.content);
+            setTemplateName(template.name);
         }
-    }, [settings]);
+    }, [template]);
 
-    const handleExportData = async () => {
-        setIsExporting(true);
-        try {
-            const zip = new JSZip();
-            const dataFolder = zip.folder('exported_data');
+    const handleSave = () => {
+        onSave({
+            name: templateName,
+            content: editedTemplate,
+            type: template.type
+        });
+        onClose();
+    };
 
-            const studentsData = await apiClient.getAll('students');
-            dataFolder.file('students.json', JSON.stringify(studentsData.map(s => ({
-                ...s,
-                installments: s.installments ? JSON.parse(s.installments) : [],
-                feeDetails: s.feeDetails ? JSON.parse(s.feeDetails) : {},
-                tutoringDetails: s.tutoringDetails ? JSON.parse(s.tutoringDetails) : {},
-                documents: s.documents ? JSON.parse(s.documents) : {},
-                documentNames: s.documentNames ? JSON.parse(s.documentNames) : {},
-            })), null, 2));
-
-            const groupsData = await apiClient.getAll('groups');
-            dataFolder.file('groups.json', JSON.stringify(groupsData.map(g => ({
-                ...g,
-                schedule: g.schedule ? JSON.parse(g.schedule) : {},
-            })), null, 2));
-
-            const transactionsData = await apiClient.getAll('transactions');
-            dataFolder.file('transactions.json', JSON.stringify(transactionsData, null, 2));
-
-            const documentsData = await apiClient.getAll('documents');
-            dataFolder.file('documents.json', JSON.stringify(documentsData, null, 2));
-
-            const lessonsData = await apiClient.getAll('lessons');
-            dataFolder.file('lessons.json', JSON.stringify(lessonsData, null, 2));
-
-            const eventsData = await apiClient.getAll('events');
-            dataFolder.file('events.json', JSON.stringify(eventsData, null, 2));
-
-            zip.generateAsync({ type: 'blob' }).then(function(content) {
-                saveAs(content, `udms_data_export_${new Date().toISOString().split('T')[0]}.zip`);
-            });
-
-            showNotification('Data exported successfully!', 'success');
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            showNotification('Failed to export data. Check console for details.', 'error');
-        } finally {
-            setIsExporting(false);
+    const getTemplateDescription = () => {
+        switch (template?.type) {
+            case 'late_payment':
+                return 'This message is sent to parents when their child has overdue payments. Use {studentName}, {dueDate}, {amount}, {installmentCount} as placeholders.';
+            case 'absence':
+                return 'This message is sent to parents when their child is absent from a lesson. Use {studentName}, {lessonDate}, {lessonTime} as placeholders.';
+            default:
+                return 'Edit the message template below.';
         }
     };
 
-    const handleSaveSettings = async () => {
-        try {
-            // Update or create settings
-            if (settings && settings.id) {
-                await apiClient.update('settings', settings.id, formData);
-            } else {
-                await apiClient.create('settings', formData);
-            }
-            
-            showNotification('Settings saved successfully!', 'success');
-            fetchData();
-            setIsSettingsModalOpen(false);
-        } catch (error) {
-            console.error('Error saving settings:', error);
-            showNotification('Failed to save settings.', 'error');
-        }
-    };
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        if (name.startsWith('notifications.')) {
-            const notificationKey = name.split('.')[1];
-            setFormData(prev => ({
-                ...prev,
-                notifications: {
-                    ...prev.notifications,
-                    [notificationKey]: checked
-                }
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            }));
-        }
-    };
-
-    const getSystemInfo = () => {
-        return {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            cookieEnabled: navigator.cookieEnabled,
-            onLine: navigator.onLine,
-            screenResolution: `${screen.width}x${screen.height}`,
-            windowSize: `${window.innerWidth}x${window.innerHeight}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            currentTime: new Date().toISOString()
-        };
-    };
-
-    const SettingsModal = ({ isOpen, onClose }) => (
-        <Modal 
-            isOpen={isOpen} 
-            onClose={onClose} 
-            title="System Settings"
-            size="lg"
-            headerStyle={{ backgroundColor: '#6B7280' }}
-        >
-            <div className="space-y-6 max-h-96 overflow-y-auto">
-                {/* Business Information */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <Icon path={ICONS.BUILDING} className="w-5 h-5 mr-2 text-gray-600" />
-                        Business Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
-                            <input
-                                type="text"
-                                name="businessName"
-                                value={formData.businessName}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Phone</label>
-                            <input
-                                type="tel"
-                                name="businessPhone"
-                                value={formData.businessPhone}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Email</label>
-                            <input
-                                type="email"
-                                name="businessEmail"
-                                value={formData.businessEmail}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Default Price per Lesson</label>
-                            <input
-                                type="number"
-                                name="pricePerLesson"
-                                value={formData.pricePerLesson}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Address</label>
-                            <textarea
-                                name="businessAddress"
-                                value={formData.businessAddress}
-                                onChange={handleChange}
-                                rows="2"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            />
-                        </div>
-                    </div>
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit Message Template">
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Template Name
+                    </label>
+                    <input
+                        type="text"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Template name"
+                    />
                 </div>
 
-                {/* Display Preferences */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <Icon path={ICONS.SETTINGS} className="w-5 h-5 mr-2 text-gray-600" />
-                        Display Preferences
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-                            <select
-                                name="currency"
-                                value={formData.currency}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            >
-                                <option value="₺">Turkish Lira (₺)</option>
-                                <option value="$">US Dollar ($)</option>
-                                <option value="€">Euro (€)</option>
-                                <option value="£">British Pound (£)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Date Format</label>
-                            <select
-                                name="dateFormat"
-                                value={formData.dateFormat}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            >
-                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Time Format</label>
-                            <select
-                                name="timeFormat"
-                                value={formData.timeFormat}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            >
-                                <option value="24h">24-hour</option>
-                                <option value="12h">12-hour</option>
-                            </select>
-                        </div>
-                    </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                    </label>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                        {getTemplateDescription()}
+                    </p>
                 </div>
 
-                {/* Notifications */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <Icon path={ICONS.BELL} className="w-5 h-5 mr-2 text-gray-600" />
-                        Notifications
-                    </h3>
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium text-gray-800">Email Notifications</p>
-                                <p className="text-sm text-gray-600">Receive notifications via email</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                name="notifications.email"
-                                checked={formData.notifications.email}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium text-gray-800">Browser Notifications</p>
-                                <p className="text-sm text-gray-600">Show browser notifications</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                name="notifications.browser"
-                                checked={formData.notifications.browser}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium text-gray-800">Payment Reminders</p>
-                                <p className="text-sm text-gray-600">Remind about due payments</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                name="notifications.paymentReminders"
-                                checked={formData.notifications.paymentReminders}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium text-gray-800">Lesson Reminders</p>
-                                <p className="text-sm text-gray-600">Remind about upcoming lessons</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                name="notifications.lessonReminders"
-                                checked={formData.notifications.lessonReminders}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
-                            />
-                        </div>
-                    </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Message Template
+                    </label>
+                    <textarea
+                        value={editedTemplate}
+                        onChange={(e) => setEditedTemplate(e.target.value)}
+                        rows={8}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="Enter your message template..."
+                    />
                 </div>
-            </div>
 
-            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={handleSaveSettings}
-                    className="px-4 py-2 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition-colors"
-                >
-                    Save Settings
-                </button>
+                <div className="flex justify-end space-x-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                        Save Template
+                    </button>
+                </div>
             </div>
         </Modal>
     );
+};
 
-    const systemInfo = getSystemInfo();
+// Export Progress Modal Component
+const ExportProgressModal = ({ isOpen, onClose, progress, status }) => {
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Exporting Data">
+            <div className="space-y-4">
+                <div className="text-center">
+                    <Icon path={ICONS.LOADING} className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{status}</h3>
+                    <p className="text-sm text-gray-600">Please wait while we prepare your export...</p>
+                </div>
+
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                    ></div>
+                </div>
+
+                <div className="text-center text-sm text-gray-600">
+                    {progress}% Complete
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// Main Settings Module Component
+const SettingsModule = () => {
+    const { students, groups, documents, transactions, lessons } = useAppContext();
+    const { showNotification } = useNotification();
+    
+    const [activeTab, setActiveTab] = useState('export');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [messageTemplates, setMessageTemplates] = useState(getMessageTemplates());
+    const [storageInfo, setStorageInfo] = useState({
+        totalSize: 0,
+        usedSize: 0,
+        fileCount: 0,
+        loading: true
+    });
+
+    // Load templates from localStorage on component mount
+    useEffect(() => {
+        setMessageTemplates(getMessageTemplates());
+    }, []);
+
+    // Save templates to localStorage whenever they change
+    useEffect(() => {
+        saveMessageTemplates(messageTemplates);
+    }, [messageTemplates]);
+
+    // Fetch storage information
+    const fetchStorageInfo = async () => {
+        try {
+            setStorageInfo(prev => ({ ...prev, loading: true }));
+            
+            // Get all files from the storage bucket
+            const { data: files, error } = await supabase.storage
+                .from('udms')
+                .list('', { limit: 1000, offset: 0 });
+
+            if (error) {
+                console.error('Error fetching storage info:', error);
+                setStorageInfo(prev => ({ ...prev, loading: false }));
+                return;
+            }
+
+            // Calculate total size and file count
+            let totalSize = 0;
+            let fileCount = 0;
+
+            // Recursively get all files and their sizes
+            const getAllFiles = async (path = '') => {
+                const { data: items, error } = await supabase.storage
+                    .from('udms')
+                    .list(path, { limit: 1000, offset: 0 });
+
+                if (error) return;
+
+                for (const item of items) {
+                    if (item.metadata) {
+                        // This is a file
+                        totalSize += item.metadata.size || 0;
+                        fileCount++;
+                    } else {
+                        // This is a folder, recursively get its contents
+                        await getAllFiles(path ? `${path}/${item.name}` : item.name);
+                    }
+                }
+            };
+
+            await getAllFiles();
+
+            // Set storage info (assuming 1GB total storage for now)
+            const totalStorage = 1024 * 1024 * 1024; // 1GB in bytes
+            const usedStorage = totalSize;
+            const remainingStorage = totalStorage - usedStorage;
+
+            setStorageInfo({
+                totalSize: totalStorage,
+                usedSize: usedStorage,
+                fileCount,
+                loading: false
+            });
+
+        } catch (error) {
+            console.error('Error fetching storage info:', error);
+            setStorageInfo(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    // Fetch storage info when component mounts
+    useEffect(() => {
+        fetchStorageInfo();
+    }, []);
+
+    // Utility function to format file sizes
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    // Calculate storage percentage
+    const getStoragePercentage = () => {
+        if (storageInfo.totalSize === 0) return 0;
+        return Math.round((storageInfo.usedSize / storageInfo.totalSize) * 100);
+    };
+
+    const handleExportData = async () => {
+        setIsExportModalOpen(true);
+        setExportProgress(0);
+        setExportStatus('Preparing export...');
+
+        try {
+            const zip = new JSZip();
+            
+            // Create folders for different data types
+            const studentsFolder = zip.folder('students');
+            const groupsFolder = zip.folder('groups');
+            const documentsFolder = zip.folder('documents');
+            const transactionsFolder = zip.folder('transactions');
+            const lessonsFolder = zip.folder('lessons');
+            const settingsFolder = zip.folder('settings');
+            const filesFolder = zip.folder('files');
+
+            setExportProgress(5);
+            setExportStatus('Exporting students data...');
+
+            // Export students data
+            const studentsData = students.map(student => ({
+                id: student.id,
+                fullName: student.fullName,
+                email: student.email,
+                phone: student.phone,
+                birthDate: student.birthDate,
+                address: student.address,
+                emergencyContact: student.emergencyContact,
+                enrollmentDate: student.enrollmentDate,
+                totalFee: student.totalFee,
+                installments: student.installments,
+                groupId: student.groupId,
+                status: student.status,
+                notes: student.notes
+            }));
+            studentsFolder.file('students.json', JSON.stringify(studentsData, null, 2));
+
+            setExportProgress(15);
+            setExportStatus('Exporting groups data...');
+
+            // Export groups data
+            const groupsData = groups.map(group => ({
+                id: group.id,
+                name: group.name,
+                schedule: group.schedule,
+                startDate: group.startDate,
+                endDate: group.endDate,
+                maxStudents: group.maxStudents,
+                currentStudents: group.currentStudents,
+                status: group.status,
+                notes: group.notes
+            }));
+            groupsFolder.file('groups.json', JSON.stringify(groupsData, null, 2));
+
+            setExportProgress(25);
+            setExportStatus('Exporting documents data...');
+
+            // Export documents data
+            const documentsData = documents.map(doc => ({
+                id: doc.id,
+                name: doc.name,
+                type: doc.type,
+                category: doc.category,
+                description: doc.description,
+                uploadDate: doc.uploadDate,
+                url: doc.url
+            }));
+            documentsFolder.file('documents.json', JSON.stringify(documentsData, null, 2));
+
+            setExportProgress(35);
+            setExportStatus('Exporting transactions data...');
+
+            // Export transactions data
+            const transactionsData = transactions.map(transaction => ({
+                id: transaction.id,
+                type: transaction.type,
+                amount: transaction.amount,
+                description: transaction.description,
+                date: transaction.date,
+                category: transaction.category,
+                studentId: transaction.studentId
+            }));
+            transactionsFolder.file('transactions.json', JSON.stringify(transactionsData, null, 2));
+
+            setExportProgress(45);
+            setExportStatus('Exporting lessons data...');
+
+            // Export lessons data
+            const lessonsData = lessons.map(lesson => ({
+                id: lesson.id,
+                groupId: lesson.groupId,
+                lessonDate: lesson.lessonDate,
+                startTime: lesson.startTime,
+                endTime: lesson.endTime,
+                topic: lesson.topic,
+                materials: lesson.materials,
+                attendance: lesson.attendance,
+                notes: lesson.notes
+            }));
+            lessonsFolder.file('lessons.json', JSON.stringify(lessonsData, null, 2));
+
+            setExportProgress(55);
+            setExportStatus('Exporting settings and templates...');
+
+            // Export settings and templates
+            const settingsData = {
+                messageTemplates,
+                exportDate: new Date().toISOString(),
+                systemInfo: {
+                    totalStudents: students.length,
+                    totalGroups: groups.length,
+                    totalDocuments: documents.length,
+                    totalTransactions: transactions.length,
+                    totalLessons: lessons.length
+                }
+            };
+            settingsFolder.file('settings.json', JSON.stringify(settingsData, null, 2));
+
+            setExportProgress(65);
+            setExportStatus('Downloading files from storage...');
+
+            // Download and include all files from storage
+            const allFiles = [];
+
+            // Collect all file URLs from different sources
+            const fileUrls = new Set();
+
+            // From documents table
+            documents.forEach(doc => {
+                if (doc.url) {
+                    fileUrls.add({ url: doc.url, name: doc.name, category: 'documents' });
+                }
+            });
+
+            // From students (National ID, Agreement, etc.)
+            students.forEach(student => {
+                try {
+                    const studentDocuments = typeof student.documents === 'string' ? JSON.parse(student.documents) : (student.documents || {});
+                    const studentDocumentNames = typeof student.documentNames === 'string' ? JSON.parse(student.documentNames) : (student.documentNames || {});
+
+                    if (studentDocuments.nationalIdUrl) {
+                        fileUrls.add({ 
+                            url: studentDocuments.nationalIdUrl, 
+                            name: studentDocumentNames.nationalId || `National_ID_${student.fullName}.pdf`,
+                            category: 'students'
+                        });
+                    }
+                    if (studentDocuments.agreementUrl) {
+                        fileUrls.add({ 
+                            url: studentDocuments.agreementUrl, 
+                            name: studentDocumentNames.agreement || `Agreement_${student.fullName}.pdf`,
+                            category: 'students'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error processing student documents:', error);
+                }
+            });
+
+            // From transactions (business expense invoices)
+            transactions.forEach(transaction => {
+                if (transaction.invoiceUrl) {
+                    fileUrls.add({ 
+                        url: transaction.invoiceUrl, 
+                        name: `Invoice_${transaction.description || transaction.id}.pdf`,
+                        category: 'transactions'
+                    });
+                }
+            });
+
+            // From lessons (lesson materials)
+            lessons.forEach(lesson => {
+                if (lesson.materialsUrl) {
+                    fileUrls.add({ 
+                        url: lesson.materialsUrl, 
+                        name: `Lesson_Materials_${lesson.topic || lesson.id}.pdf`,
+                        category: 'lessons'
+                    });
+                }
+            });
+
+            // Download all files
+            const fileArray = Array.from(fileUrls);
+            let downloadedCount = 0;
+
+            for (const fileInfo of fileArray) {
+                try {
+                    setExportStatus(`Downloading file: ${fileInfo.name}...`);
+                    
+                    // Debug: Log the URL structure
+                    console.log(`Processing file: ${fileInfo.name}`);
+                    console.log(`Original URL: ${fileInfo.url}`);
+                    
+                    // Extract storage path from URL - handle different URL formats
+                    let storagePath;
+                    if (fileInfo.url.includes('/storage/v1/object/public/')) {
+                        // Standard Supabase storage URL format
+                        const urlParts = fileInfo.url.split('/');
+                        const publicIndex = urlParts.indexOf('public');
+                        if (publicIndex === -1) {
+                            console.error(`Invalid URL format for file ${fileInfo.name}:`, fileInfo.url);
+                            continue;
+                        }
+                        // Extract everything after 'public/' but skip the first bucket name if it's duplicated
+                        const pathAfterPublic = urlParts.slice(publicIndex + 1);
+                        if (pathAfterPublic.length >= 2 && pathAfterPublic[0] === pathAfterPublic[1]) {
+                            // Skip the first bucket name if it's duplicated
+                            storagePath = pathAfterPublic.slice(1).join('/');
+                        } else {
+                            storagePath = pathAfterPublic.join('/');
+                        }
+                    } else {
+                        // Direct path format
+                        storagePath = fileInfo.url;
+                    }
+                    
+                    console.log(`Extracted storage path: ${storagePath}`);
+                    
+                    // Download file from Supabase storage
+                    const { data, error } = await supabase.storage
+                        .from('udms')
+                        .download(storagePath);
+
+                    if (error) {
+                        console.error(`Error downloading file ${fileInfo.name}:`, error);
+                        console.error(`Storage path used: ${storagePath}`);
+                        continue;
+                    }
+
+                    if (data) {
+                        // Create folder structure in ZIP
+                        const categoryFolder = filesFolder.folder(fileInfo.category);
+                        categoryFolder.file(fileInfo.name, data);
+                        downloadedCount++;
+                    }
+
+                    // Update progress
+                    const progress = 65 + (downloadedCount / fileArray.length) * 25;
+                    setExportProgress(Math.min(progress, 90));
+                    
+                } catch (error) {
+                    console.error(`Error processing file ${fileInfo.name}:`, error);
+                }
+            }
+
+            setExportProgress(95);
+            setExportStatus('Generating ZIP file...');
+
+            // Generate and download the ZIP file
+            const content = await zip.generateAsync({ type: 'blob' });
+            const fileName = `udms_export_${new Date().toISOString().split('T')[0]}.zip`;
+            saveAs(content, fileName);
+
+            setExportProgress(100);
+            setExportStatus('Export completed successfully!');
+
+            // Save export date
+            localStorage.setItem('lastExportDate', new Date().toISOString());
+
+            setTimeout(() => {
+                setIsExportModalOpen(false);
+                showNotification(`Data exported successfully! ${downloadedCount} files included.`, 'success');
+            }, 1000);
+
+        } catch (error) {
+            console.error('Export error:', error);
+            showNotification('Failed to export data. Please try again.', 'error');
+            setIsExportModalOpen(false);
+        }
+    };
+
+    const handleEditTemplate = (templateType) => {
+        setSelectedTemplate(messageTemplates[templateType]);
+        setIsTemplateModalOpen(true);
+    };
+
+    const handleSaveTemplate = (updatedTemplate) => {
+        setMessageTemplates(prev => ({
+            ...prev,
+            [updatedTemplate.type]: updatedTemplate
+        }));
+        showNotification('Message template updated successfully!', 'success');
+    };
+
+    const generateSampleMessage = (templateType) => {
+        const template = messageTemplates[templateType];
+        let sampleMessage = template.content;
+
+        // Replace placeholders with sample data
+        if (templateType === 'late_payment') {
+            sampleMessage = sampleMessage
+                .replace('{studentName}', 'Ahmet Yılmaz')
+                .replace('{dueDate}', '15/08/2024')
+                .replace('{amount}', '500')
+                .replace('{installmentCount}', '2');
+        } else if (templateType === 'absence') {
+            sampleMessage = sampleMessage
+                .replace('{studentName}', 'Ayşe Demir')
+                .replace('{lessonDate}', '20/08/2024')
+                .replace('{lessonTime}', '14:00');
+        }
+
+        return sampleMessage;
+    };
+
+    const tabs = [
+        { id: 'export', label: 'Data Export', icon: ICONS.DOWNLOAD },
+        { id: 'messages', label: 'Message Templates', icon: ICONS.MESSAGE },
+        { id: 'system', label: 'System Info', icon: ICONS.INFO }
+    ];
 
     return (
-        <div className="p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-                        <Icon path={ICONS.SETTINGS} className="w-8 h-8 mr-3"/>
-                        Settings
-                    </h2>
-                    <p className="text-gray-600 mt-1">Manage your system preferences and data</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Business Settings */}
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                                <Icon path={ICONS.BUILDING} className="w-6 h-6 mr-2 text-blue-600" />
-                                Business Settings
-                            </h3>
-                            <button
-                                onClick={() => setIsSettingsModalOpen(true)}
-                                className="px-3 py-1 text-sm text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                            >
-                                Edit
-                            </button>
+        <div className="bg-gray-50 min-h-screen p-4 lg:p-6">
+            <div className="max-w-6xl mx-auto">
+                {/* Simple Premium Header */}
+                <div className="mb-8">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.SETTINGS} className="w-7 h-7 text-white"/>
                         </div>
-                        <div className="space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Business Name:</span>
-                                <span className="font-medium">{formData.businessName || 'Not set'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Business Phone:</span>
-                                <span className="font-medium">{formData.businessPhone || 'Not set'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Business Email:</span>
-                                <span className="font-medium">{formData.businessEmail || 'Not set'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Price per Lesson:</span>
-                                <span className="font-medium">{formData.pricePerLesson || '800'} {formData.currency}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                            <Icon path={ICONS.SETTINGS} className="w-6 h-6 mr-2 text-green-600" />
-                            Display Preferences
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Currency:</span>
-                                <span className="font-medium">{formData.currency}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Date Format:</span>
-                                <span className="font-medium">{formData.dateFormat}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Time Format:</span>
-                                <span className="font-medium">{formData.timeFormat}</span>
-                            </div>
+                        <div>
+                            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Settings</h1>
+                            <p className="text-gray-600 text-sm lg:text-base">Manage system settings, export data, and customize message templates</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Data Management */}
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                            <Icon path={ICONS.DOWNLOAD} className="w-6 h-6 mr-2 text-purple-600" />
-                            Data Management
-                        </h3>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-gray-600 mb-2">Export all your data including students, groups, finances, and documents.</p>
+                {/* Tabs */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div className="border-b border-gray-200">
+                        <nav className="flex space-x-8 px-6">
+                            {tabs.map(tab => (
                                 <button
-                                    onClick={handleExportData}
-                                    disabled={isExporting}
-                                    className="w-full px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed rounded-md transition-colors"
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                        activeTab === tab.id
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                                 >
-                                    {isExporting ? (
-                                        <span className="flex items-center justify-center">
-                                            <Icon path={ICONS.LOADING} className="w-4 h-4 mr-2 animate-spin" />
-                                            Exporting...
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center justify-center">
-                                            <Icon path={ICONS.DOWNLOAD} className="w-4 h-4 mr-2" />
-                                            Export All Data
-                                        </span>
-                                    )}
+                                    <Icon path={tab.icon} className="w-4 h-4 mr-2" />
+                                    {tab.label}
                                 </button>
-                            </div>
-                        </div>
-                    </div>
+                            ))}
+                        </nav>
+            </div>
 
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                            <Icon path={ICONS.INFO} className="w-6 h-6 mr-2 text-orange-600" />
-                            System Information
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Platform:</span>
-                                <span className="font-medium">{systemInfo.platform}</span>
+                    <div className="p-6">
+                        {activeTab === 'export' && (
+            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Export</h2>
+                                    <p className="text-gray-600 mb-6">
+                                        Export all system data including students, groups, documents, transactions, and lessons in a structured ZIP file.
+                                    </p>
+                                    
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                        <div className="flex items-start">
+                                            <Icon path={ICONS.INFO} className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
+                                            <div>
+                                                <h3 className="font-medium text-blue-900 mb-2">What's included in the export:</h3>
+                                                <ul className="text-sm text-blue-800 space-y-1">
+                                                    <li>• All student information and enrollment details</li>
+                                                    <li>• Group configurations and schedules</li>
+                                                    <li>• Document metadata and file references</li>
+                                                    <li>• Financial transactions and payment records</li>
+                                                    <li>• Lesson plans and attendance records</li>
+                                                    <li>• Current message templates and settings</li>
+                                                    <li>• <strong>All actual files (PDFs, documents, etc.)</strong></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                    <button
+                        onClick={handleExportData}
+                                        className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Icon path={ICONS.DOWNLOAD} className="w-5 h-5 mr-2" />
+                                        Export All Data
+                                    </button>
+                                </div>
+
+                                <div className="border-t border-gray-200 pt-6">
+                                    <h3 className="text-md font-semibold text-gray-900 mb-4">System Statistics</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                                            <div className="text-2xl font-bold text-blue-600">{students.length}</div>
+                                            <div className="text-sm text-gray-600">Students</div>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                                            <div className="text-2xl font-bold text-green-600">{groups.length}</div>
+                                            <div className="text-sm text-gray-600">Groups</div>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                                            <div className="text-2xl font-bold text-purple-600">{documents.length}</div>
+                                            <div className="text-sm text-gray-600">Documents</div>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                                            <div className="text-2xl font-bold text-orange-600">{transactions.length}</div>
+                                            <div className="text-sm text-gray-600">Transactions</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Browser:</span>
-                                <span className="font-medium">{systemInfo.userAgent.split(' ').slice(-2).join(' ')}</span>
+                        )}
+
+                        {activeTab === 'messages' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Message Templates</h2>
+                                    <p className="text-gray-600 mb-6">
+                                        Customize the message templates used for late payment notifications and student absence communications.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-6">
+                                    {/* Late Payment Template */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-medium text-gray-900">{messageTemplates.late_payment.name}</h3>
+                                                <p className="text-sm text-gray-600">Sent to parents when payments are overdue</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleEditTemplate('late_payment')}
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.EDIT} className="w-4 h-4 mr-2" />
+                                                Edit Template
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Sample Message:</h4>
+                                            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                                {generateSampleMessage('late_payment')}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Absence Template */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-medium text-gray-900">{messageTemplates.absence.name}</h3>
+                                                <p className="text-sm text-gray-600">Sent to parents when students miss lessons</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleEditTemplate('absence')}
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.EDIT} className="w-4 h-4 mr-2" />
+                                                Edit Template
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Sample Message:</h4>
+                                            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                                {generateSampleMessage('absence')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <div className="flex items-start">
+                                        <Icon path={ICONS.INFO} className="w-5 h-5 text-yellow-600 mr-3 mt-0.5" />
+                                        <div>
+                                            <h3 className="font-medium text-yellow-900 mb-2">Available Placeholders:</h3>
+                                            <div className="text-sm text-yellow-800 space-y-1">
+                                                <p><strong>Late Payment:</strong> {'{studentName}'}, {'{dueDate}'}, {'{amount}'}, {'{installmentCount}'}</p>
+                                                <p><strong>Absence:</strong> {'{studentName}'}, {'{lessonDate}'}, {'{lessonTime}'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Screen Resolution:</span>
-                                <span className="font-medium">{systemInfo.screenResolution}</span>
+                        )}
+
+                        {activeTab === 'system' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4">System Information</h2>
+                                    <p className="text-gray-600 mb-6">
+                                        Monitor storage usage, system performance, and important system details.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-6">
+                                    {/* Storage Information */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-medium text-gray-900">Storage Information</h3>
+                                            <button
+                                                onClick={fetchStorageInfo}
+                                                disabled={storageInfo.loading}
+                                                className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <Icon path={ICONS.LOADING} className={`w-4 h-4 mr-1 ${storageInfo.loading ? 'animate-spin' : ''}`} />
+                                                Refresh
+                    </button>
+                                        </div>
+                                        {storageInfo.loading ? (
+                                            <div className="flex items-center justify-center py-4">
+                                                <Icon path={ICONS.LOADING} className="w-5 h-5 text-blue-600 animate-spin mr-2" />
+                                                <span className="text-gray-600">Loading storage information...</span>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Total Storage:</span>
+                                                    <span className="font-medium">{formatFileSize(storageInfo.totalSize)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Used Storage:</span>
+                                                    <span className="font-medium">{formatFileSize(storageInfo.usedSize)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Available Storage:</span>
+                                                    <span className="font-medium">{formatFileSize(storageInfo.totalSize - storageInfo.usedSize)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Total Files:</span>
+                                                    <span className="font-medium">{storageInfo.fileCount}</span>
+                                                </div>
+                                                
+                                                {/* Storage Progress Bar */}
+                                                <div className="mt-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-sm font-medium text-gray-700">Storage Usage</span>
+                                                        <span className="text-sm text-gray-600">{getStoragePercentage()}%</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div 
+                                                            className={`h-2 rounded-full transition-all duration-300 ${
+                                                                getStoragePercentage() > 80 ? 'bg-red-500' : 
+                                                                getStoragePercentage() > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                                                            }`}
+                                                            style={{ width: `${getStoragePercentage()}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                        <span>0</span>
+                                                        <span>{formatFileSize(storageInfo.totalSize)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Storage Status */}
+                                                <div className={`mt-3 p-3 rounded-lg ${
+                                                    getStoragePercentage() > 80 ? 'bg-red-50 border border-red-200' :
+                                                    getStoragePercentage() > 60 ? 'bg-yellow-50 border border-yellow-200' :
+                                                    'bg-green-50 border border-green-200'
+                                                }`}>
+                                                    <div className="flex items-center">
+                                                        <Icon 
+                                                            path={
+                                                                getStoragePercentage() > 80 ? ICONS.EXCLAMATION :
+                                                                getStoragePercentage() > 60 ? ICONS.WARNING :
+                                                                ICONS.CHECK_CIRCLE
+                                                            } 
+                                                            className={`w-4 h-4 mr-2 ${
+                                                                getStoragePercentage() > 80 ? 'text-red-600' :
+                                                                getStoragePercentage() > 60 ? 'text-yellow-600' :
+                                                                'text-green-600'
+                                                            }`} 
+                                                        />
+                                                        <span className={`text-sm font-medium ${
+                                                            getStoragePercentage() > 80 ? 'text-red-800' :
+                                                            getStoragePercentage() > 60 ? 'text-yellow-800' :
+                                                            'text-green-800'
+                                                        }`}>
+                                                            {getStoragePercentage() > 80 ? 'Storage nearly full' :
+                                                             getStoragePercentage() > 60 ? 'Storage usage is moderate' :
+                                                             'Storage usage is healthy'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Data Overview */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <h3 className="text-lg font-medium text-gray-900 mb-4">Data Overview</h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                                <div className="text-2xl font-bold text-blue-600">{students.length}</div>
+                                                <div className="text-sm text-gray-600">Students</div>
+                                            </div>
+                                            <div className="text-center p-4 bg-green-50 rounded-lg">
+                                                <div className="text-2xl font-bold text-green-600">{groups.length}</div>
+                                                <div className="text-sm text-gray-600">Groups</div>
+                                            </div>
+                                            <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                                <div className="text-2xl font-bold text-purple-600">{documents.length}</div>
+                                                <div className="text-sm text-gray-600">Documents</div>
+                                            </div>
+                                            <div className="text-center p-4 bg-orange-50 rounded-lg">
+                                                <div className="text-2xl font-bold text-orange-600">{transactions.length}</div>
+                                                <div className="text-sm text-gray-600">Transactions</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* System Health */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <h3 className="text-lg font-medium text-gray-900 mb-4">System Health</h3>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                                                <div className="flex items-center">
+                                                    <Icon path={ICONS.CHECK_CIRCLE} className="w-5 h-5 text-green-600 mr-3" />
+                                                    <span className="text-sm font-medium text-green-800">Database Connection</span>
+                                                </div>
+                                                <span className="text-sm text-green-600">Connected</span>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                                                <div className="flex items-center">
+                                                    <Icon path={ICONS.CHECK_CIRCLE} className="w-5 h-5 text-green-600 mr-3" />
+                                                    <span className="text-sm font-medium text-green-800">Storage Connection</span>
+                                                </div>
+                                                <span className="text-sm text-green-600">Connected</span>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                                                <div className="flex items-center">
+                                                    <Icon path={ICONS.CHECK_CIRCLE} className="w-5 h-5 text-green-600 mr-3" />
+                                                    <span className="text-sm font-medium text-green-800">Message Templates</span>
+                                                </div>
+                                                <span className="text-sm text-green-600">{Object.keys(messageTemplates).length} configured</span>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                                                <div className="flex items-center">
+                                                    <Icon path={ICONS.CALENDAR} className="w-5 h-5 text-blue-600 mr-3" />
+                                                    <span className="text-sm font-medium text-blue-800">Last Export</span>
+                                                </div>
+                                                <span className="text-sm text-blue-600">
+                                                    {localStorage.getItem('lastExportDate') ? 
+                                                        new Date(localStorage.getItem('lastExportDate')).toLocaleDateString('tr-TR') : 
+                                                        'Never'
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Actions */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    localStorage.clear();
+                                                    showNotification('All local data cleared. Please refresh the page.', 'info');
+                                                }}
+                                                className="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.DELETE} className="w-4 h-4 mr-2" />
+                                                Clear Local Data
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const currentDate = new Date().toISOString();
+                                                    localStorage.setItem('lastExportDate', currentDate);
+                                                    showNotification('Export date updated!', 'success');
+                                                }}
+                                                className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.CALENDAR} className="w-4 h-4 mr-2" />
+                                                Update Export Date
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    fetchStorageInfo();
+                                                    showNotification('Storage information refreshed!', 'success');
+                                                }}
+                                                className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.LOADING} className="w-4 h-4 mr-2" />
+                                                Refresh Storage Info
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    window.location.reload();
+                                                }}
+                                                className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                            >
+                                                <Icon path={ICONS.REDO} className="w-4 h-4 mr-2" />
+                                                Reload Application
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Timezone:</span>
-                                <span className="font-medium">{systemInfo.timezone}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Online Status:</span>
-                                <span className={`font-medium ${systemInfo.onLine ? 'text-green-600' : 'text-red-600'}`}>
-                                    {systemInfo.onLine ? 'Online' : 'Offline'}
-                                </span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <SettingsModal 
-                isOpen={isSettingsModalOpen} 
-                onClose={() => setIsSettingsModalOpen(false)} 
+            {/* Modals */}
+            <MessageTemplateModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                template={selectedTemplate}
+                onSave={handleSaveTemplate}
+            />
+
+            <ExportProgressModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                progress={exportProgress}
+                status={exportStatus}
             />
         </div>
     );

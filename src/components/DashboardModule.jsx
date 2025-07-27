@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
 import StudentFormModal from './StudentFormModal';
@@ -20,8 +20,8 @@ import CustomTimePicker from './CustomTimePicker';
 import Modal from './Modal';
 
 const DashboardModule = ({ setActiveModule }) => {
-    const { showNotification } = useNotification();
     const { students, groups, lessons, events, payments, fetchData } = useAppContext();
+    const { showNotification } = useNotification();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventToEdit, setEventToEdit] = useState(null);
@@ -64,6 +64,18 @@ const DashboardModule = ({ setActiveModule }) => {
     const [isLessonDeletionModalOpen, setIsLessonDeletionModalOpen] = useState(false);
     const [isDeletingLessons, setIsDeletingLessons] = useState(false);
     const [modifiedLessons, setModifiedLessons] = useState(new Map());
+
+    // State for real-time clock
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Update time every second
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     const generateColorForString = (id) => {
         if (!id) return '#6B7280'; // default gray
@@ -987,61 +999,95 @@ const DashboardModule = ({ setActiveModule }) => {
 
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center pb-4 mb-8 border-b border-gray-200">
-                <h2 className="text-3xl font-bold text-gray-800 flex items-center"><Icon path={ICONS.DASHBOARD} className="w-8 h-8 mr-3"/>Dashboard</h2>
+            {/* Simple Premium Header */}
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+                    <div className="flex items-center">
+                        <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
+                            <Icon path={ICONS.DASHBOARD} className="w-7 h-7 text-white"/>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h2>
+                            <p className="text-gray-600 text-sm lg:text-base">Welcome, Nazım!</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <div className="hidden lg:flex items-center space-x-2 text-gray-600">
+                            <div className="text-sm">
+                                <div>{currentTime.toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                <div className="font-mono font-semibold">{currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center cursor-pointer" onClick={() => setActiveModule('students')}>
-                    <div className="bg-gray-100 text-blue-600 rounded-full p-3 mr-4 flex items-center justify-center"><Icon path={ICONS.STUDENTS} className="w-6 h-6" /></div>
-                    <div>
-                        <h3 className="text-gray-500 text-sm font-medium">Total Students</h3>
-                        <p className="text-3xl font-bold text-gray-800">{students.length}</p>
+                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('students')}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.STUDENTS} className="w-7 h-7 text-white" />
+                        </div>
                     </div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">{students.length}</h3>
+                    <p className="text-sm font-medium text-blue-700">Total Students</p>
                 </div>
-                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center cursor-pointer" onClick={() => setActiveModule('groups')}>
-                    <div className="bg-gray-100 text-green-600 rounded-full p-3 mr-4 flex items-center justify-center"><Icon path={ICONS.GROUPS} className="w-6 h-6"/></div>
-                    <div>
-                        <h3 className="text-gray-500 text-sm font-medium">Total Groups</h3>
-                        <p className="text-3xl font-bold text-gray-800">{groups.length}</p>
+                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('groups')}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.GROUPS} className="w-7 h-7 text-white"/>
+                        </div>
                     </div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">{groups.length}</h3>
+                    <p className="text-sm font-medium text-green-700">Total Groups</p>
                 </div>
-                <button onClick={() => setIsStudentModalOpen(true)} className="bg-blue-600 text-white p-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors text-left flex items-center">
-                    <Icon path={ICONS.ADD} className="w-8 h-8 mr-4"/>
-                    <div>
-                        <h3 className="text-lg font-semibold">Enroll Student</h3>
-                        <p className="text-sm opacity-80">Add a new student.</p>
+                <button onClick={() => setIsStudentModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.ADD} className="w-7 h-7 text-white"/>
+                        </div>
                     </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Enroll Student</h3>
+                    <p className="text-sm text-gray-600">Add a new student.</p>
                 </button>
-                <button onClick={() => setIsEventModalOpen(true)} className="bg-green-600 text-white p-6 rounded-lg shadow-md hover:bg-green-700 transition-colors text-left flex items-center">
-                    <Icon path={ICONS.CALENDAR} className="w-8 h-8 mr-4"/>
-                    <div>
-                        <h3 className="text-lg font-semibold">Log Event</h3>
-                        <p className="text-sm opacity-80">Add a new event.</p>
+                <button onClick={() => setIsEventModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.CALENDAR} className="w-7 h-7 text-white"/>
+                        </div>
                     </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Log Event</h3>
+                    <p className="text-sm text-gray-600">Add a new event.</p>
                 </button>
-                <button onClick={() => setIsLessonGenerationModalOpen(true)} className="bg-purple-600 text-white p-6 rounded-lg shadow-md hover:bg-purple-700 transition-colors text-left flex items-center">
-                    <Icon path={ICONS.LESSON} className="w-8 h-8 mr-4"/>
-                    <div>
-                        <h3 className="text-lg font-semibold">Generate Lessons</h3>
-                        <p className="text-sm opacity-80">Auto-generate lessons.</p>
+                <button onClick={() => setIsLessonGenerationModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.LESSON} className="w-7 h-7 text-white"/>
+                        </div>
                     </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Generate Lessons</h3>
+                    <p className="text-sm text-gray-600">Auto-generate lessons.</p>
                 </button>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h3 className="font-semibold mb-4 text-gray-800">Today's Schedule</h3>
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                        <div className="flex items-center mb-6">
+                            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
+                                <Icon path={ICONS.CALENDAR} className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Today's Schedule</h3>
+                        </div>
                         {todaysSchedule.length > 0 ? (
                             <ul className="space-y-4">
                                 {todaysSchedule.map(item => (
-                                    <li key={item.id} className="flex items-center justify-between group">
+                                    <li key={item.id} className="flex items-center justify-between group p-3 rounded-xl hover:bg-gray-50 transition-colors">
                                         <div className="flex items-center">
                                             <EventIcon type={item.type} color={item.color} category={item.category} />
                                             <div>
                                                 <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm text-gray-600">
                                                     {item.allDay ? 'All Day' : 
                                                      item.type === 'lesson' ? 
                                                         `${item.originalStartTime || '09:00'} - ${item.originalEndTime || '10:00'}` :
@@ -1052,41 +1098,46 @@ const DashboardModule = ({ setActiveModule }) => {
                                         </div>
                                         {(item.type === 'event' || item.type === 'lesson') && (
                                             <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                             </div>
                                         )}
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-gray-500 text-center py-4">No events or lessons scheduled for today.</p>
+                            <p className="text-gray-500 text-center py-8">No events or lessons scheduled for today.</p>
                         )}
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h3 className="font-semibold mb-4 text-gray-800">Upcoming Events</h3>
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                        <div className="flex items-center mb-6">
+                            <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
+                                <Icon path={ICONS.CLOCK} className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Upcoming Events</h3>
+                        </div>
                         {upcomingEvents.length > 0 ? (
                             <ul className="space-y-4">
                                 {upcomingEvents.slice(0, 5).map((item, index) => (
-                                    <li key={item.id} className={`p-3 rounded-lg flex items-center justify-between group ${index === 0 ? 'bg-blue-50' : ''}`}>
+                                    <li key={item.id} className={`p-3 rounded-xl flex items-center justify-between group transition-colors ${index === 0 ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'}`}>
                                         <div className="flex items-center">
                                             <EventIcon type={item.type} color={item.color} category={item.category} />
                                             <div>
                                                 <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                                <p className="text-sm text-gray-500">{formatDate(item.startTime)}</p>
+                                                <p className="text-sm text-gray-600">{formatDate(item.startTime)}</p>
                                             </div>
                                         </div>
                                         {(item.type === 'event' || item.type === 'lesson') && (
                                             <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
+                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
                                             </div>
                                         )}
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-gray-500 text-center py-4">No upcoming events.</p>
+                            <p className="text-gray-500 text-center py-8">No upcoming events.</p>
                         )}
                     </div>
                 </div>
@@ -1096,28 +1147,33 @@ const DashboardModule = ({ setActiveModule }) => {
             </div>
 
             {/* Important Notifications */}
-            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h3 className="font-semibold mb-4 text-gray-800">Important Notifications</h3>
+            <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-6 shadow-lg border border-amber-100 mb-6">
+                <div className="flex items-center mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
+                        <Icon path={ICONS.NOTIFICATION} className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Important Notifications</h3>
+                </div>
                 {duePayments.length > 0 ? (
                     <ul className="space-y-4">
                         {duePayments.map(notification => (
-                            <li key={notification.id} className="flex items-center justify-between group">
+                            <li key={notification.id} className="flex items-center justify-between group p-3 rounded-xl hover:bg-amber-50 transition-colors">
                                 <div className="flex items-center">
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-4 bg-yellow-100 text-yellow-600">
-                                        <Icon path={ICONS.WALLET} className="w-5 h-5"/>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mr-4 bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-sm">
+                                        <Icon path={ICONS.WALLET} className="w-5 h-5 text-white"/>
                                     </div>
                                     <div>
                                         <p className="font-medium text-gray-800">{notification.message}</p>
-                                        {notification.details && <p className="text-sm text-gray-500">{notification.details}</p>}
+                                        {notification.details && <p className="text-sm text-gray-600">{notification.details}</p>}
                                     </div>
                                 </div>
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <div className="flex items-center text-green-600">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-4 bg-green-100 text-green-600">
-                            <Icon path={ICONS.CHECK} className="w-5 h-5"/>
+                    <div className="flex items-center text-green-600 p-3 rounded-xl bg-green-50">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mr-4 bg-gradient-to-br from-green-500 to-green-600 shadow-sm">
+                            <Icon path={ICONS.CHECK} className="w-5 h-5 text-white" />
                         </div>
                         <p className="font-medium">Everything is good! No overdue payments.</p>
                     </div>

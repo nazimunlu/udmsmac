@@ -96,6 +96,7 @@ const AppProvider = ({ children }) => {
         }
         return parsedGroup;
       });
+      
       setGroups(allGroups.filter(g => !g.isArchived));
       setArchivedGroups(allGroups.filter(g => g.isArchived));
 
