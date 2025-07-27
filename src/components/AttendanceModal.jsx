@@ -51,40 +51,64 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
     const studentsToDisplay = studentsInGroup || (student ? [student] : []);
 
     const generateAttendanceMessage = (student, lesson, attendanceStatus) => {
-        const lessonDate = new Date(lesson.date).toLocaleDateString('tr-TR');
-        const lessonTime = new Date(lesson.date).toLocaleTimeString('tr-TR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        // Fix date formatting by using lessonDate and startTime properly
+        const lessonDate = new Date(lesson.lessonDate);
+        const startTime = lesson.startTime || '09:00';
+        
+        // Format date as DD/MM/YYYY
+        const formattedDate = lessonDate.toLocaleDateString('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
         });
         
+        // Format time as HH:MM
+        const timeParts = startTime.split(':');
+        const formattedTime = `${timeParts[0]}:${timeParts[1]}`;
+        
         if (attendanceStatus === 'Absent') {
-            return `Sayın ${student.fullName},
-
-${lessonDate} tarihinde saat ${lessonTime}'de planlanan dersinize katılamadığınızı belirtmek isteriz.
-
-Kaçırılan derslerin telafisi için lütfen bizimle iletişime geçiniz. Telafi dersi planlaması konusunda size yardımcı olmaktan memnuniyet duyarız.
-
-Saygılarımızla,
-Ünlü Dil Management`;
+            return `Sayın velimiz, öğrencimiz ${student.fullName}, ${formattedDate} tarihindeki dersine katılmamıştır. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
         } else {
-            return `Sayın ${student.fullName},
-
-${lessonDate} tarihinde saat ${lessonTime}'de planlanan dersinize katıldığınız için teşekkür ederiz.
-
-Dersinizin verimli geçtiğini umuyoruz. Bir sonraki dersinizde görüşmek üzere.
-
-Saygılarımızla,
-Ünlü Dil Management`;
+            return `Sayın velimiz, öğrencimiz ${student.fullName}, ${formattedDate} tarihindeki dersine katılmıştır. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
         }
     };
 
     const handleGenerateAttendanceMessage = (student, status) => {
         const message = generateAttendanceMessage(student, lesson, status);
         navigator.clipboard.writeText(message).then(() => {
-            // You can add notification here if you have access to showNotification
-            console.log(`Attendance message copied to clipboard for ${student.fullName}`);
+            // Show success notification using a more user-friendly approach
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            notification.textContent = `Message copied to clipboard for ${student.fullName}`;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
         }).catch(() => {
-            console.log(`Message generated for ${student.fullName}`);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = message;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // Show fallback notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            notification.textContent = `Message copied to clipboard for ${student.fullName}`;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
         });
     };
 
@@ -113,12 +137,12 @@ Saygılarımızla,
                                             onClick={() => handleAttendanceChange(s.id, 'Absent')}
                                             className={`px-3 py-1 rounded-md text-sm ${attendance[s.id] === 'Absent' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                                         >Absent</button>
-                                        {attendance[s.id] && (
+                                        {attendance[s.id] === 'Absent' && (
                                             <button
                                                 type="button"
-                                                onClick={() => handleGenerateAttendanceMessage(s, attendance[s.id])}
+                                                onClick={() => handleGenerateAttendanceMessage(s, 'Absent')}
                                                 className="px-2 py-1 rounded-md text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                                title="Generate message"
+                                                title="Generate absence message"
                                             >
                                                 <Icon path={ICONS.MESSAGE} className="w-3 h-3" />
                                             </button>

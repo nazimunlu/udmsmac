@@ -136,7 +136,7 @@ const FinancialDashboard = ({ payments, expenses, students, dateRange, isDataHid
                                 <span className="text-sm text-gray-600">{pld.name}:</span>
                             </div>
                             <span className="font-semibold text-gray-800">
-                                {pld.value.toFixed(2)} ₺
+                                {Math.round(pld.value)} ₺
                             </span>
                         </div>
                     ))}

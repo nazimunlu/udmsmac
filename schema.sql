@@ -25,6 +25,7 @@ CREATE TABLE public.students (
   group_id BIGINT REFERENCES public.groups(id) ON DELETE SET NULL,
   is_tutoring BOOLEAN DEFAULT FALSE NOT NULL,
   is_archived BOOLEAN DEFAULT FALSE NOT NULL,
+  color TEXT DEFAULT '#3B82F6', -- Student color for calendar and dashboard display
   installments JSONB, -- Array of installment objects
   fee_details JSONB, -- Object with totalFee, numberOfInstallments
   tutoring_details JSONB, -- Object with pricePerLesson, totalCalculatedFee, numberOfLessons, endDate, schedule

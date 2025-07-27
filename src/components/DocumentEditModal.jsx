@@ -33,6 +33,14 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
         setIsSubmitting(true);
 
         try {
+            // Check if this is a virtual document (generated from transactions or students)
+            if (documentToEdit.isTransactionDocument || documentToEdit.isStudentDocument) {
+                showNotification('This document cannot be edited directly. Please edit the original record (business expense or student enrollment) instead.', 'info');
+                onClose();
+                return;
+            }
+
+            // Only update actual documents in the documents table
             await apiClient.update('documents', documentToEdit.id, { name: formData.name, type: formData.type });
             showNotification('Document updated successfully!', 'success');
             fetchData();

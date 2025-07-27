@@ -84,7 +84,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
     const analyticsData = useMemo(() => {
         const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
         const businessExpenses = filteredExpenses.filter(e => e.type === 'business');
-        const personalExpenses = filteredExpenses.filter(e => e.type === 'personal');
+        const personalExpenses = filteredExpenses.filter(e => e.type === 'expense-personal' || e.type === 'personal');
         
         // Category breakdown
         const categoryBreakdown = filteredExpenses.reduce((acc, e) => {
@@ -110,7 +110,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
                 month: format(month, 'MMM yyyy'),
                 total: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
                 business: monthExpenses.filter(e => e.type === 'business').reduce((sum, e) => sum + e.amount, 0),
-                personal: monthExpenses.filter(e => e.type === 'personal').reduce((sum, e) => sum + e.amount, 0),
+                personal: monthExpenses.filter(e => e.type === 'expense-personal' || e.type === 'personal').reduce((sum, e) => sum + e.amount, 0),
                 count: monthExpenses.length
             };
         });
@@ -144,7 +144,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
         setSelectedExpense(expense);
         if (expense.type === 'business') {
             setIsBusinessExpenseModalOpen(true);
-        } else {
+        } else if (expense.type === 'expense-personal' || expense.type === 'personal') {
             setIsPersonalExpenseModalOpen(true);
         }
     };
@@ -216,7 +216,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-red-100 text-sm font-medium">Total Expenses</p>
-                            <p className="text-2xl font-bold">{analyticsData.totalExpenses.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.totalExpenses)} ₺</p>
                         </div>
                         <Icon path={ICONS.BRIEFCASE} className="w-8 h-8 text-red-200" />
                     </div>
@@ -225,7 +225,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-blue-100 text-sm font-medium">Business</p>
-                            <p className="text-2xl font-bold">{analyticsData.businessExpenses.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.businessExpenses)} ₺</p>
                         </div>
                         <Icon path={ICONS.BUILDING} className="w-8 h-8 text-blue-200" />
                     </div>
@@ -234,7 +234,7 @@ const ExpenseManager = ({ expenses, dateRange, onExpenseAdded }) => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-orange-100 text-sm font-medium">Personal</p>
-                            <p className="text-2xl font-bold">{analyticsData.personalExpenses.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.personalExpenses)} ₺</p>
                         </div>
                         <Icon path={ICONS.USER} className="w-8 h-8 text-orange-200" />
                     </div>

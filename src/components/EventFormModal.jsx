@@ -22,8 +22,6 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
     // Event categories with colors
     const eventCategories = [
         { value: 'meeting', label: 'Meeting', color: '#3B82F6', icon: ICONS.USERS },
-        { value: 'workshop', label: 'Workshop', color: '#10B981', icon: ICONS.LESSON },
-        { value: 'presentation', label: 'Presentation', color: '#F59E0B', icon: ICONS.DOCUMENTS },
         { value: 'exam', label: 'Exam', color: '#EF4444', icon: ICONS.CHECK },
         { value: 'celebration', label: 'Celebration', color: '#EC4899', icon: ICONS.CAKE },
         { value: 'maintenance', label: 'Maintenance', color: '#8B5CF6', icon: ICONS.SETTINGS },
@@ -357,7 +355,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
                                     Overlapping Events Detected
                                 </h4>
                                 <p className="text-sm text-yellow-700 mb-3">
-                                    This event conflicts with the following existing items. Select the ones you want to delete to resolve conflicts:
+                                    This event conflicts with the following existing items. <strong>Check the boxes next to the items you want to delete</strong> to resolve conflicts:
                                 </p>
                                 <div className="space-y-2">
                                     {overlappingEvents.map((item, index) => (
@@ -425,8 +423,9 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
                                         onClick={deleteSelectedConflicts}
                                         disabled={isSubmitting || selectedConflicts.length === 0}
                                         className="px-4 py-2 text-sm rounded-md text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
+                                        title={selectedConflicts.length === 0 ? "Select items to delete first" : ""}
                                     >
-                                        {isSubmitting ? 'Deleting...' : `Delete ${selectedConflicts.length} Selected`}
+                                        {isSubmitting ? 'Deleting...' : selectedConflicts.length === 0 ? 'Select Items to Delete' : `Delete ${selectedConflicts.length} Selected`}
                                     </button>
                                     <button 
                                         type="submit" 

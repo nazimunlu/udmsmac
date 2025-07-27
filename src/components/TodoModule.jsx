@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import apiClient from '../apiClient';
 import { supabase } from '../supabaseClient';
 import { Icon, ICONS } from './Icons';
@@ -14,12 +14,69 @@ const TodoModule = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showNotification } = useNotification();
 
-    const timeOptions = [];
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            timeOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    const timeOptions = useMemo(() => {
+        const options = [];
+        for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 30) {
+                options.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            }
         }
-    }
+        return options;
+    }, []);
+
+    const getTimeRemaining = useCallback((date) => {
+        if (!date) return null;
+        const targetDate = new Date(date);
+        const now = new Date();
+        
+        if (isPast(targetDate)) {
+            const overdueMinutes = Math.abs(differenceInMinutes(targetDate, now));
+            const overdueHours = Math.abs(differenceInHours(targetDate, now));
+            const overdueDays = Math.abs(differenceInDays(targetDate, now));
+            
+            let overdueText = '';
+            if (overdueDays > 0) {
+                overdueText = `${overdueDays}d overdue`;
+            } else if (overdueHours > 0) {
+                overdueText = `${overdueHours}h overdue`;
+            } else {
+                overdueText = `${overdueMinutes}m overdue`;
+            }
+            
+            return {
+                text: overdueText,
+                color: 'text-red-500'
+            };
+        }
+        
+        const remainingMinutes = differenceInMinutes(targetDate, now);
+        const remainingHours = differenceInHours(targetDate, now);
+        const remainingDays = differenceInDays(targetDate, now);
+        
+        let remainingText = '';
+        let color = 'text-gray-500';
+        
+        if (remainingDays > 0) {
+            remainingText = `${remainingDays}d remaining`;
+            if (remainingDays <= 1) {
+                color = 'text-orange-500';
+            }
+        } else if (remainingHours > 0) {
+            remainingText = `${remainingHours}h remaining`;
+            color = 'text-orange-500';
+        } else if (remainingMinutes > 0) {
+            remainingText = `${remainingMinutes}m remaining`;
+            color = 'text-red-500';
+        } else {
+            remainingText = 'Due now';
+            color = 'text-red-500';
+        }
+        
+        return {
+            text: remainingText,
+            color
+        };
+    }, []);
 
     const handleAddTask = async (e) => {
         e.preventDefault();
@@ -74,60 +131,6 @@ const TodoModule = () => {
         }
     };
 
-    const getTimeRemaining = (date) => {
-        if (!date) return null;
-        const targetDate = new Date(date);
-        const now = new Date();
-        
-        if (isPast(targetDate)) {
-            const overdueMinutes = Math.abs(differenceInMinutes(targetDate, now));
-            const overdueHours = Math.abs(differenceInHours(targetDate, now));
-            const overdueDays = Math.abs(differenceInDays(targetDate, now));
-            
-            let overdueText = '';
-            if (overdueDays > 0) {
-                overdueText = `${overdueDays}d overdue`;
-            } else if (overdueHours > 0) {
-                overdueText = `${overdueHours}h overdue`;
-            } else {
-                overdueText = `${overdueMinutes}m overdue`;
-            }
-            
-            return {
-                text: overdueText,
-                color: 'text-red-500'
-            };
-        }
-        
-        const remainingMinutes = differenceInMinutes(targetDate, now);
-        const remainingHours = differenceInHours(targetDate, now);
-        const remainingDays = differenceInDays(targetDate, now);
-        
-        let remainingText = '';
-        let color = 'text-gray-500';
-        
-        if (remainingDays > 0) {
-            remainingText = `${remainingDays}d remaining`;
-            if (remainingDays <= 1) {
-                color = 'text-orange-500';
-            }
-        } else if (remainingHours > 0) {
-            remainingText = `${remainingHours}h remaining`;
-            color = 'text-orange-500';
-        } else if (remainingMinutes > 0) {
-            remainingText = `${remainingMinutes}m remaining`;
-            color = 'text-red-500';
-        } else {
-            remainingText = 'Due now';
-            color = 'text-red-500';
-        }
-        
-        return {
-            text: remainingText,
-            color
-        };
-    };
-
     return (
         <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col">
             <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
@@ -158,7 +161,7 @@ const TodoModule = () => {
                 </div>
             </form>
             <ul className="space-y-2 overflow-y-auto flex-grow">
-                {todos.map(todo => {
+                {useMemo(() => todos.map(todo => {
                     const timeInfo = getTimeRemaining(todo.dueDate);
                     return (
                         <li key={todo.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 group border border-gray-100">
@@ -188,7 +191,7 @@ const TodoModule = () => {
                             </button>
                         </li>
                     );
-                })}
+                }), [todos, getTimeRemaining, toggleTask, deleteTask])}
                 {todos.length === 0 && (
                     <div className="text-center text-gray-500 py-4 flex flex-col items-center justify-center h-full">
                         <Icon path={ICONS.CHECK} className="w-12 h-12 text-green-500 mb-2" />

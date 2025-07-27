@@ -101,18 +101,31 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
     };
 
     const uploadFile = async (file, path) => {
-        if (!file) return null;
-        
-        const { data, error } = await supabase.storage
-            .from('udms')
-            .upload(path, file, {
-                onUploadProgress: (progress) => {
-                    setUploadProgress((progress.loaded / progress.total) * 100);
-                }
-            });
-            
-        if (error) throw error;
-        return supabase.storage.from('udms').getPublicUrl(path).data.publicUrl;
+        try {
+            const { data, error } = await supabase.storage
+                .from('udms')
+                .upload(path, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) {
+                console.error('Storage upload error:', error);
+                throw new Error('Storage access denied. Please check your permissions or try again.');
+            }
+
+            return supabase.storage.from('udms').getPublicUrl(path).data.publicUrl;
+        } catch (error) {
+            console.error('File upload failed:', error);
+            throw error;
+        }
+    };
+
+    const generateFileName = (description, amount, originalFileName) => {
+        const sanitizedDescription = description.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '').trim().replace(/\s+/g, '_');
+        const fileExtension = originalFileName.split('.').pop().toLowerCase();
+        const amountStr = amount ? `_${amount}TL` : '';
+        return `${sanitizedDescription}${amountStr}_Invoice.${fileExtension}`;
     };
 
     const handleSubmit = async (e) => {
@@ -135,9 +148,10 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
 
             // Upload invoice if provided
             if (invoiceFile) {
-                const sanitizedFileName = sanitizeFileName(invoiceFile.name);
-                const invoicePath = `business_expenses/${user.id}/${Date.now()}_${sanitizedFileName}`;
+                const invoiceFileName = generateFileName(formData.description, formData.amount, invoiceFile.name);
+                const invoicePath = `business_expenses/${user.id}/${Date.now()}_${invoiceFileName}`;
                 dataToSave.invoice_url = await uploadFile(invoiceFile, invoicePath);
+                dataToSave.invoice_name = invoiceFileName;
             }
 
             // Convert amount to number
@@ -317,7 +331,7 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
                             <div>
                                 <span className="text-gray-600">Amount:</span>
                                 <span className="ml-2 font-semibold text-red-600">
-                                    {formData.amount ? `${parseFloat(formData.amount).toFixed(2)} ₺` : 'Not set'}
+                                    {formData.amount ? `${Math.round(parseFloat(formData.amount))} ₺` : 'Not set'}
                                 </span>
                             </div>
 

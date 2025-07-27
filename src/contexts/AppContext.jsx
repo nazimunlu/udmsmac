@@ -62,6 +62,22 @@ const AppProvider = ({ children }) => {
           console.error("Error parsing student documents:", e); 
           parsedStudent.documents = {}; 
         }
+        try { 
+          parsedStudent.tutoringDetails = s.tutoringDetails ? 
+            (typeof s.tutoringDetails === 'string' ? JSON.parse(s.tutoringDetails) : s.tutoringDetails) : 
+            {}; 
+        } catch (e) { 
+          console.error("Error parsing student tutoringDetails:", e); 
+          parsedStudent.tutoringDetails = {}; 
+        }
+        try { 
+          parsedStudent.feeDetails = s.feeDetails ? 
+            (typeof s.feeDetails === 'string' ? JSON.parse(s.feeDetails) : s.feeDetails) : 
+            {}; 
+        } catch (e) { 
+          console.error("Error parsing student feeDetails:", e); 
+          parsedStudent.feeDetails = {}; 
+        }
         return parsedStudent;
       });
       setStudents(allStudents.filter(s => !s.isArchived));

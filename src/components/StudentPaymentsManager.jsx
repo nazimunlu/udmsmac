@@ -9,8 +9,6 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
     const { showNotification } = useNotification();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [sortBy, setSortBy] = useState('name');
-    const [sortOrder, setSortOrder] = useState('asc');
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
@@ -57,9 +55,9 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
         });
     }, [students, payments]);
 
-    // Filtered and sorted students
+    // Filtered students
     const filteredStudents = useMemo(() => {
-        let filtered = processedStudents.filter(student => {
+        return processedStudents.filter(student => {
             const matchesSearch = student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                 student.studentContact?.toLowerCase().includes(searchTerm.toLowerCase());
             
@@ -67,55 +65,7 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
             
             return matchesSearch && matchesStatus;
         });
-
-        // Sorting
-        filtered.sort((a, b) => {
-            let aValue, bValue;
-            
-            switch (sortBy) {
-                case 'name':
-                    aValue = a.fullName.toLowerCase();
-                    bValue = b.fullName.toLowerCase();
-                    break;
-                case 'balance':
-                    aValue = a.remainingBalance;
-                    bValue = b.remainingBalance;
-                    break;
-                case 'paymentRate':
-                    aValue = a.paymentRate;
-                    bValue = b.paymentRate;
-                    break;
-                case 'lastPayment':
-                    aValue = a.lastPayment || new Date(0);
-                    bValue = b.lastPayment || new Date(0);
-                    break;
-                case 'overdue':
-                    aValue = a.overdueInstallments.length;
-                    bValue = b.overdueInstallments.length;
-                    break;
-                default:
-                    aValue = a.fullName.toLowerCase();
-                    bValue = b.fullName.toLowerCase();
-            }
-
-            if (sortOrder === 'asc') {
-                return aValue > bValue ? 1 : -1;
-            } else {
-                return aValue < bValue ? 1 : -1;
-            }
-        });
-
-        return filtered;
-    }, [processedStudents, searchTerm, statusFilter, sortBy, sortOrder]);
-
-    const handleSort = (field) => {
-        if (sortBy === field) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortBy(field);
-            setSortOrder('asc');
-        }
-    };
+    }, [processedStudents, searchTerm, statusFilter]);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -144,16 +94,15 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
         const overdueAmount = student.overdueInstallments.reduce((sum, inst) => sum + inst.amount, 0);
         const overdueCount = student.overdueInstallments.length;
         
-        return `Sayın ${student.fullName},
-
-Bu, ${overdueCount} adet gecikmiş ödeme taksitinin toplam ${overdueAmount.toFixed(2)} ₺ tutarında olduğunu hatırlatan dostane bir uyarıdır.
-
-Hizmet kesintisi yaşamamak için lütfen ödemenizi en kısa sürede yapınız. Herhangi bir sorunuz varsa veya ödeme düzenlemeleri hakkında konuşmak isterseniz, lütfen bizimle iletişime geçmekten çekinmeyin.
-
-Bu konuya gösterdiğiniz ilgi için teşekkür ederiz.
-
-Saygılarımızla,
-Ünlü Dil Management`;
+        // Get the first overdue installment for date
+        const firstOverdue = student.overdueInstallments[0];
+        const dueDate = firstOverdue ? new Date(firstOverdue.dueDate).toLocaleDateString('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        }) : 'N/A';
+        
+        return `Sayın ${student.fullName}, vade tarihi ${dueDate} olan ${Math.round(overdueAmount)} ₺ tutarında ödenmemiş ${overdueCount} adet taksitiniz bulunmaktadır. Ödeme yaptıysanız lütfen bizimle iletişime geçin. Saygılarımızla. - Özel Ünlü Dil İngilizce Kursu Yönetimi.`;
     };
 
     const handleGenerateMessage = (student) => {
@@ -230,23 +179,6 @@ Saygılarımızla,
                             <option value="pending">Pending</option>
                             <option value="overdue">Overdue</option>
                         </select>
-                        <select
-                            value={`${sortBy}-${sortOrder}`}
-                            onChange={(e) => {
-                                const [field, order] = e.target.value.split('-');
-                                setSortBy(field);
-                                setSortOrder(order);
-                            }}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                            <option value="name-asc">Name A-Z</option>
-                            <option value="name-desc">Name Z-A</option>
-                            <option value="balance-desc">Balance High-Low</option>
-                            <option value="balance-asc">Balance Low-High</option>
-                            <option value="paymentRate-desc">Payment Rate High-Low</option>
-                            <option value="overdue-desc">Most Overdue</option>
-                            <option value="lastPayment-desc">Recent Payments</option>
-                        </select>
                     </div>
                 </div>
             </div>
@@ -257,29 +189,14 @@ Saygılarımızla,
                     <table className="w-full">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
-                                    <div className="flex items-center">
-                                        Student
-                                        {sortBy === 'name' && (
-                                            <Icon path={sortOrder === 'asc' ? ICONS.CHEVRON_LEFT : ICONS.CHEVRON_RIGHT} className="w-4 h-4 ml-1" />
-                                        )}
-                                    </div>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Student
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('balance')}>
-                                    <div className="flex items-center">
-                                        Balance
-                                        {sortBy === 'balance' && (
-                                            <Icon path={sortOrder === 'asc' ? ICONS.CHEVRON_LEFT : ICONS.CHEVRON_RIGHT} className="w-4 h-4 ml-1" />
-                                        )}
-                                    </div>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Balance
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('paymentRate')}>
-                                    <div className="flex items-center">
-                                        Payment Rate
-                                        {sortBy === 'paymentRate' && (
-                                            <Icon path={sortOrder === 'asc' ? ICONS.CHEVRON_LEFT : ICONS.CHEVRON_RIGHT} className="w-4 h-4 ml-1" />
-                                        )}
-                                    </div>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Payment Rate
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installments</th>
@@ -357,21 +274,21 @@ Saygılarımızla,
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex items-center space-x-1">
                                             <button
                                                 onClick={() => handlePayment(student)}
-                                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                                                className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                                                title="Record payment"
                                             >
-                                                <Icon path={ICONS.WALLET} className="w-3 h-3 mr-1" />
-                                                Pay
+                                                <Icon path={ICONS.WALLET} className="w-3 h-3" />
                                             </button>
                                             {student.status === 'overdue' && (
                                                 <button
                                                     onClick={() => handleGenerateMessage(student)}
-                                                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                                    className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                                    title="Generate late payment message"
                                                 >
-                                                    <Icon path={ICONS.BELL} className="w-3 h-3 mr-1" />
-                                                    Generate Message
+                                                    <Icon path={ICONS.BELL} className="w-3 h-3" />
                                                 </button>
                                             )}
                                         </div>

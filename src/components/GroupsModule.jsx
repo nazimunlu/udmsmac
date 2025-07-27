@@ -45,13 +45,25 @@ const GroupsModule = () => {
     const handleDeleteGroup = async () => {
         if (!groupToDelete) return;
         try {
+            // Delete all lessons associated with this group
+            const allLessons = await apiClient.getAll('lessons');
+            const groupLessons = allLessons.filter(lesson => lesson.groupId === groupToDelete.id);
+            
+            // Delete lessons in batches to avoid overwhelming the server
+            const batchSize = 10;
+            for (let i = 0; i < groupLessons.length; i += batchSize) {
+                const batch = groupLessons.slice(i, i + batchSize);
+                await Promise.all(batch.map(lesson => apiClient.delete('lessons', lesson.id)));
+            }
+            
             if (showArchivedGroups) {
                 await apiClient.delete('groups', groupToDelete.id);
-                showNotification('Group permanently deleted!', 'success');
+                showNotification('Group and all associated lessons permanently deleted!', 'success');
             } else {
                 await apiClient.update('groups', groupToDelete.id, { isArchived: true });
-                showNotification('Group archived successfully!', 'success');
+                showNotification('Group archived and all associated lessons deleted!', 'success');
             }
+            
             // Unassign students from this group
             const studentsInGroup = students.filter(s => s.groupId === groupToDelete.id);
             for (const student of studentsInGroup) {
@@ -130,9 +142,14 @@ const GroupsModule = () => {
                                     <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => openDetailsModal(group)} className="p-2 text-gray-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.INFO} className="w-5 h-5" /></button>
                                         <button onClick={() => openEditModal(group)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                        <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
+                                        {!showArchivedGroups && (
+                                            <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-orange-600 hover:text-orange-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.ARCHIVE} className="w-5 h-5" /></button>
+                                        )}
                                         {showArchivedGroups && (
-                                            <button onClick={() => handleUnarchiveGroup(group)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.UPLOAD} className="w-5 h-5" /></button>
+                                            <button onClick={() => handleUnarchiveGroup(group)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.BOX_OPEN} className="w-5 h-5" /></button>
+                                        )}
+                                        {showArchivedGroups && (
+                                            <button onClick={() => openDeleteConfirmation(group)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-gray-200"><Icon path={ICONS.TRASH} className="w-5 h-5" /></button>
                                         )}
                                     </div>
                                 </div>

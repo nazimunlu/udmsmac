@@ -121,6 +121,102 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
         };
 
         try {
+            // Check for duplicate schedules (only for new groups)
+            if (!groupToEdit) {
+                const allGroups = await apiClient.getAll('groups');
+                const activeGroups = allGroups.filter(g => !g.isArchived);
+                
+                // Check for exact schedule matches
+                const hasDuplicateSchedule = activeGroups.some(existingGroup => {
+                    const existingSchedule = existingGroup.schedule;
+                    const newSchedule = formData.schedule;
+                    
+                    // Check if days and times match exactly
+                    return existingSchedule.days.length === newSchedule.days.length &&
+                           existingSchedule.days.every(day => newSchedule.days.includes(day)) &&
+                           existingSchedule.startTime === newSchedule.startTime &&
+                           existingSchedule.endTime === newSchedule.endTime;
+                });
+                
+                // Check for time overlaps on same days
+                const hasTimeOverlap = activeGroups.some(existingGroup => {
+                    const existingSchedule = existingGroup.schedule;
+                    const newSchedule = formData.schedule;
+                    
+                    // Check if there are any overlapping days
+                    const overlappingDays = existingSchedule.days.filter(day => newSchedule.days.includes(day));
+                    
+                    if (overlappingDays.length === 0) return false;
+                    
+                    // Check for time overlap
+                    const existingStart = existingSchedule.startTime;
+                    const existingEnd = existingSchedule.endTime;
+                    const newStart = newSchedule.startTime;
+                    const newEnd = newSchedule.endTime;
+                    
+                    // Convert times to minutes for easier comparison
+                    const toMinutes = (time) => {
+                        const [hours, minutes] = time.split(':').map(Number);
+                        return hours * 60 + minutes;
+                    };
+                    
+                    const existingStartMin = toMinutes(existingStart);
+                    const existingEndMin = toMinutes(existingEnd);
+                    const newStartMin = toMinutes(newStart);
+                    const newEndMin = toMinutes(newEnd);
+                    
+                    // Check if times overlap
+                    return (newStartMin < existingEndMin && newEndMin > existingStartMin);
+                });
+                
+                if (hasDuplicateSchedule) {
+                    const conflictingGroup = activeGroups.find(existingGroup => {
+                        const existingSchedule = existingGroup.schedule;
+                        const newSchedule = formData.schedule;
+                        
+                        return existingSchedule.days.length === newSchedule.days.length &&
+                               existingSchedule.days.every(day => newSchedule.days.includes(day)) &&
+                               existingSchedule.startTime === newSchedule.startTime &&
+                               existingSchedule.endTime === newSchedule.endTime;
+                    });
+                    
+                    showNotification(`A group with this exact schedule already exists: "${conflictingGroup.groupName}". Please choose different days or times.`, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
+                
+                if (hasTimeOverlap) {
+                    const conflictingGroup = activeGroups.find(existingGroup => {
+                        const existingSchedule = existingGroup.schedule;
+                        const newSchedule = formData.schedule;
+                        
+                        const overlappingDays = existingSchedule.days.filter(day => newSchedule.days.includes(day));
+                        if (overlappingDays.length === 0) return false;
+                        
+                        const existingStart = existingSchedule.startTime;
+                        const existingEnd = existingSchedule.endTime;
+                        const newStart = newSchedule.startTime;
+                        const newEnd = newSchedule.endTime;
+                        
+                        const toMinutes = (time) => {
+                            const [hours, minutes] = time.split(':').map(Number);
+                            return hours * 60 + minutes;
+                        };
+                        
+                        const existingStartMin = toMinutes(existingStart);
+                        const existingEndMin = toMinutes(existingEnd);
+                        const newStartMin = toMinutes(newStart);
+                        const newEndMin = toMinutes(newEnd);
+                        
+                        return (newStartMin < existingEndMin && newEndMin > existingStartMin);
+                    });
+                    
+                    showNotification(`Time overlap detected with group "${conflictingGroup.groupName}". Please choose different times or days.`, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+            
             if (groupToEdit) {
                 await apiClient.update('groups', groupToEdit.id, dataToSave);
             } else {
@@ -147,6 +243,36 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
                     <FormInput label="Group Name" name="groupName" value={formData.groupName} onChange={handleChange} required />
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Group Color</label>
+                        <div className="flex items-center space-x-3">
+                            <div className="relative">
+                                <input
+                                    type="color"
+                                    name="color"
+                                    value={formData.color}
+                                    onChange={handleChange}
+                                    className="w-12 h-12 rounded-xl border-2 border-gray-200 cursor-pointer shadow-sm hover:shadow-md transition-shadow duration-200"
+                                    title="Choose group color"
+                                />
+                                <div 
+                                    className="absolute inset-0 rounded-xl border-2 border-white shadow-inner pointer-events-none"
+                                    style={{ backgroundColor: formData.color }}
+                                ></div>
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                    <div 
+                                        className="w-4 h-4 rounded-full border border-gray-300"
+                                        style={{ backgroundColor: formData.color }}
+                                    ></div>
+                                    <span className="text-sm font-medium text-gray-900">{formData.color.toUpperCase()}</span>
+                                </div>
+                                <p className="text-xs text-gray-500">For calendar and dashboard display</p>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <CustomDatePicker label="Start Date" name="startDate" value={formData.startDate} onChange={(e) => handleDateChange('startDate', e.target.value)} />

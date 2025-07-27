@@ -6,3 +6,20 @@ html, body, #root {
   height: 100%;
   background-color: #f9fafb; /* A very light gray, equivalent to Tailwind's bg-gray-50 */
 }
+
+/* Hide potential development tools or browser extensions */
+[data-reactroot] > div:last-child:not([class*="react"]):not([id*="react"]) {
+  display: none !important;
+}
+
+/* Hide any elements positioned at bottom left that might be development tools */
+div[style*="position: fixed"][style*="bottom"][style*="left"],
+div[style*="position: absolute"][style*="bottom"][style*="left"] {
+  display: none !important;
+}
+
+/* Hide React DevTools if present */
+#react-devtools-root,
+[data-react-devtools-portal] {
+  display: none !important;
+}

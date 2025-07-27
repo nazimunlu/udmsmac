@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import apiClient from '../apiClient';
+import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import { formatDate } from '../utils/formatDate';
 import formatPhoneNumber from '../utils/formatPhoneNumber';
 import LessonFormModal from './LessonFormModal';
+import PaymentPlanPrint from './PaymentPlanPrint';
 import { Icon, ICONS } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 import { useAppContext } from '../contexts/AppContext';
@@ -18,6 +20,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const [lessonToEdit, setLessonToEdit] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [lessonToDelete, setLessonToDelete] = useState(null);
+    const [isPaymentPlanPrintOpen, setIsPaymentPlanPrintOpen] = useState(false);
     const [currentStudent, setCurrentStudent] = useState(initialStudent);
 
     const fetchLessonsForStudent = async () => {
@@ -35,14 +38,16 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             if (currentStudent.isTutoring) {
                 filteredLessons = allLessons.filter(l => l.studentId === currentStudent.id);
             } else if (currentStudent.groupId) {
+                // For group students, get all lessons for their group
                 filteredLessons = allLessons.filter(l => l.groupId === currentStudent.groupId);
             }
 
             filteredLessons.sort((a, b) => new Date(a.lessonDate) - new Date(b.lessonDate));
-            setLessons(filteredLessons.map(l => ({
+            const processedLessons = filteredLessons.map(l => ({
                 ...l,
-                attendance: l.attendance ? JSON.parse(l.attendance) : {},
-            })));
+                attendance: l.attendance ? (typeof l.attendance === 'string' ? JSON.parse(l.attendance) : l.attendance) : {},
+            }));
+            setLessons(processedLessons);
         } catch (error) {
             console.error('Error fetching lessons:', error);
         }
@@ -112,9 +117,10 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     const attendanceSummary = useMemo(() => {
         if (currentStudent.isTutoring || lessons.length === 0) return null;
         const presentCount = lessons.filter(l => l.attendance?.[currentStudent.id] === 'Present').length;
+        const absentCount = lessons.filter(l => !l.attendance?.[currentStudent.id] || l.attendance?.[currentStudent.id] === 'Absent').length;
         const totalLessons = lessons.length;
-        return { presentCount, totalLessons };
-    }, [lessons, currentStudent.id]);
+        return { presentCount, absentCount, totalLessons };
+    }, [lessons, currentStudent.id, currentStudent.isTutoring]);
 
     const tutoringSummary = useMemo(() => {
         if (!currentStudent.isTutoring) return null;
@@ -130,7 +136,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
         return null;
     }, [currentStudent, groups]);
 
-    const headerColor = currentStudent.isTutoring ? '#8B5CF6' : (group?.color || '#3B82F6');
+    const headerColor = currentStudent.isTutoring ? (currentStudent.color || '#8B5CF6') : (group?.color || '#3B82F6');
     
     const groupName = group?.groupName ?? 'N/A';
     
@@ -171,14 +177,59 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
     };
 
     const handleTogglePaymentStatus = async (installmentNumber) => {
+        const installment = currentStudent.installments.find(inst => inst.number === installmentNumber);
+        const newStatus = installment.status === 'Paid' ? 'Unpaid' : 'Paid';
+        
+        console.log('handleTogglePaymentStatus called:', { installmentNumber, newStatus, installment });
+        
         const updatedInstallments = currentStudent.installments.map(inst => 
             inst.number === installmentNumber 
-                ? { ...inst, status: inst.status === 'Paid' ? 'Unpaid' : 'Paid' } 
+                ? { ...inst, status: newStatus, paidDate: newStatus === 'Paid' ? new Date().toISOString() : null } 
                 : inst
         );
-        await apiClient.update('students', currentStudent.id, { installments: updatedInstallments });
-        setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
-        fetchData();
+        
+        try {
+            await apiClient.update('students', currentStudent.id, { installments: updatedInstallments });
+            setCurrentStudent(prev => ({ ...prev, installments: updatedInstallments }));
+            
+            // Create or delete transaction record based on payment status
+            if (newStatus === 'Paid') {
+                // Create transaction record for payment
+                const transactionData = {
+                    studentId: currentStudent.id,
+                    amount: installment.amount,
+                    transactionDate: new Date().toISOString(),
+                    type: currentStudent.isTutoring ? 'income-tutoring' : 'income-group',
+                    expenseType: currentStudent.isTutoring ? 'income-tutoring' : 'income-group',
+                    description: `${currentStudent.fullName} - Installment ${installmentNumber}`,
+                    category: 'Student Payment'
+                };
+                
+                console.log('Creating transaction:', transactionData);
+                const result = await apiClient.create('transactions', transactionData);
+                console.log('Transaction created successfully:', result);
+            } else {
+                // Delete transaction record when payment is undone
+                console.log('Deleting transaction for installment:', installmentNumber);
+                // We need to find the transaction by student and description since we don't have installmentId
+                const { data: transactions } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .eq('student_id', currentStudent.id)
+                    .eq('description', `${currentStudent.fullName} - Installment ${installmentNumber}`);
+                
+                console.log('Found transactions to delete:', transactions);
+                
+                if (transactions && transactions.length > 0) {
+                    await apiClient.delete('transactions', transactions[0].id);
+                    console.log('Transaction deleted successfully');
+                }
+            }
+            
+            fetchData();
+        } catch (error) {
+            console.error("Error updating payment status:", error);
+        }
     };
 
     const handleAttendanceChange = async (lesson, studentId, currentStatus) => {
@@ -229,6 +280,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                     </li>
                     <li className="py-3 flex justify-between items-center">
                         <div>
+                            <p className="font-medium text-gray-800">National ID</p>
+                            <p className="text-sm text-gray-500">{currentStudent.nationalId || 'N/A'}</p>
+                        </div>
+                    </li>
+                    <li className="py-3 flex justify-between items-center">
+                        <div>
                             <p className="font-medium text-gray-800">Parent Contact</p>
                             <p className="text-sm text-gray-500">{formatPhoneNumber(currentStudent.parentContact) || 'N/A'}</p>
                         </div>
@@ -237,12 +294,6 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                         <div>
                             <p className="font-medium text-gray-800">Enrollment Date</p>
                             <p className="text-sm text-gray-500">{formatDate(currentStudent.enrollmentDate)}</p>
-                        </div>
-                    </li>
-                    <li className="py-3 flex justify-between items-center">
-                        <div>
-                            <p className="font-medium text-gray-800">Birth Date</p>
-                            <p className="text-sm text-gray-500">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : 'N/A'}</p>
                         </div>
                     </li>
                     <li className="py-3 flex justify-between items-center">
@@ -276,6 +327,15 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                 </div>
                             </div>
                             <p className="text-center text-blue-800 mt-2">₺{paymentSummary.totalPaid.toFixed(0)} paid out of ₺{paymentSummary.totalFee.toFixed(0)}</p>
+                            <div className="text-center mt-4">
+                                <button 
+                                    onClick={() => setIsPaymentPlanPrintOpen(true)} 
+                                    className="flex items-center justify-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm shadow-sm mx-auto"
+                                >
+                                    <Icon path={ICONS.DOWNLOAD} className="w-4 h-4 mr-2"/>
+                                    Print Payment Plan
+                                </button>
+                            </div>
                         </div>
                     )}
                     <ul className="divide-y divide-gray-200">
@@ -305,35 +365,38 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
 
             {activeTab === 'attendance' && !currentStudent.isTutoring && (
                  <div>
-                    {attendanceSummary && (
-                        <div className="p-4 bg-green-50 rounded-lg mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <p className="font-semibold text-green-800">Attendance Summary</p>
-                                <span className="font-semibold text-green-800">{attendanceSummary.totalLessons > 0 ? `${((attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100).toFixed(0)}%` : '0%'}</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
-                                <div className="bg-green-600 h-4 rounded-full"
-                                     style={{ width: `${(attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100}%` }}>
+                    {isLoading ? <p>Loading attendance...</p> : (
+                        <>
+                            {lessons.length > 0 && (
+                                <div className="p-4 bg-green-50 rounded-lg mb-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className="font-semibold text-green-800">Attendance Summary</p>
+                                        <span className="font-semibold text-green-800">{attendanceSummary?.totalLessons > 0 ? `${((attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100).toFixed(0)}%` : '0%'}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                                        <div className="bg-green-600 h-4 rounded-full"
+                                             style={{ width: `${attendanceSummary?.totalLessons > 0 ? (attendanceSummary.presentCount / attendanceSummary.totalLessons) * 100 : 0}%` }}>
+                                        </div>
+                                    </div>
+                                    <p className="text-center text-green-800 mt-2">{attendanceSummary?.presentCount || 0} present, {attendanceSummary?.absentCount || 0} absent out of {attendanceSummary?.totalLessons || 0} total lessons</p>
                                 </div>
-                            </div>
-                            <p className="text-center text-green-800 mt-2">{attendanceSummary.presentCount} out of {attendanceSummary.totalLessons} lessons present</p>
-                        </div>
+                            )}
+                            <ul className="divide-y divide-gray-200">
+                                {lessons.map(lesson => (
+                                    <li key={lesson.id} className="py-3 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-medium text-gray-800">{lesson.topic}</p>
+                                            <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
+                                        </div>
+                                        <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {lesson.attendance?.[currentStudent.id] || 'Absent'}
+                                        </button>
+                                    </li>
+                                ))}
+                                {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student's group.</p>}
+                            </ul>
+                        </>
                     )}
-                    {isLoading ? <p>Loading attendance...</p> :
-                    <ul className="divide-y divide-gray-200">
-                        {lessons.map(lesson => (
-                            <li key={lesson.id} className="py-3 flex justify-between items-center">
-                                <div>
-                                    <p className="font-medium text-gray-800">{lesson.topic}</p>
-                                    <p className="text-sm text-gray-500">{formatDate(lesson.lessonDate)}</p>
-                                </div>
-                                <button onClick={() => handleAttendanceChange(lesson, currentStudent.id, lesson.attendance?.[currentStudent.id])} className={`px-2 py-1 text-xs font-semibold rounded-full ${lesson.attendance?.[currentStudent.id] === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {lesson.attendance?.[currentStudent.id] || 'N/A'}
-                                </button>
-                            </li>
-                        ))}
-                        {lessons.length === 0 && <p className="text-center text-gray-500 py-4">No lessons found for this student's group.</p>}
-                    </ul>}
                 </div>
             )}
 
@@ -395,6 +458,12 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
             title="Delete Lesson"
             message="Are you sure you want to delete this lesson? This action cannot be undone."
         />
+        {isPaymentPlanPrintOpen && (
+            <PaymentPlanPrint 
+                student={currentStudent} 
+                onClose={() => setIsPaymentPlanPrintOpen(false)} 
+            />
+        )}
         </>
     );
 };

@@ -6,6 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
 import apiClient from '../apiClient';
 import { Icon, ICONS } from './Icons';
+import InvoiceGenerator from './InvoiceGenerator';
 
 const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded }) => {
     const { showNotification } = useNotification();
@@ -19,11 +20,19 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
         installmentNumber: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [studentInstallments, setStudentInstallments] = useState([]);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [showInvoiceOption, setShowInvoiceOption] = useState(false);
+    const [newlyPaidInstallment, setNewlyPaidInstallment] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
+            // Reset invoice option when modal opens
+            setShowInvoiceOption(false);
+            setNewlyPaidInstallment(null);
+            
             if (student) {
                 setFormData(prev => ({ ...prev, studentId: student.id }));
                 setSelectedStudent(student);
@@ -34,7 +43,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                     studentId: installment.student.id,
                     amount: installment.amount.toString(),
                     installmentNumber: installment.number.toString(),
-                    description: `Payment for installment ${installment.number}`
+                    description: `${installment.student.fullName} - Installment ${installment.number}`
                 }));
                 setSelectedStudent(installment.student);
                 setStudentInstallments(installment.student.installments || []);
@@ -68,7 +77,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                 setFormData(prev => ({ 
                     ...prev, 
                     amount: selectedInstallment.amount.toString(),
-                    description: `Payment for installment ${selectedInstallment.number}`
+                    description: `${selectedStudent?.fullName} - Installment ${selectedInstallment.number}`
                 }));
             }
         }
@@ -100,7 +109,9 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
             const paymentData = {
                 amount: paymentAmount,
                 type: 'income-group',
-                description: formData.description || `Payment from ${selectedStudent?.fullName}`,
+                description: formData.description || (selectedStudent ? 
+                    `${selectedStudent.fullName} - ${formData.installmentNumber ? `Installment ${formData.installmentNumber}` : 'General Payment'}` : 
+                    'Payment received'),
                 transaction_date: formData.paymentDate,
                 category: 'Student Payment',
                 expense_type: 'income-group',
@@ -108,6 +119,8 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
             };
 
             await apiClient.create('transactions', paymentData);
+
+            let paidInstallmentNumber = null;
 
             // Update installment status if specific installment is being paid
             if (formData.installmentNumber && selectedStudent) {
@@ -124,12 +137,45 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                     await apiClient.update('students', selectedStudent.id, {
                         installments: JSON.stringify(updatedInstallments)
                     });
+                    
+                    paidInstallmentNumber = parseInt(formData.installmentNumber);
+                }
+            } else if (selectedStudent) {
+                // For general payments, find the oldest unpaid installment and mark it as paid
+                const unpaidInstallments = studentInstallments.filter(inst => inst.status === 'Unpaid');
+                if (unpaidInstallments.length > 0) {
+                    const oldestUnpaid = unpaidInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
+                    const updatedInstallments = [...studentInstallments];
+                    const installmentIndex = updatedInstallments.findIndex(inst => inst.number === oldestUnpaid.number);
+                    
+                    if (installmentIndex !== -1) {
+                        updatedInstallments[installmentIndex] = {
+                            ...updatedInstallments[installmentIndex],
+                            status: 'Paid',
+                            paidDate: formData.paymentDate
+                        };
+
+                        await apiClient.update('students', selectedStudent.id, {
+                            installments: JSON.stringify(updatedInstallments)
+                        });
+                        
+                        paidInstallmentNumber = oldestUnpaid.number;
+                    }
                 }
             }
 
+            // Store the newly paid installment number for invoice generation
+            setNewlyPaidInstallment(paidInstallmentNumber);
+
+            // Refresh the global data to ensure InvoiceGenerator gets updated student data
+            await fetchData();
+
             showNotification('Payment recorded successfully!', 'success');
-            onPaymentRecorded();
-            onClose();
+            
+            // Show invoice generation option
+            setShowInvoiceOption(true);
+            
+            // Don't close the modal yet, let user decide about invoice
         } catch (error) {
             console.error("Error recording payment:", error);
             showNotification('Failed to record payment. Please check the console for details.', 'error');
@@ -168,12 +214,13 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
     };
 
     return (
-        <Modal 
-            isOpen={isOpen} 
-            onClose={onClose} 
-            title="Record Payment"
-            headerStyle={{ backgroundColor: '#10B981' }}
-        >
+        <>
+            <Modal 
+                isOpen={isOpen} 
+                onClose={onClose} 
+                title="Record Payment"
+                headerStyle={{ backgroundColor: '#10B981' }}
+            >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Payment Details">
                     <div className="sm:col-span-6">
@@ -198,15 +245,15 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
                                     <p className="text-gray-600">Total Owed</p>
-                                    <p className="font-bold text-blue-800">{getTotalOwed().toFixed(2)} ₺</p>
+                                    <p className="font-bold text-blue-800">{Math.round(getTotalOwed())} ₺</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-600">Total Paid</p>
-                                    <p className="font-bold text-green-600">{getTotalPaid().toFixed(2)} ₺</p>
+                                    <p className="font-bold text-green-600">{Math.round(getTotalPaid())} ₺</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-600">Remaining</p>
-                                    <p className="font-bold text-red-600">{getRemainingBalance().toFixed(2)} ₺</p>
+                                    <p className="font-bold text-red-600">{Math.round(getRemainingBalance())} ₺</p>
                                 </div>
                             </div>
                         </div>
@@ -223,7 +270,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                                 <option value="">General payment</option>
                                 {getUnpaidInstallments().map(inst => (
                                     <option key={inst.number} value={inst.number}>
-                                        Installment {inst.number} - {inst.amount.toFixed(2)} ₺ (Due: {new Date(inst.dueDate).toLocaleDateString()})
+                                        Installment {inst.number} - {Math.round(inst.amount)} ₺ (Due: {new Date(inst.dueDate).toLocaleDateString()})
                                     </option>
                                 ))}
                             </FormSelect>
@@ -240,11 +287,11 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                             onChange={handleChange} 
                             required={isAmountRequired()}
                             disabled={!!formData.installmentNumber}
-                            placeholder={formData.installmentNumber ? getSelectedInstallmentAmount().toFixed(2) : "Enter amount"}
+                            placeholder={formData.installmentNumber ? Math.round(getSelectedInstallmentAmount()) : "Enter amount"}
                         />
                         {formData.installmentNumber && (
                             <p className="text-sm text-gray-500 mt-1">
-                                Amount will be set to {getSelectedInstallmentAmount().toFixed(2)} ₺ for this installment
+                                Amount will be set to {Math.round(getSelectedInstallmentAmount())} ₺ for this installment
                             </p>
                         )}
                     </div>
@@ -286,24 +333,86 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                     </div>
                 </FormSection>
 
-                <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
-                        className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        type="submit" 
-                        disabled={isSubmitting} 
-                        className="px-6 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? 'Recording...' : 'Record Payment'}
-                    </button>
-                </div>
+                {showInvoiceOption && (
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-blue-800">Payment Recorded Successfully!</h3>
+                                <p className="text-blue-600">Would you like to generate an invoice for this payment?</p>
+                            </div>
+                            <Icon path={ICONS.SUCCESS} className="w-8 h-8 text-green-600" />
+                        </div>
+                        <div className="flex justify-end space-x-3 mt-4">
+                            <button 
+                                type="button" 
+                                onClick={() => {
+                                    onPaymentRecorded();
+                                    onClose();
+                                }} 
+                                className="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300"
+                            >
+                                Skip Invoice
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setIsGeneratingInvoice(true);
+                                    await fetchData(); // Ensure we have the latest data before opening invoice generator
+                                    setIsInvoiceModalOpen(true);
+                                    setIsGeneratingInvoice(false);
+                                }}
+                                disabled={isGeneratingInvoice}
+                                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isGeneratingInvoice ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Preparing Invoice...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon path={ICONS.DOCUMENTS} className="w-4 h-4 mr-2" />
+                                        Generate Invoice
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {!showInvoiceOption && (
+                    <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className="px-6 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? 'Recording...' : 'Record Payment'}
+                        </button>
+                    </div>
+                )}
             </form>
         </Modal>
+        
+        {isInvoiceModalOpen && (
+            <InvoiceGenerator
+                isOpen={isInvoiceModalOpen}
+                onClose={() => {
+                    setIsInvoiceModalOpen(false);
+                    onPaymentRecorded();
+                    onClose();
+                }}
+                student={selectedStudent}
+                newlyPaidInstallment={newlyPaidInstallment}
+            />
+        )}
+        </>
     );
 };
 

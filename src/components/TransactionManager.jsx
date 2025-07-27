@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon, ICONS } from './Icons';
 import { format } from 'date-fns';
 import ConfirmationModal from './ConfirmationModal';
+import TransactionDetailsModal from './TransactionDetailsModal';
 import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
 
@@ -15,6 +16,7 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [actionToConfirm, setActionToConfirm] = useState(null);
+    const [isTransactionDetailsModalOpen, setIsTransactionDetailsModalOpen] = useState(false);
 
     // Enhanced transaction data processing
     const processedTransactions = useMemo(() => {
@@ -137,9 +139,8 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
     };
 
     const handleEdit = (transaction) => {
-        // For now, we'll show a notification that editing should be done in the respective sections
-        // This maintains the edit functionality while directing users to the proper forms
-        showNotification('Please edit this transaction in its respective section (Payments, Business Expenses, or Personal Expenses).', 'info');
+        setSelectedTransaction(transaction);
+        setIsTransactionDetailsModalOpen(true);
     };
 
     const confirmAction = async () => {
@@ -172,7 +173,13 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
             'income-group': 'bg-green-100 text-green-800',
             'income-tutoring': 'bg-blue-100 text-blue-800',
             'expense-business': 'bg-red-100 text-red-800',
-            'expense-personal': 'bg-orange-100 text-orange-800'
+            'expense-personal': 'bg-orange-100 text-orange-800',
+            'personal': 'bg-orange-100 text-orange-800',
+            'business': 'bg-red-100 text-red-800',
+            'group': 'bg-green-100 text-green-800',
+            'tutoring': 'bg-blue-100 text-blue-800',
+            'income': 'bg-green-100 text-green-800',
+            'expense': 'bg-red-100 text-red-800'
         };
         return colorMap[type] || 'bg-gray-100 text-gray-800';
     };
@@ -228,7 +235,11 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
             'income-group': 'Income (Group)',
             'income-tutoring': 'Income (Tutoring)',
             'expense-business': 'Expense (Business)',
-            'expense-personal': 'Expense (Personal)'
+            'expense-personal': 'Expense (Personal)',
+            'personal': 'Expense (Personal)',
+            'business': 'Expense (Business)',
+            'group': 'Income (Group)',
+            'tutoring': 'Income (Tutoring)'
         };
         return labelMap[type] || type;
     };
@@ -260,12 +271,12 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-green-100 text-sm font-medium">Total Income</p>
-                            <p className="text-2xl font-bold">{analyticsData.totalIncome.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.totalIncome)} ₺</p>
                         </div>
                         <Icon path={ICONS.WALLET} className="w-8 h-8 text-green-200" />
                     </div>
@@ -274,7 +285,7 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-red-100 text-sm font-medium">Total Expenses</p>
-                            <p className="text-2xl font-bold">{analyticsData.totalExpenses.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.totalExpenses)} ₺</p>
                         </div>
                         <Icon path={ICONS.BRIEFCASE} className="w-8 h-8 text-red-200" />
                     </div>
@@ -283,18 +294,9 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-blue-100 text-sm font-medium">Net Profit</p>
-                            <p className="text-2xl font-bold">{analyticsData.netProfit.toFixed(2)} ₺</p>
+                            <p className="text-2xl font-bold">{Math.round(analyticsData.netProfit)} ₺</p>
                         </div>
                         <Icon path={ICONS.CHART_LINE} className="w-8 h-8 text-blue-200" />
-                    </div>
-                </div>
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-purple-100 text-sm font-medium">Transactions</p>
-                            <p className="text-2xl font-bold">{analyticsData.totalTransactions}</p>
-                        </div>
-                        <Icon path={ICONS.LIST} className="w-8 h-8 text-purple-200" />
                     </div>
                 </div>
             </div>
@@ -406,10 +408,10 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                                             <button
                                                 onClick={() => handleEdit(transaction)}
                                                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                                                title="Edit transaction in respective section"
+                                                title="View transaction details"
                                             >
                                                 <Icon path={ICONS.INFO} className="w-3 h-3 mr-1" />
-                                                Info
+                                                Details
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(transaction)}
@@ -444,6 +446,12 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                 confirmText="Delete"
                 cancelText="Cancel"
                 confirmButtonStyle="bg-red-600 hover:bg-red-700"
+            />
+            <TransactionDetailsModal
+                isOpen={isTransactionDetailsModalOpen}
+                onClose={() => setIsTransactionDetailsModalOpen(false)}
+                transaction={selectedTransaction}
+                onTransactionUpdated={onTransactionUpdated}
             />
         </div>
     );

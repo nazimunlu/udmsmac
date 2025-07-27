@@ -169,12 +169,12 @@ const generateMonthlyInstallments = (pricePerLesson, start, end, scheduledDayInd
     const allDays = eachDayOfInterval({ start, end });
     const lessonDays = allDays.filter(day => scheduledDayIndexes.includes(getDay(day)));
     
-    // Group lesson days by 4-week periods
+    // Group lesson days by 4-week periods starting from the enrollment date
     const fourWeekPeriods = new Map();
     lessonDays.forEach(day => {
-        const weekStart = startOfWeek(day, { weekStartsOn: 1 });
-        const weeksFromStart = Math.floor(differenceInWeeks(weekStart, startOfWeek(start, { weekStartsOn: 1 })) / 4);
-        const periodKey = weeksFromStart.toString();
+        // Calculate weeks from the actual enrollment date, not from start of week
+        const weeksFromEnrollment = Math.floor(differenceInWeeks(day, start) / 4);
+        const periodKey = weeksFromEnrollment.toString();
         
         if (!fourWeekPeriods.has(periodKey)) {
             fourWeekPeriods.set(periodKey, []);
@@ -258,6 +258,7 @@ export const generateGroupLessons = (group, startDate, endDate, defaultStartTime
  */
 export const generateTutoringLessons = (student, startDate, endDate, defaultStartTime = '09:00', defaultEndTime = '10:00') => {
     if (!student || !student.tutoringDetails || !student.tutoringDetails.schedule || !student.tutoringDetails.schedule.days || student.tutoringDetails.schedule.days.length === 0) {
+        console.warn('Tutoring student missing schedule details:', student?.fullName, student?.tutoringDetails);
         return [];
     }
 
@@ -268,17 +269,31 @@ export const generateTutoringLessons = (student, startDate, endDate, defaultStar
         if (start > end) return [];
 
         const scheduledDayIndexes = student.tutoringDetails.schedule.days.map(day => dayNameToIndex[day]).filter(d => d !== undefined);
-        if (scheduledDayIndexes.length === 0) return [];
+        if (scheduledDayIndexes.length === 0) {
+            console.warn('No valid scheduled days found for student:', student.fullName, student.tutoringDetails.schedule.days);
+            return [];
+        }
 
         const allDays = eachDayOfInterval({ start, end });
         const lessonDays = allDays.filter(day => scheduledDayIndexes.includes(getDay(day)));
+
+        // Use the student's schedule times, fallback to defaults
+        const scheduleStartTime = student.tutoringDetails.schedule.startTime || defaultStartTime;
+        const scheduleEndTime = student.tutoringDetails.schedule.endTime || defaultEndTime;
+
+        console.log(`Generating lessons for ${student.fullName}:`, {
+            scheduleDays: student.tutoringDetails.schedule.days,
+            scheduleStartTime,
+            scheduleEndTime,
+            lessonDaysCount: lessonDays.length
+        });
 
         return lessonDays.map((day, index) => ({
             studentId: student.id,
             lessonDate: format(day, 'yyyy-MM-dd'),
             topic: `Tutoring Session ${index + 1}`,
-            startTime: student.tutoringDetails.schedule.startTime || defaultStartTime,
-            endTime: student.tutoringDetails.schedule.endTime || defaultEndTime,
+            startTime: scheduleStartTime,
+            endTime: scheduleEndTime,
             status: 'Incomplete',
             attendance: {}
         }));

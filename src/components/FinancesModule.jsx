@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { Icon, ICONS } from './Icons';
+import { ICONS, Icon } from './Icons';
 import DateRangePicker from './DateRangePicker';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import PaymentModal from './PaymentModal';
+import InvoiceGenerator from './InvoiceGenerator';
+import BusinessExpenseForm from './BusinessExpenseForm';
+import PersonalExpenseForm from './PersonalExpenseForm';
+import ConfirmationModal from './ConfirmationModal';
+import PaymentPlanPrint from './PaymentPlanPrint';
+import { format, eachMonthOfInterval, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { useNotification } from '../contexts/NotificationContext';
 import { 
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
     Tooltip, Legend, ResponsiveContainer
@@ -10,26 +17,22 @@ import {
 import StudentPaymentsManager from './StudentPaymentsManager';
 import ExpenseManager from './ExpenseManager';
 import TransactionManager from './TransactionManager';
-import BusinessExpenseForm from './BusinessExpenseForm';
-import PersonalExpenseForm from './PersonalExpenseForm';
-import PaymentModal from './PaymentModal';
-import InvoiceGenerator from './InvoiceGenerator';
-import ConfirmationModal from './ConfirmationModal';
 
 const FinancesModule = () => {
     const { payments, expenses, transactions, students, groups, fetchData, loading } = useAppContext();
     const [dateRange, setDateRange] = useState({
-        startDate: startOfMonth(new Date()),
-        endDate: endOfMonth(new Date()),
+        startDate: startOfMonth(new Date()), // Default to start of this month
+        endDate: endOfMonth(new Date()), // Default to end of this month
     });
     const [isDataHidden, setIsDataHidden] = useState(true); // Hidden by default
-    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'payments', 'expenses', 'transactions', 'reports'
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'payments', 'expenses', 'transactions'
     
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isBusinessExpenseModalOpen, setIsBusinessExpenseModalOpen] = useState(false);
     const [isPersonalExpenseModalOpen, setIsPersonalExpenseModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [isPaymentPlanPrintModalOpen, setIsPaymentPlanPrintModalOpen] = useState(false);
     
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedInstallment, setSelectedInstallment] = useState(null);
@@ -88,6 +91,20 @@ const FinancesModule = () => {
         setUpcomingInstallments(upcoming);
 
     }, [dateRange, payments, expenses, students]);
+
+    useEffect(() => {
+        // Listen for payment plan print events
+        const handlePrintPaymentPlan = (event) => {
+            setSelectedStudent(event.detail.student);
+            setIsPaymentPlanPrintModalOpen(true);
+        };
+
+        window.addEventListener('printPaymentPlan', handlePrintPaymentPlan);
+        
+        return () => {
+            window.removeEventListener('printPaymentPlan', handlePrintPaymentPlan);
+        };
+    }, []);
 
     const openPaymentModal = (student = null) => {
         setSelectedStudent(student);
@@ -157,7 +174,7 @@ const FinancesModule = () => {
                 <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
                     <p className="font-semibold">{label}</p>
                     <p className="text-gray-600">
-                        {payload[0].name}: {isDataHidden ? '***' : `${payload[0].value.toFixed(2)} ₺`}
+                        {payload[0].name}: {isDataHidden ? '***' : `${Math.round(payload[0].value)} ₺`}
                     </p>
                 </div>
             );
@@ -167,318 +184,185 @@ const FinancesModule = () => {
 
     const renderOverview = () => (
         <div className="space-y-8">
-            {/* Key Metrics - Cleaner Design */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Income Card */}
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <p className="text-green-100 text-sm font-medium">Total Income</p>
-                            <p className="text-3xl font-bold mt-1">
-                                {isDataHidden ? '***' : `${totalIncome.toFixed(2)} ₺`}
-                            </p>
-                        </div>
-                        <div className="w-16 h-16 bg-green-400 bg-opacity-30 rounded-full flex items-center justify-center">
-                            <Icon path={ICONS.INCOME} className="w-8 h-8" />
+            {/* Key Financial Metrics - Enhanced Design */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Income */}
+                <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.INCOME} className="w-7 h-7 text-white" />
                         </div>
                     </div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                        {isDataHidden ? '***' : `${totalIncome.toFixed(0)} ₺`}
+                    </h3>
+                    <p className="text-sm font-medium text-green-700 mb-6">Total Income</p>
                     
                     {/* Income Breakdown */}
-                    <div className="space-y-2">
-                        {/* Group Income */}
-                        <div className="flex items-center justify-between p-2 bg-green-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-blue-300 rounded-full"></div>
-                                <span className="text-sm text-green-100">Group Classes</span>
-                            </div>
-                            <span className="text-sm font-semibold text-green-100">
-                                {isDataHidden ? '***' : `${groupIncome.toFixed(0)}₺`}
-                            </span>
+                    <div className="space-y-3 pt-4 border-t border-green-100">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Group Classes</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${groupIncome.toFixed(0)} ₺`}</span>
                         </div>
-                        
-                        {/* Tutoring Income */}
-                        <div className="flex items-center justify-between p-2 bg-green-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-emerald-300 rounded-full"></div>
-                                <span className="text-sm text-green-100">Tutoring</span>
-                            </div>
-                            <span className="text-sm font-semibold text-green-100">
-                                {isDataHidden ? '***' : `${tutoringIncome.toFixed(0)}₺`}
-                            </span>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Tutoring</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${tutoringIncome.toFixed(0)} ₺`}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Expenses Card */}
-                <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <p className="text-red-100 text-sm font-medium">Total Expenses</p>
-                            <p className="text-3xl font-bold mt-1">
-                                {isDataHidden ? '***' : `${totalExpenses.toFixed(2)} ₺`}
-                            </p>
-                        </div>
-                        <div className="w-16 h-16 bg-red-400 bg-opacity-30 rounded-full flex items-center justify-center">
-                            <Icon path={ICONS.BRIEFCASE} className="w-8 h-8" />
+                {/* Total Expenses */}
+                <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-6 shadow-lg border border-red-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.BRIEFCASE} className="w-7 h-7 text-white" />
                         </div>
                     </div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                        {isDataHidden ? '***' : `${totalExpenses.toFixed(0)} ₺`}
+                    </h3>
+                    <p className="text-sm font-medium text-red-700 mb-6">Total Expenses</p>
                     
                     {/* Expense Breakdown */}
-                    <div className="space-y-2">
-                        {/* Business Expenses */}
-                        <div className="flex items-center justify-between p-2 bg-red-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-blue-300 rounded-full"></div>
-                                <span className="text-sm text-red-100">Business</span>
-                            </div>
-                            <span className="text-sm font-semibold text-red-100">
-                                {isDataHidden ? '***' : `${businessExpenses.toFixed(0)}₺`}
-                            </span>
+                    <div className="space-y-3 pt-4 border-t border-red-100">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Business</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${businessExpenses.toFixed(0)} ₺`}</span>
                         </div>
-                        
-                        {/* Personal Expenses */}
-                        <div className="flex items-center justify-between p-2 bg-red-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-purple-300 rounded-full"></div>
-                                <span className="text-sm text-red-100">Personal</span>
-                            </div>
-                            <span className="text-sm font-semibold text-red-100">
-                                {isDataHidden ? '***' : `${personalExpenses.toFixed(0)}₺`}
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Personal</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${personalExpenses.toFixed(0)} ₺`}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Net Profit */}
+                <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-green-50 to-white' : 'from-red-50 to-white'} rounded-2xl p-6 shadow-lg border ${netProfit >= 0 ? 'border-green-100' : 'border-red-100'} hover:shadow-xl transition-all duration-300 group`}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className={`w-14 h-14 bg-gradient-to-br ${netProfit >= 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                            <Icon path={ICONS.CHART_LINE} className="w-7 h-7 text-white" />
+                        </div>
+                    </div>
+                    <h3 className={`text-3xl font-bold mb-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {isDataHidden ? '***' : `${netProfit >= 0 ? '+' : ''}${netProfit.toFixed(0)} ₺`}
+                    </h3>
+                    <p className={`text-sm font-medium mb-6 ${netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>Net Profit</p>
+                    
+                    {/* Profit Margin */}
+                    <div className="pt-4 border-t border-gray-100">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Profit Margin</span>
+                            <span className="font-semibold text-gray-900">
+                                {isDataHidden ? '***' : totalIncome > 0 ? `${((netProfit / totalIncome) * 100).toFixed(1)}%` : '0%'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Net Profit Card */}
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <p className="text-blue-100 text-sm font-medium">Net Profit</p>
-                            <p className="text-3xl font-bold mt-1">
-                                {isDataHidden ? '***' : `${netProfit.toFixed(2)} ₺`}
-                            </p>
-                        </div>
-                        <div className="w-16 h-16 bg-blue-400 bg-opacity-30 rounded-full flex items-center justify-center">
-                            <Icon path={ICONS.PROFIT} className="w-8 h-8" />
+                {/* Outstanding Payments */}
+                <div className="bg-gradient-to-br from-yellow-50 to-white rounded-2xl p-6 shadow-lg border border-yellow-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.WALLET} className="w-7 h-7 text-white" />
                         </div>
                     </div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                        {isDataHidden ? '***' : `${unpaidAmountInPeriod.toFixed(0)} ₺`}
+                    </h3>
+                    <p className="text-sm font-medium text-yellow-700 mb-6">Outstanding</p>
                     
-                    {/* Profit Breakdown */}
-                    <div className="space-y-2">
-                        {/* Total Income */}
-                        <div className="flex items-center justify-between p-2 bg-blue-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-green-300 rounded-full"></div>
-                                <span className="text-sm text-blue-100">Total Income</span>
-                            </div>
-                            <span className="text-sm font-semibold text-blue-100">
-                                {isDataHidden ? '***' : `${totalIncome.toFixed(0)}₺`}
-                            </span>
+                    {/* Payment Status */}
+                    <div className="space-y-3 pt-4 border-t border-yellow-100">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">Overdue</span>
+                            <span className="font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs">{overdueInstallments.length}</span>
                         </div>
-                        
-                        {/* Total Expenses */}
-                        <div className="flex items-center justify-between p-2 bg-blue-400 bg-opacity-20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-red-300 rounded-full"></div>
-                                <span className="text-sm text-blue-100">Total Expenses</span>
-                            </div>
-                            <span className="text-sm font-semibold text-blue-100">
-                                {isDataHidden ? '***' : `${totalExpenses.toFixed(0)}₺`}
-                            </span>
-                        </div>
-                        
-                        {/* Profit Margin */}
-                        <div className="flex items-center justify-between p-2 bg-blue-400 bg-opacity-30 rounded-lg border border-blue-300">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-yellow-300 rounded-full"></div>
-                                <span className="text-sm font-medium text-blue-100">Profit Margin</span>
-                            </div>
-                            <span className="text-sm font-bold text-blue-100">
-                                {isDataHidden ? '***' : `${totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : 0}%`}
-                            </span>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600 font-medium">This Week</span>
+                            <span className="font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full text-xs">{upcomingInstallments.length}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <button
                         onClick={() => openPaymentModal()}
-                        className="flex items-center justify-center p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group"
+                        className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                     >
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-green-200">
-                            <Icon path={ICONS.WALLET} className="w-6 h-6 text-green-600" />
-                        </div>
-                        <div className="text-left">
-                            <p className="font-semibold text-gray-800">Record Payment</p>
-                            <p className="text-sm text-gray-600">Student payments</p>
-                        </div>
+                        <Icon path={ICONS.WALLET} className="w-5 h-5 text-blue-600 mr-3" />
+                        <span className="text-sm font-medium text-blue-900">Record Payment</span>
                     </button>
-
+                    
                     <button
                         onClick={() => setIsBusinessExpenseModalOpen(true)}
-                        className="flex items-center justify-center p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors group"
+                        className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                     >
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-blue-200">
-                            <Icon path={ICONS.BRIEFCASE} className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <div className="text-left">
-                            <p className="font-semibold text-gray-800">Business Expense</p>
-                            <p className="text-sm text-gray-600">Tax deductible</p>
-                        </div>
+                        <Icon path={ICONS.BRIEFCASE} className="w-5 h-5 text-green-600 mr-3" />
+                        <span className="text-sm font-medium text-green-900">Add Business Expense</span>
                     </button>
-
+                    
                     <button
                         onClick={() => setIsPersonalExpenseModalOpen(true)}
-                        className="flex items-center justify-center p-4 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors group"
+                        className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                     >
-                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-orange-200">
-                            <Icon path={ICONS.USER} className="w-6 h-6 text-orange-600" />
-                        </div>
-                        <div className="text-left">
-                            <p className="font-semibold text-gray-800">Personal Expense</p>
-                            <p className="text-sm text-gray-600">Personal spending</p>
-                        </div>
+                        <Icon path={ICONS.USER} className="w-5 h-5 text-purple-600 mr-3" />
+                        <span className="text-sm font-medium text-purple-900">Add Personal Expense</span>
                     </button>
-
+                    
                     <button
                         onClick={() => openInvoiceModal()}
-                        className="flex items-center justify-center p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors group"
+                        className="flex items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
                     >
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-purple-200">
-                            <Icon path={ICONS.DOCUMENTS} className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <div className="text-left">
-                            <p className="font-semibold text-gray-800">Generate Invoice</p>
-                            <p className="text-sm text-gray-600">For students</p>
-                        </div>
+                        <Icon path={ICONS.DOCUMENTS} className="w-5 h-5 text-orange-600 mr-3" />
+                        <span className="text-sm font-medium text-orange-900">Generate Invoice</span>
                     </button>
                 </div>
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Income Breakdown - Donut Chart */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-6">Income Breakdown</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={chartData.incomeData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {chartData.incomeData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Expense Breakdown - Pie Chart */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-6">Expense Breakdown</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={chartData.expenseData}
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {chartData.expenseData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Financial Activity</h3>
+                <div className="space-y-3">
+                    {[...filteredPayments, ...filteredExpenses]
+                        .sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate))
+                        .slice(0, 5)
+                        .map((item, index) => {
+                            // Determine if this is income or expense based on transaction type
+                            const isIncome = item.type?.startsWith('income') || item.expenseType?.startsWith('income');
+                            const isExpense = item.type?.startsWith('expense') || item.expenseType?.startsWith('expense');
+                            
+                            return (
+                                <div key={`${item.id}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+                                            isIncome ? 'bg-green-100' : 'bg-red-100'
+                                        }`}>
+                                            <Icon 
+                                                path={isIncome ? ICONS.INCOME : ICONS.BRIEFCASE} 
+                                                className={`w-4 h-4 ${isIncome ? 'text-green-600' : 'text-red-600'}`} 
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {item.description || item.topic || 'Transaction'}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {new Date(item.transactionDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-sm font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                                        {isDataHidden ? '***' : `${isIncome ? '+' : '-'}${Math.abs(item.amount).toFixed(0)} ₺`}
+                                    </span>
+                                </div>
+                            );
+                        })}
                 </div>
             </div>
-
-            {/* Financial Comparison - Bar Chart */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Financial Overview</h3>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData.barData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Bar 
-                                dataKey="amount" 
-                                fill={(entry) => {
-                                    if (entry.type === 'income') return '#10B981';
-                                    if (entry.type === 'expense') return '#EF4444';
-                                    return '#3B82F6';
-                                }}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-            {/* Alerts Section */}
-            {(overdueInstallments.length > 0 || upcomingInstallments.length > 0) && (
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-6">Payment Alerts</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {overdueInstallments.length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                                <div className="flex items-center mb-3">
-                                    <Icon path={ICONS.WARNING} className="w-5 h-5 text-red-600 mr-2" />
-                                    <h4 className="font-semibold text-red-800">Overdue Installments</h4>
-                                </div>
-                                <p className="text-red-700 text-sm mb-3">
-                                    {overdueInstallments.length} student(s) have overdue payments
-                                </p>
-                                <button
-                                    onClick={() => setActiveTab('payments')}
-                                    className="text-red-600 hover:text-red-700 text-sm font-medium"
-                                >
-                                    View Details →
-                                </button>
-                            </div>
-                        )}
-
-                        {upcomingInstallments.length > 0 && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                <div className="flex items-center mb-3">
-                                    <Icon path={ICONS.CALENDAR} className="w-5 h-5 text-blue-600 mr-2" />
-                                    <h4 className="font-semibold text-blue-800">Upcoming Payments</h4>
-                                </div>
-                                <p className="text-blue-700 text-sm mb-3">
-                                    {upcomingInstallments.length} payment(s) due in the next 7 days
-                                </p>
-                                <button
-                                    onClick={() => setActiveTab('payments')}
-                                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                                >
-                                    View Details →
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
     );
 
@@ -508,121 +392,51 @@ const FinancesModule = () => {
         );
     };
 
-    const renderReports = () => (
-        <div className="mt-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Financial Summary</h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <span className="text-gray-600">Total Income:</span>
-                            <span className="font-semibold text-green-600">
-                                {isDataHidden ? '***' : `${totalIncome.toFixed(2)} ₺`}
-                            </span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-600">Total Expenses:</span>
-                            <span className="font-semibold text-red-600">
-                                {isDataHidden ? '***' : `${totalExpenses.toFixed(2)} ₺`}
-                            </span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2">
-                            <span className="text-gray-800 font-semibold">Net Profit:</span>
-                            <span className="font-bold text-blue-600">
-                                {isDataHidden ? '***' : `${netProfit.toFixed(2)} ₺`}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Invoice Generation</h3>
-                    <div className="space-y-3">
-                        <button 
-                            onClick={() => openInvoiceModal()}
-                            className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            <Icon path={ICONS.DOCUMENTS} className="w-5 h-5 mr-2" />
-                            Generate Invoice
-                        </button>
-                        <p className="text-sm text-gray-600 text-center">
-                            Create professional invoices for students
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Detailed Reports */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Detailed Reports</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <Icon path={ICONS.STUDENTS} className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                        <h4 className="font-semibold text-gray-800">Student Payment Report</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                            {students.length} students with payment history
-                        </p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <Icon path={ICONS.BRIEFCASE} className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                        <h4 className="font-semibold text-gray-800">Expense Analysis</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                            {filteredExpenses.length} transactions analyzed
-                        </p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <Icon path={ICONS.CHART_LINE} className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                        <h4 className="font-semibold text-gray-800">Financial Trends</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Monthly and yearly comparisons
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center pb-4 mb-6 border-b border-gray-200">
-                <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-                    <Icon path={ICONS.FINANCES} className="w-8 h-8 mr-3" />
-                    Financial Management
+            {/* Responsive Header */}
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center pb-4 mb-6 border-b border-gray-200 space-y-4 lg:space-y-0">
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center">
+                    <Icon path={ICONS.MONEY_BILL_WAVE} className="w-6 h-6 lg:w-8 lg:h-8 mr-2 lg:mr-3" />
+                    <span className="hidden sm:inline">Financial Management</span>
+                    <span className="sm:hidden">Finances</span>
                 </h2>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <DateRangePicker onDateChange={setDateRange} initialRange={dateRange} />
                     <button 
                         onClick={() => setIsDataHidden(!isDataHidden)} 
-                        className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                        className="p-2 rounded-full hover:bg-gray-200 transition-colors self-start sm:self-auto"
                         title={isDataHidden ? "Show data" : "Hide data"}
                     >
-                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-6 h-6 text-gray-600" />
+                        <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
                     </button>
                 </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm mb-6">
-                {[
-                    { id: 'overview', label: 'Overview', icon: ICONS.DASHBOARD },
-                    { id: 'payments', label: 'Payments', icon: ICONS.WALLET },
-                    { id: 'expenses', label: 'Expenses', icon: ICONS.BRIEFCASE },
-                    { id: 'transactions', label: 'All Transactions', icon: ICONS.LIST },
-                    { id: 'reports', label: 'Reports', icon: ICONS.CHART_LINE }
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            activeTab === tab.id
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                        }`}
-                    >
-                        <Icon path={tab.icon} className="w-4 h-4 mr-2" />
-                        {tab.label}
-                    </button>
-                ))}
+            {/* Responsive Tab Navigation */}
+            <div className="bg-white rounded-lg p-1 shadow-sm mb-6 overflow-x-auto">
+                <div className="flex space-x-1 min-w-max">
+                    {[
+                        { id: 'overview', label: 'Overview', icon: ICONS.DASHBOARD, shortLabel: 'Overview' },
+                        { id: 'payments', label: 'Payments', icon: ICONS.WALLET, shortLabel: 'Payments' },
+                        { id: 'expenses', label: 'Expenses', icon: ICONS.BRIEFCASE, shortLabel: 'Expenses' },
+                        { id: 'transactions', label: 'All Transactions', icon: ICONS.LIST, shortLabel: 'Transactions' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center px-2 sm:px-3 md:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                                activeTab === tab.id
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                            }`}
+                        >
+                            <Icon path={tab.icon} className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span className="hidden sm:inline">{tab.label}</span>
+                            <span className="sm:hidden">{tab.shortLabel}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {loading ? (
@@ -633,7 +447,6 @@ const FinancesModule = () => {
                     {activeTab === 'payments' && renderPayments()}
                     {activeTab === 'expenses' && renderExpenses()}
                     {activeTab === 'transactions' && renderTransactions()}
-                    {activeTab === 'reports' && renderReports()}
                 </>
             )}
 
@@ -682,6 +495,14 @@ const FinancesModule = () => {
                     }}
                     title="Confirm Action"
                     message="Are you sure you want to proceed with this action?"
+                />
+            )}
+
+            {isPaymentPlanPrintModalOpen && (
+                <PaymentPlanPrint
+                    isOpen={isPaymentPlanPrintModalOpen}
+                    onClose={() => setIsPaymentPlanPrintModalOpen(false)}
+                    student={selectedStudent}
                 />
             )}
         </div>

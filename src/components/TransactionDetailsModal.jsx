@@ -3,10 +3,10 @@ import Modal from './Modal';
 import { Icon, ICONS } from './Icons';
 import { formatDate } from '../utils/formatDate';
 
-const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group }) => {
+const TransactionDetailsModal = ({ isOpen, onClose, transaction, onTransactionUpdated }) => {
     if (!isOpen || !transaction) return null;
 
-    const isIncome = transaction.expense_type.startsWith('income');
+    const isIncome = (transaction.type || transaction.expenseType || '').startsWith('income');
     const title = isIncome ? 'Income Details' : 'Expense Details';
     const colorClass = isIncome ? 'text-green-600' : 'text-red-600';
     const bgColorClass = isIncome ? 'bg-green-100' : 'bg-red-100';
@@ -19,8 +19,8 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group 
                         <Icon path={isIncome ? ICONS.WALLET : ICONS.SHOPPING_CART} className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className={`text-2xl font-bold ${colorClass}`}>{transaction.amount.toFixed(2)} ₺</p>
-                        <p className="text-gray-500">{formatDate(transaction.transaction_date)}</p>
+                        <p className={`text-2xl font-bold ${colorClass}`}>{Math.round(transaction.amount)} ₺</p>
+                        <p className="text-gray-500">{formatDate(transaction.transactionDate || transaction.transaction_date)}</p>
                     </div>
                 </div>
 
@@ -31,23 +31,24 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction, student, group 
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="font-medium text-gray-600">Category:</span>
-                        <span className="text-gray-800">{transaction.category}</span>
+                        <span className="text-gray-800">{transaction.category || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-600">Payment Method:</span>
-                        <span className="text-gray-800">{transaction.paymentMethod}</span>
+                        <span className="font-medium text-gray-600">Type:</span>
+                        <span className="text-gray-800">{transaction.type || transaction.expenseType || 'N/A'}</span>
                     </div>
                     
-                    {isIncome && student && (
+                    {transaction.studentId && (
                         <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-600">Student:</span>
-                            <span className="text-gray-800">{student.fullName}</span>
+                            <span className="font-medium text-gray-600">Student ID:</span>
+                            <span className="text-gray-800">{transaction.studentId}</span>
                         </div>
                     )}
-                    {isIncome && group && (
-                         <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-600">Group:</span>
-                            <span className="text-gray-800">{group.groupName}</span>
+                    
+                    {transaction.invoiceName && (
+                        <div className="flex justify-between items-center">
+                            <span className="font-medium text-gray-600">Invoice:</span>
+                            <span className="text-gray-800">{transaction.invoiceName}</span>
                         </div>
                     )}
                 </div>

@@ -10,6 +10,15 @@ import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
 
 const FinancialReports = ({ formatCurrency }) => {
+    // Override formatCurrency to remove decimals
+    const formatCurrencyNoDecimals = (amount) => {
+        return new Intl.NumberFormat('tr-TR', {
+            style: 'currency',
+            currency: 'TRY',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+    };
     const { transactions } = useAppContext();
     const { showNotification } = useNotification();
     const [filters, setFilters] = useState({
