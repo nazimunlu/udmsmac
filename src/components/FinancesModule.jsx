@@ -18,61 +18,103 @@ import StudentPaymentsManager from './StudentPaymentsManager';
 import ExpenseManager from './ExpenseManager';
 import TransactionManager from './TransactionManager';
 
-const FinancesModule = () => {
-    const { payments, expenses, transactions, students, groups, fetchData, loading } = useAppContext();
-    const [dateRange, setDateRange] = useState({
-        startDate: startOfMonth(new Date()), // Default to start of this month
-        endDate: endOfMonth(new Date()), // Default to end of this month
-    });
-    const [isDataHidden, setIsDataHidden] = useState(true); // Hidden by default
-    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'payments', 'expenses', 'transactions'
-    
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-    const [isBusinessExpenseModalOpen, setIsBusinessExpenseModalOpen] = useState(false);
-    const [isPersonalExpenseModalOpen, setIsPersonalExpenseModalOpen] = useState(false);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [isPaymentPlanPrintModalOpen, setIsPaymentPlanPrintModalOpen] = useState(false);
-    
-    const [selectedStudent, setSelectedStudent] = useState(null);
-    const [selectedInstallment, setSelectedInstallment] = useState(null);
 
-    const [filteredPayments, setFilteredPayments] = useState([]);
+const FinancesModule = () => {
+    const { transactions, students, groups, fetchData, loading } = useAppContext();
+    const { showNotification } = useNotification();
+    
+    const [dateRange, setDateRange] = useState('thisMonth');
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'expenses', 'transactions'
+    const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [isPersonalExpenseModalOpen, setIsPersonalExpenseModalOpen] = useState(false);
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
+    const [editingTransaction, setEditingTransaction] = useState(null);
     const [filteredExpenses, setFilteredExpenses] = useState([]);
+    const [filteredTransactions, setFilteredTransactions] = useState([]);
+    const [filteredPayments, setFilteredPayments] = useState([]);
     const [unpaidAmountInPeriod, setUnpaidAmountInPeriod] = useState(0);
+    const [totalUnpaidAmount, setTotalUnpaidAmount] = useState(0);
+    const [thisMonthUnpaidAmount, setThisMonthUnpaidAmount] = useState(0);
     const [overdueInstallments, setOverdueInstallments] = useState([]);
     const [upcomingInstallments, setUpcomingInstallments] = useState([]);
+    const [isDataHidden, setIsDataHidden] = useState(false);
+    const [selectedInstallment, setSelectedInstallment] = useState(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState(null);
+    const [isPaymentPlanPrintModalOpen, setIsPaymentPlanPrintModalOpen] = useState(false);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [isBusinessExpenseModalOpen, setIsBusinessExpenseModalOpen] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
     useEffect(() => {
-        console.log('Date range:', dateRange);
-        console.log('All expenses:', expenses);
-        
-        const filterByDate = (items) => items.filter(i => {
+        const filterByDate = (items) => {
+            if (!items || !Array.isArray(items)) return [];
+            return items.filter(i => {
             const itemDate = new Date(i.transactionDate);
-            const isInRange = itemDate >= dateRange.startDate && itemDate <= dateRange.endDate;
-            console.log(`Item date: ${itemDate}, In range: ${isInRange}`, i);
-            return isInRange;
-        });
+                const isInRange = itemDate >= dateRange.startDate && itemDate <= dateRange.endDate;
+                return isInRange;
+            });
+        };
         
-        const filteredP = filterByDate(payments);
-        const filteredE = filterByDate(expenses);
+        // Filter transactions to get income (payments)
+        const incomeTransactions = transactions?.filter(t => 
+            t.type === 'income-group' || t.type === 'income-tutoring'
+        ) || [];
         
-        console.log('Filtered expenses:', filteredE);
+        // Filter transactions to get expenses
+        const expenseTransactions = transactions?.filter(t => 
+            t.type === 'expense-business' || t.type === 'expense-personal'
+        ) || [];
+        
+        const filteredP = filterByDate(incomeTransactions);
+        const filteredE = filterByDate(expenseTransactions);
         
         setFilteredPayments(filteredP);
         setFilteredExpenses(filteredE);
 
         // Calculate unpaid installment amount due in the period
         let unpaidTotal = 0;
+        let totalUnpaid = 0;
+        let thisMonthUnpaid = 0;
         let overdue = [];
         let upcoming = [];
         const today = new Date();
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        
+        // Calculate this month's date range
+        const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-        students.forEach(student => {
-            student.installments?.forEach(inst => {
+        students?.forEach(student => {
+            // Parse installments if it's a string, otherwise use as is
+            let installments = student.installments;
+            if (typeof installments === 'string') {
+                try {
+                    installments = JSON.parse(installments);
+                } catch (error) {
+                    console.error('Error parsing installments for student:', student.id, error);
+                    installments = [];
+                }
+            }
+            
+            // Ensure installments is an array
+            if (!Array.isArray(installments)) {
+                installments = [];
+            }
+
+            installments.forEach(inst => {
                 const dueDate = new Date(inst.dueDate);
                 if (inst.status === 'Unpaid') {
+                    // Total unpaid amount (all terms)
+                    totalUnpaid += inst.amount;
+                    
+                    // This month's unpaid amount
+                    if (dueDate >= thisMonthStart && dueDate <= thisMonthEnd) {
+                        thisMonthUnpaid += inst.amount;
+                    }
+                    
+                    // Selected period unpaid amount
                     if (dueDate >= dateRange.startDate && dueDate <= dateRange.endDate) {
                     unpaidTotal += inst.amount;
                     }
@@ -87,14 +129,17 @@ const FinancesModule = () => {
         });
         
         setUnpaidAmountInPeriod(unpaidTotal);
+        setTotalUnpaidAmount(totalUnpaid);
+        setThisMonthUnpaidAmount(thisMonthUnpaid);
         setOverdueInstallments(overdue);
         setUpcomingInstallments(upcoming);
 
-    }, [dateRange, payments, expenses, students]);
+    }, [dateRange, transactions, students]);
 
     useEffect(() => {
         // Listen for payment plan print events
         const handlePrintPaymentPlan = (event) => {
+            console.log('Payment plan event received:', event.detail);
             setSelectedStudent(event.detail.student);
             setIsPaymentPlanPrintModalOpen(true);
         };
@@ -185,26 +230,26 @@ const FinancesModule = () => {
     const renderOverview = () => (
         <div className="space-y-8">
             {/* Key Financial Metrics - Enhanced Design */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* Total Income */}
-                <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 shadow-lg border border-green-100 hover:shadow-xl transition-all duration-300 group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.INCOME} className="w-7 h-7 text-white" />
+                <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-4 md:p-6 shadow-lg border border-green-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.INCOME} className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                         {isDataHidden ? '***' : `${totalIncome.toFixed(0)} ₺`}
                     </h3>
-                    <p className="text-sm font-medium text-green-700 mb-6">Total Income</p>
+                    <p className="text-xs md:text-sm font-medium text-green-700 mb-4 md:mb-6">Total Income</p>
                     
                     {/* Income Breakdown */}
-                    <div className="space-y-3 pt-4 border-t border-green-100">
-                        <div className="flex justify-between items-center text-sm">
+                    <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-green-100">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
                             <span className="text-gray-600 font-medium">Group Classes</span>
                             <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${groupIncome.toFixed(0)} ₺`}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
                             <span className="text-gray-600 font-medium">Tutoring</span>
                             <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${tutoringIncome.toFixed(0)} ₺`}</span>
                         </div>
@@ -212,24 +257,24 @@ const FinancesModule = () => {
                 </div>
 
                 {/* Total Expenses */}
-                <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-6 shadow-lg border border-red-100 hover:shadow-xl transition-all duration-300 group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.BRIEFCASE} className="w-7 h-7 text-white" />
+                <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-4 md:p-6 shadow-lg border border-red-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.BRIEFCASE} className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                         {isDataHidden ? '***' : `${totalExpenses.toFixed(0)} ₺`}
                     </h3>
-                    <p className="text-sm font-medium text-red-700 mb-6">Total Expenses</p>
+                    <p className="text-xs md:text-sm font-medium text-red-700 mb-4 md:mb-6">Total Expenses</p>
                     
                     {/* Expense Breakdown */}
-                    <div className="space-y-3 pt-4 border-t border-red-100">
-                        <div className="flex justify-between items-center text-sm">
+                    <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-red-100">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
                             <span className="text-gray-600 font-medium">Business</span>
                             <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${businessExpenses.toFixed(0)} ₺`}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
                             <span className="text-gray-600 font-medium">Personal</span>
                             <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${personalExpenses.toFixed(0)} ₺`}</span>
                         </div>
@@ -237,20 +282,20 @@ const FinancesModule = () => {
                 </div>
 
                 {/* Net Profit */}
-                <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-green-50 to-white' : 'from-red-50 to-white'} rounded-2xl p-6 shadow-lg border ${netProfit >= 0 ? 'border-green-100' : 'border-red-100'} hover:shadow-xl transition-all duration-300 group`}>
-                    <div className="flex items-center justify-between mb-6">
-                        <div className={`w-14 h-14 bg-gradient-to-br ${netProfit >= 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                            <Icon path={ICONS.CHART_LINE} className="w-7 h-7 text-white" />
+                <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-green-50 to-white' : 'from-red-50 to-white'} rounded-2xl p-4 md:p-6 shadow-lg border ${netProfit >= 0 ? 'border-green-100' : 'border-red-100'} hover:shadow-xl transition-all duration-300 group`}>
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className={`w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br ${netProfit >= 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                            <Icon path={ICONS.CHART_LINE} className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
-                    <h3 className={`text-3xl font-bold mb-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <h3 className={`text-2xl md:text-3xl font-bold mb-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {isDataHidden ? '***' : `${netProfit >= 0 ? '+' : ''}${netProfit.toFixed(0)} ₺`}
                     </h3>
-                    <p className={`text-sm font-medium mb-6 ${netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>Net Profit</p>
+                    <p className={`text-xs md:text-sm font-medium mb-4 md:mb-6 ${netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>Net Profit</p>
                     
                     {/* Profit Margin */}
-                    <div className="pt-4 border-t border-gray-100">
-                        <div className="flex justify-between items-center text-sm">
+                    <div className="pt-3 md:pt-4 border-t border-gray-100">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
                             <span className="text-gray-600 font-medium">Profit Margin</span>
                             <span className="font-semibold text-gray-900">
                                 {isDataHidden ? '***' : totalIncome > 0 ? `${((netProfit / totalIncome) * 100).toFixed(1)}%` : '0%'}
@@ -260,26 +305,26 @@ const FinancesModule = () => {
                 </div>
 
                 {/* Outstanding Payments */}
-                <div className="bg-gradient-to-br from-yellow-50 to-white rounded-2xl p-6 shadow-lg border border-yellow-100 hover:shadow-xl transition-all duration-300 group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.WALLET} className="w-7 h-7 text-white" />
+                <div className="bg-gradient-to-br from-yellow-50 to-white rounded-2xl p-4 md:p-6 shadow-lg border border-yellow-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.WALLET} className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">
-                        {isDataHidden ? '***' : `${unpaidAmountInPeriod.toFixed(0)} ₺`}
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                        {isDataHidden ? '***' : `${totalUnpaidAmount.toFixed(0)} ₺`}
                     </h3>
-                    <p className="text-sm font-medium text-yellow-700 mb-6">Outstanding</p>
+                    <p className="text-xs md:text-sm font-medium text-yellow-700 mb-4 md:mb-6">Outstanding</p>
                     
-                    {/* Payment Status */}
-                    <div className="space-y-3 pt-4 border-t border-yellow-100">
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600 font-medium">Overdue</span>
-                            <span className="font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs">{overdueInstallments.length}</span>
+                    {/* Outstanding Breakdown */}
+                    <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-yellow-100">
+                        <div className="flex justify-between items-center text-xs md:text-sm">
+                            <span className="text-gray-600 font-medium">Total Outstanding</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${totalUnpaidAmount.toFixed(0)} ₺`}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600 font-medium">This Week</span>
-                            <span className="font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full text-xs">{upcomingInstallments.length}</span>
+                        <div className="flex justify-between items-center text-xs md:text-sm">
+                            <span className="text-gray-600 font-medium">This Month</span>
+                            <span className="font-semibold text-gray-900">{isDataHidden ? '***' : `${thisMonthUnpaidAmount.toFixed(0)} ₺`}</span>
                         </div>
                     </div>
                 </div>
@@ -291,18 +336,18 @@ const FinancesModule = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <button
                         onClick={() => openPaymentModal()}
-                        className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                        className="flex items-center p-4 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
                     >
-                        <Icon path={ICONS.WALLET} className="w-5 h-5 text-blue-600 mr-3" />
-                        <span className="text-sm font-medium text-blue-900">Record Payment</span>
+                        <Icon path={ICONS.WALLET} className="w-5 h-5 text-teal-600 mr-3" />
+                        <span className="text-sm font-medium text-teal-900">Record Payment</span>
                     </button>
                     
                     <button
                         onClick={() => setIsBusinessExpenseModalOpen(true)}
-                        className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                        className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                     >
-                        <Icon path={ICONS.BRIEFCASE} className="w-5 h-5 text-green-600 mr-3" />
-                        <span className="text-sm font-medium text-green-900">Add Business Expense</span>
+                        <Icon path={ICONS.BRIEFCASE} className="w-5 h-5 text-blue-600 mr-3" />
+                        <span className="text-sm font-medium text-blue-900">Add Business Expense</span>
                     </button>
                     
                     <button
@@ -367,16 +412,16 @@ const FinancesModule = () => {
     );
 
     const renderPayments = () => (
-        <StudentPaymentsManager 
+        <StudentPaymentsManager
             students={students}
-            payments={payments}
+            payments={filteredPayments}
             onPaymentRecorded={fetchData}
         />
     );
 
     const renderExpenses = () => (
         <ExpenseManager 
-            expenses={expenses}
+            expenses={filteredExpenses}
             dateRange={dateRange}
             onExpenseAdded={fetchData}
         />
@@ -395,14 +440,14 @@ const FinancesModule = () => {
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             {/* Simple Premium Header */}
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
                     <div className="flex items-center">
-                        <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center shadow-sm mr-4">
-                            <Icon path={ICONS.MONEY_BILL_WAVE} className="w-7 h-7 text-white"/>
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-green-600 rounded-lg flex items-center justify-center shadow-sm mr-3 md:mr-4">
+                            <Icon path={ICONS.MONEY_BILL_WAVE} className="w-5 h-5 md:w-7 md:h-7 text-white"/>
                         </div>
                         <div>
-                            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Financial Management</h2>
+                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Financial Management</h2>
                             <p className="text-gray-600 text-sm lg:text-base">Track income, expenses, and payments</p>
                         </div>
                     </div>
@@ -410,11 +455,13 @@ const FinancesModule = () => {
                         <DateRangePicker onDateChange={setDateRange} initialRange={dateRange} />
                         <button 
                             onClick={() => setIsDataHidden(!isDataHidden)} 
-                            className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-300 text-gray-700"
+                            className="p-2 md:p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-300 text-gray-700"
                             title={isDataHidden ? "Show data" : "Hide data"}
                         >
-                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-5 h-5" />
+                            <Icon path={isDataHidden ? ICONS.EYE_OFF : ICONS.EYE} className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
+                        
+
                     </div>
                 </div>
             </div>
@@ -433,7 +480,7 @@ const FinancesModule = () => {
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center px-2 sm:px-3 md:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                                 activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    ? 'bg-green-600 text-white shadow-sm'
                                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
                             }`}
                         >
@@ -504,9 +551,8 @@ const FinancesModule = () => {
                 />
             )}
 
-            {isPaymentPlanPrintModalOpen && (
+            {isPaymentPlanPrintModalOpen && selectedStudent && (
                 <PaymentPlanPrint
-                    isOpen={isPaymentPlanPrintModalOpen}
                     onClose={() => setIsPaymentPlanPrintModalOpen(false)}
                     student={selectedStudent}
                 />

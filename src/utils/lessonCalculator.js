@@ -1,7 +1,10 @@
 import { eachDayOfInterval, getDay, parseISO, differenceInMonths, addMonths, format, addDays, addWeeks, differenceInDays, differenceInWeeks, startOfWeek, endOfWeek, isSameWeek } from 'date-fns';
 
 const dayNameToIndex = {
-    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+    // Abbreviated names
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6,
+    // Full names
+    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6
 };
 
 /**
@@ -216,6 +219,7 @@ const generateMonthlyInstallments = (pricePerLesson, start, end, scheduledDayInd
  */
 export const generateGroupLessons = (group, startDate, endDate, defaultStartTime = '09:00', defaultEndTime = '10:00') => {
     if (!group || !group.schedule || !group.schedule.days || group.schedule.days.length === 0) {
+        console.warn('Group missing schedule details:', group?.groupName, group?.schedule);
         return [];
     }
 
@@ -223,13 +227,28 @@ export const generateGroupLessons = (group, startDate, endDate, defaultStartTime
         const start = parseISO(startDate);
         const end = parseISO(endDate);
 
-        if (start > end) return [];
+        if (start > end) {
+            console.warn('Invalid date range for group:', group.groupName, 'start:', startDate, 'end:', endDate);
+            return [];
+        }
 
         const scheduledDayIndexes = group.schedule.days.map(day => dayNameToIndex[day]).filter(d => d !== undefined);
-        if (scheduledDayIndexes.length === 0) return [];
+        if (scheduledDayIndexes.length === 0) {
+            console.warn('No valid scheduled days found for group:', group.groupName, group.schedule.days);
+            return [];
+        }
 
+        // Use the same logic as calculateLessonsWithinRange for consistency
         const allDays = eachDayOfInterval({ start, end });
         const lessonDays = allDays.filter(day => scheduledDayIndexes.includes(getDay(day)));
+
+        console.log(`Generating lessons for ${group.groupName}:`, {
+            scheduleDays: group.schedule.days,
+            startDate: startDate,
+            endDate: endDate,
+            lessonDaysCount: lessonDays.length,
+            expectedCount: calculateLessonsWithinRange(startDate, endDate, group.schedule.days)
+        });
 
         return lessonDays.map((day, index) => ({
             groupId: group.id,
@@ -274,8 +293,18 @@ export const generateTutoringLessons = (student, startDate, endDate, defaultStar
             return [];
         }
 
+        // Get the number of lessons the student should have
+        const numberOfLessons = student.tutoringDetails.numberOfLessons || 0;
+        if (numberOfLessons <= 0) {
+            console.warn('No lessons planned for student:', student.fullName);
+            return [];
+        }
+
         const allDays = eachDayOfInterval({ start, end });
         const lessonDays = allDays.filter(day => scheduledDayIndexes.includes(getDay(day)));
+
+        // Only take the first numberOfLessons days
+        const limitedLessonDays = lessonDays.slice(0, numberOfLessons);
 
         // Use the student's schedule times, fallback to defaults
         const scheduleStartTime = student.tutoringDetails.schedule.startTime || defaultStartTime;
@@ -285,10 +314,11 @@ export const generateTutoringLessons = (student, startDate, endDate, defaultStar
             scheduleDays: student.tutoringDetails.schedule.days,
             scheduleStartTime,
             scheduleEndTime,
-            lessonDaysCount: lessonDays.length
+            totalPlannedLessons: numberOfLessons,
+            lessonDaysCount: limitedLessonDays.length
         });
 
-        return lessonDays.map((day, index) => ({
+        return limitedLessonDays.map((day, index) => ({
             studentId: student.id,
             lessonDate: format(day, 'yyyy-MM-dd'),
             topic: `Tutoring Session ${index + 1}`,

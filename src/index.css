@@ -7,6 +7,38 @@ html, body, #root {
   background-color: #f9fafb; /* A very light gray, equivalent to Tailwind's bg-gray-50 */
 }
 
+/* Hide scroll bars while maintaining scrolling functionality */
+/* Webkit browsers (Chrome, Safari, Edge) */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar,
+[class*="overflow"]::-webkit-scrollbar {
+  display: none;
+}
+
+/* Firefox and other browsers */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto,
+.overflow-y-scroll,
+.overflow-x-scroll,
+[class*="overflow"] {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Additional rules for elements with max-height that might scroll */
+[class*="max-h-"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[class*="max-h-"]::-webkit-scrollbar {
+  display: none;
+}
+
 /* Hide potential development tools or browser extensions */
 [data-reactroot] > div:last-child:not([class*="react"]):not([id*="react"]) {
   display: none !important;
@@ -22,4 +54,32 @@ div[style*="position: absolute"][style*="bottom"][style*="left"] {
 #react-devtools-root,
 [data-react-devtools-portal] {
   display: none !important;
+}
+
+/* Blob animation for login page */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
 }

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDate } from '../utils/formatDate';
 import { Icon, ICONS } from './Icons';
 
 const PaymentPlanPrint = ({ student, onClose }) => {
+    
+    
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('tr-TR', {
             style: 'currency',
@@ -30,10 +32,10 @@ const PaymentPlanPrint = ({ student, onClose }) => {
     };
 
     const getTurkishDayNames = (days) => {
-        console.log('Days received:', days); // Debug log
-        if (!days || days.length === 0) return 'Belirtilmemiş';
+        if (!days || !Array.isArray(days)) return '';
         
         const dayMap = {
+            // Full names
             'monday': 'Pazartesi',
             'tuesday': 'Salı',
             'wednesday': 'Çarşamba',
@@ -41,31 +43,21 @@ const PaymentPlanPrint = ({ student, onClose }) => {
             'friday': 'Cuma',
             'saturday': 'Cumartesi',
             'sunday': 'Pazar',
-            // Handle different possible formats
+            // Abbreviated names
             'mon': 'Pazartesi',
             'tue': 'Salı',
             'wed': 'Çarşamba',
             'thu': 'Perşembe',
             'fri': 'Cuma',
             'sat': 'Cumartesi',
-            'sun': 'Pazar',
-            // Handle Turkish abbreviations
-            'pzt': 'Pazartesi',
-            'sal': 'Salı',
-            'çrş': 'Çarşamba',
-            'prş': 'Perşembe',
-            'cum': 'Cuma',
-            'cmt': 'Cumartesi',
-            'pzr': 'Pazar'
+            'sun': 'Pazar'
         };
         
         const result = days.map(day => {
-            const dayLower = day.toLowerCase().trim();
-            console.log('Processing day:', day, '->', dayLower, '->', dayMap[dayLower] || day); // Debug log
+            const dayLower = day.toLowerCase();
             return dayMap[dayLower] || day;
         }).join(', ');
         
-        console.log('Final result:', result); // Debug log
         return result;
     };
 
@@ -91,10 +83,24 @@ const PaymentPlanPrint = ({ student, onClose }) => {
             .replace(/[^a-zA-Z\s]/g, '')
             .trim()
             .replace(/\s+/g, '_');
-        const filename = `${studentName}_Odeme_Plani.pdf`;
+        const filename = `${studentName}_PaymentPlan.pdf`;
         
+        // Store the original title
+        const originalTitle = document.title;
+        
+        // Set the document title to the desired filename
+        document.title = filename;
+        
+        // Print the document
         window.print();
+        
+        // Restore the original title after a short delay
+        setTimeout(() => {
+            document.title = originalTitle;
+        }, 1000);
     };
+
+
 
     const handleClose = () => {
         onClose();
@@ -116,6 +122,15 @@ const PaymentPlanPrint = ({ student, onClose }) => {
         }
         return sum;
     }, 0) || 0;
+    
+    // Calculate installment fee (amount per installment)
+    const installmentFee = installments && installments.length > 0 ? installments[0].amount : 0;
+
+    // Don't render if no valid student data
+    if (!student || !student.id) {
+        console.error('PaymentPlanPrint: No valid student data provided');
+        return null;
+    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
@@ -134,6 +149,7 @@ const PaymentPlanPrint = ({ student, onClose }) => {
                             <Icon path={ICONS.DOWNLOAD} className="w-4 h-4" />
                             <span>Yazdır</span>
                         </button>
+
                         <button
                             onClick={handleClose}
                             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -208,8 +224,8 @@ const PaymentPlanPrint = ({ student, onClose }) => {
                                             <div className="text-green-600">Taksit Sayısı</div>
                                         </div>
                                         <div className="bg-orange-50 p-2 text-center border border-orange-200">
-                                            <div className="font-bold text-orange-900">{formatCurrency(unpaidAmount)}</div>
-                                            <div className="text-orange-600">Kalan Tutar</div>
+                                            <div className="font-bold text-orange-900">{formatCurrency(installmentFee)}</div>
+                                            <div className="text-orange-600">Taksit Tutarı</div>
                                         </div>
                                     </div>
                                 </div>

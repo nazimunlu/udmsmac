@@ -8,6 +8,8 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
 import apiClient from '../apiClient';
 import { sanitizeFileName } from '../utils/caseConverter';
+import { formatDate } from '../utils/formatDate';
+import { openDocument, isValidDocumentUrl } from '../utils/documentUtils';
 
 // Document Upload Modal Component
 const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, documentType }) => {
@@ -15,8 +17,8 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
     const { fetchData, students } = useAppContext();
     const [formData, setFormData] = useState({
         name: '',
-        description: '',
-        type: 'other'
+        type: 'other',
+        studentId: ''
     });
     const [selectedFile, setSelectedFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -27,8 +29,8 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
         if (isOpen) {
             setFormData({
                 name: '',
-                description: '',
-                type: documentType || 'other'
+                type: documentType || 'other',
+                studentId: ''
             });
             setSelectedFile(null);
             setUploadProgress(0);
@@ -42,6 +44,7 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
                     { value: 'nationalId', label: 'National ID' },
                     { value: 'agreement', label: 'Agreement' },
                     { value: 'certificate', label: 'Certificate' },
+                    { value: 'payment_plan', label: 'Payment Plan' },
                     { value: 'other', label: 'Other' }
                 ];
             case 'finance':
@@ -56,11 +59,7 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
             case 'meb':
                 return [
                     { value: 'received', label: 'Received Document' },
-                    { value: 'sent', label: 'Sent Document' },
-                    { value: 'official', label: 'Official Document' },
-                    { value: 'permit', label: 'Permit' },
-                    { value: 'license', label: 'License' },
-                    { value: 'other', label: 'Other' }
+                    { value: 'sent', label: 'Sent Document' }
                 ];
             default:
                 return [{ value: 'other', label: 'Other' }];
@@ -96,6 +95,12 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
             showNotification('Please fill in all required fields and select a file.', 'error');
             return;
         }
+        
+        // Additional validation for student documents
+        if (category === 'student' && !formData.studentId) {
+            showNotification('Please select a student for this document.', 'error');
+            return;
+        }
 
         setIsUploading(true);
         setUploadProgress(0);
@@ -111,7 +116,13 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
             const sanitizedBaseName = sanitizeFileName(formData.name).replace(/\.[^/.]+$/, '');
             
             const timestamp = new Date().getTime();
-            const storagePath = `documents/${category}/${user.id}/${timestamp}_${sanitizedBaseName}.${fileExtension}`;
+            let storagePath;
+            
+            if (category === 'student' && formData.studentId) {
+                storagePath = `documents/${category}/${formData.studentId}/${timestamp}_${sanitizedBaseName}.${fileExtension}`;
+            } else {
+                storagePath = `documents/${category}/${user.id}/${timestamp}_${sanitizedBaseName}.${fileExtension}`;
+            }
 
             // Upload file to Supabase Storage
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -130,16 +141,29 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
                 .getPublicUrl(storagePath);
 
             // Save document metadata to database
-            await apiClient.create('documents', {
+            const documentData = {
                 name: formData.name,
                 type: formData.type,
                 category: category,
-                student_id: formData.studentId || null,
-                description: formData.description,
                 url: publicUrl,
                 storage_path: storagePath,
                 upload_date: new Date().toISOString().split('T')[0]
-            });
+            };
+
+            // Note: student_id is not stored in the documents table
+            // Student association is handled through the storage path and document name
+
+            await apiClient.create('documents', documentData);
+
+            // Debug log for student document upload
+            if (category === 'student') {
+                console.log('🎓 Student document uploaded:', {
+                    name: formData.name,
+                    studentId: formData.studentId,
+                    storagePath: storagePath,
+                    documentData: documentData
+                });
+            }
 
             showNotification('Document uploaded successfully!', 'success');
             fetchData();
@@ -268,19 +292,7 @@ const DocumentUploadModal = ({ isOpen, onClose, category, onUploadSuccess, docum
                     </div>
                 )}
 
-                {/* Description */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
-                    </label>
-                    <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter document description (optional)"
-                    />
-                </div>
+
 
                 {/* Upload Progress */}
                 {isUploading && (
@@ -351,12 +363,12 @@ const DocumentCard = ({ title, icon, color, documents, category, onViewDocuments
                     {documentCount} files
                 </div>
                 
-                {/* Upload button for MEB */}
-                {category === 'meb' && (
+                {/* Upload button for MEB and Student documents */}
+                {(category === 'meb' || category === 'student') && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onUploadDocument(category, 'received');
+                            onUploadDocument(category, category === 'meb' ? 'received' : 'other');
                         }}
                         className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium text-white hover:opacity-80 transition-all duration-300 shadow-sm"
                         style={{backgroundColor: color}}
@@ -452,6 +464,7 @@ const getCategoryColor = (categoryName) => {
 // Document List Modal Component
 const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocument, onDeleteDocument, folderName }) => {
     const { students } = useAppContext();
+    const { showNotification } = useNotification();
     
     const getCategoryTitle = () => {
         let baseTitle = '';
@@ -481,6 +494,74 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
     const getStudentName = (studentId) => {
         const student = students.find(s => s.id === studentId);
         return student ? student.fullName : 'Unknown Student';
+    };
+
+    // Helper functions for document styling
+    const getDocumentColor = (doc) => {
+        if (doc.isTransactionDocument) {
+            return 'bg-green-600';
+        }
+        if (doc.isStudentDocument) {
+            return 'bg-blue-600';
+        }
+        switch (doc.category) {
+            case 'student':
+                return 'bg-blue-600';
+            case 'finance':
+                return 'bg-green-600';
+            case 'meb':
+                return 'bg-yellow-600';
+            default:
+                return 'bg-gray-600';
+        }
+    };
+
+    const getDocumentIcon = (doc) => {
+        if (doc.isTransactionDocument) {
+            return ICONS.DOCUMENTS;
+        }
+        if (doc.isStudentDocument) {
+            return ICONS.STUDENTS;
+        }
+        switch (doc.type) {
+            case 'invoice':
+                return ICONS.DOCUMENTS;
+            case 'agreement':
+                return ICONS.FILE_CONTRACT;
+            case 'national_id':
+                return ICONS.ID_CARD;
+            case 'meb_document':
+                return ICONS.BUILDING;
+            default:
+                return ICONS.DOCUMENTS;
+        }
+    };
+
+    const getDocumentTypeLabel = (doc) => {
+        if (doc.isTransactionDocument) {
+            return 'Invoice';
+        }
+        if (doc.isStudentDocument) {
+            return 'Student Doc';
+        }
+        switch (doc.type) {
+            case 'invoice':
+                return 'Invoice';
+            case 'agreement':
+                return 'Agreement';
+            case 'national_id':
+                return 'National ID';
+            case 'meb_document':
+                return 'MEB Document';
+            case 'payment_plan':
+                return 'Payment Plan';
+            case 'received':
+                return 'Received';
+            case 'sent':
+                return 'Sent';
+            default:
+                return doc.type || 'Document';
+        }
     };
 
     const handleDownload = async (doc) => {
@@ -571,16 +652,21 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                                     <div className="p-3 sm:p-4 bg-gray-50">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
                                             <div className="flex items-center space-x-2 sm:space-x-3">
-                                                <a 
-                                                    href={doc.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
+                                                <button 
+                                                    onClick={() => {
+                                                        if (isValidDocumentUrl(doc.url)) {
+                                                            openDocument(doc.url, doc.name);
+                                                        } else {
+                                                            console.error('Invalid document URL:', doc.url);
+                                                            showNotification('Invalid document URL. Please check the file.', 'error');
+                                                        }
+                                                    }}
                                                     className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                                                     title="Preview Document"
                                                 >
                                                     <Icon path={ICONS.EYE} className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                                                     Preview
-                                                </a>
+                                                </button>
                                                 <button 
                                                     onClick={() => handleDownload(doc)} 
                                                     className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
@@ -593,14 +679,14 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                                             <div className="flex items-center space-x-1 sm:space-x-2">
                                                 <button 
                                                     onClick={() => onEditDocument(doc)} 
-                                                    disabled={doc.isTransactionDocument || doc.isStudentDocument}
+                                                    disabled={doc.isTransactionDocument}
                                                     className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-                                                        doc.isTransactionDocument || doc.isStudentDocument
+                                                        doc.isTransactionDocument
                                                             ? 'text-gray-400 cursor-not-allowed'
                                                             : 'text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50'
                                                     }`}
                                                     title={
-                                                        doc.isTransactionDocument || doc.isStudentDocument
+                                                        doc.isTransactionDocument
                                                             ? "Cannot edit - edit the original record instead"
                                                             : "Edit Document"
                                                     }
@@ -609,19 +695,19 @@ const DocumentListModal = ({ isOpen, onClose, category, documents, onEditDocumen
                                                 </button>
                                                 <button 
                                                     onClick={() => onDeleteDocument(doc)} 
-                                                    disabled={doc.isTransactionDocument || doc.isStudentDocument}
+                                                    disabled={doc.isTransactionDocument}
                                                     className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-                                                        doc.isTransactionDocument || doc.isStudentDocument
+                                                        doc.isTransactionDocument
                                                             ? 'text-gray-400 cursor-not-allowed'
                                                             : 'text-red-600 hover:text-red-800 hover:bg-red-50'
                                                     }`}
                                                     title={
-                                                        doc.isTransactionDocument || doc.isStudentDocument
+                                                        doc.isTransactionDocument
                                                             ? "Cannot delete - delete the original record instead"
                                                             : "Delete Document"
                                                     }
                                                 >
-                                                    <Icon path={ICONS.DELETE} className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    <Icon path={ICONS.TRASH} className="w-3 h-3 sm:w-4 sm:h-4" />
                                                 </button>
                                             </div>
                                         </div>
@@ -851,6 +937,47 @@ const DocumentsModule = () => {
         return studentDocs;
     };
 
+    // Process documents from documents table
+    const processDocumentsTable = () => {
+        return documents.map(doc => {
+            // For student documents with storage path, extract student ID from storage path (PRIORITY)
+            if (doc.category === 'student' && doc.storagePath) {
+                // Extract student ID from storage path: documents/student/{studentId}/...
+                const pathParts = doc.storagePath.split('/');
+                const studentIdIndex = pathParts.indexOf('student') + 1;
+                const studentId = pathParts[studentIdIndex];
+                
+
+                
+                if (studentId) {
+                    // Find the student to get their name
+                    const student = students.find(s => s.id === studentId);
+                    return {
+                        ...doc,
+                        studentId: studentId,
+                        studentName: student ? student.fullName : 'Unknown Student',
+                        isStudentDocument: true
+                    };
+                }
+            }
+            
+            // For payment plan documents WITHOUT storage path, extract student name from document name
+            if (doc.type === 'payment_plan' && doc.category === 'student' && !doc.storagePath) {
+                const studentName = doc.name.replace(' - Payment Plan', '');
+                // Find the student by name to get their ID
+                const student = students.find(s => s.fullName === studentName);
+                return {
+                    ...doc,
+                    studentName: studentName,
+                    studentId: student ? student.id : null, // Add the student ID
+                    isPaymentPlanDocument: true
+                };
+            }
+            
+            return doc;
+        });
+    };
+
     // Process business expense documents from transactions table
     const processBusinessExpenseDocuments = () => {
         const expenseDocs = [];
@@ -893,7 +1020,7 @@ const DocumentsModule = () => {
 
     // Combine all documents from different sources
     const allDocuments = [
-        ...documents, 
+        ...processDocumentsTable(), 
         ...processStudentDocuments(), 
         ...processBusinessExpenseDocuments()
     ];
@@ -916,6 +1043,8 @@ const DocumentsModule = () => {
     const studentDocuments = filteredDocuments.filter(doc => doc.category === 'student');
     const financeDocuments = filteredDocuments.filter(doc => doc.category === 'finance');
     const mebDocuments = filteredDocuments.filter(doc => doc.category === 'meb');
+    
+
 
     const documentCategories = [
         {
@@ -969,12 +1098,6 @@ const DocumentsModule = () => {
     };
 
     const handleDeleteDocument = (doc) => {
-        // Check if this is a virtual document (generated from transactions or students)
-        if (doc.isTransactionDocument || doc.isStudentDocument) {
-            showNotification('This document cannot be deleted directly. Please delete the original record (business expense or student enrollment) instead.', 'info');
-            return;
-        }
-        
         setDocumentToDelete(doc);
         setIsConfirmModalOpen(true);
     };
@@ -1007,6 +1130,8 @@ const DocumentsModule = () => {
 
     const totalDocuments = allDocuments.length;
 
+
+
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             {/* Simple Premium Header */}
@@ -1021,6 +1146,7 @@ const DocumentsModule = () => {
                             <p className="text-gray-600 text-sm lg:text-base">Organize and manage all documents</p>
                         </div>
                     </div>
+
                 </div>
             </div>
 

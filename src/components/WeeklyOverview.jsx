@@ -78,7 +78,7 @@ const WeeklyOverview = ({ events }) => {
                             startTime = event.startTime instanceof Date ? event.startTime : new Date(event.startTime);
                             endTime = event.endTime 
                                 ? (event.endTime instanceof Date ? event.endTime : new Date(event.endTime))
-                                : new Date(startTime.getTime() + 60 * 60 * 1000);
+                            : new Date(startTime.getTime() + 60 * 60 * 1000);
                         }
                         
                         const dayIndex = getDayIndex(startTime);

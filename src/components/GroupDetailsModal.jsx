@@ -35,7 +35,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
         try {
             const lessonsData = await apiClient.getAll('lessons');
             const groupLessons = lessonsData.filter(l => l.groupId === group.id);
-            setLessons(groupLessons.sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate)));
+            setLessons(groupLessons.sort((a, b) => new Date(a.lessonDate) - new Date(b.lessonDate)));
         } catch (error) {
             console.error('Error fetching lessons:', error);
         }
@@ -47,6 +47,27 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
             setStudents(groupStudents);
         } catch (error) {
             console.error('Error fetching students:', error);
+        }
+    };
+
+    // Lesson warning functions
+    const getLessonStatus = (lesson) => {
+        const now = new Date();
+        const lessonDateTime = new Date(`${lesson.lessonDate}T${lesson.startTime || '09:00'}`);
+        const lessonEndDateTime = new Date(`${lesson.lessonDate}T${lesson.endTime || '10:00'}`);
+        const timeDiff = lessonEndDateTime - now;
+
+        if (lesson.status === 'Complete') {
+            return { status: 'completed', text: 'Completed', color: 'green', needsAttention: false };
+        } else if (timeDiff < 0) {
+            const daysOverdue = Math.abs(Math.floor(timeDiff / (1000 * 60 * 60 * 24)));
+            if (daysOverdue === 0) {
+                return { status: 'overdue', text: 'Overdue Today', color: 'red', needsAttention: true };
+            } else {
+                return { status: 'overdue', text: `${daysOverdue} Day${daysOverdue > 1 ? 's' : ''} Overdue`, color: 'red', needsAttention: true };
+            }
+        } else {
+            return { status: 'upcoming', text: 'Scheduled', color: 'blue', needsAttention: false };
         }
     };
 
@@ -109,7 +130,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                     <Icon path={ICONS.GROUPS} className="w-6 h-6" />
                 </div>
             </div>
-            <div>
+        <div>
                 <h3 className="text-2xl font-bold text-white">{group?.groupName}</h3>
                 <div className="flex items-center space-x-4 text-white/90 text-sm">
                     <span className="flex items-center">
@@ -184,7 +205,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                         >
                                             <Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>
                                             Add Student
-                                        </button>
+                                </button>
                                     </div>
                                 </div>
 
@@ -193,7 +214,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                     <div className="space-y-3">
                                         <h4 className="text-lg font-semibold text-gray-800 mb-4">Group Members</h4>
                                         <div className="grid gap-3">
-                                            {students.map(student => (
+                                        {students.map(student => (
                                                 <div key={student.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all duration-200">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center space-x-3">
@@ -203,7 +224,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                                             >
                                                                 {student.fullName?.charAt(0)?.toUpperCase() || 'S'}
                                                             </div>
-                                                            <div>
+                                                <div>
                                                                 <p className="font-semibold text-gray-800 text-base">{student.fullName}</p>
                                                                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                                                                     <span className="flex items-center">
@@ -235,7 +256,7 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                                                 <Icon path={ICONS.USER_MINUS} className="w-5 h-5" />
                                                             </button>
                                                         </div>
-                                                    </div>
+                                                </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -274,65 +295,111 @@ const GroupDetailsModal = ({ isOpen, onClose, group }) => {
                                         >
                                             <Icon path={ICONS.ADD} className="w-5 h-5 mr-2"/>
                                             Log New Lesson
-                                        </button>
+                                </button>
                                     </div>
                                 </div>
 
                                 {/* Enhanced Lesson List */}
                                 {lessons.length > 0 ? (
                                     <div className="space-y-3">
-                                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Recent Lessons</h4>
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-4">All Lessons</h4>
                                         <div className="grid gap-3">
-                                            {lessons.map(lesson => (
-                                                <div key={lesson.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-green-300 hover:shadow-sm transition-all duration-200">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                                                <Icon path={ICONS.CALENDAR_CHECK} className="w-5 h-5 text-green-600" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold text-gray-800 text-base">{lesson.topic}</p>
-                                                                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                                                    <span className="flex items-center">
-                                                                        <Icon path={ICONS.CALENDAR} className="w-3 h-3 mr-1" />
-                                                                        {formatDate(lesson.lessonDate, 'long')}
-                                                                    </span>
-                                                                    {lesson.startTime && lesson.endTime && (
+                                            {lessons.map(lesson => {
+                                                const lessonStatus = getLessonStatus(lesson);
+                                                return (
+                                                    <div key={lesson.id} className={`bg-white border rounded-lg p-4 hover:shadow-sm transition-all duration-200 ${
+                                                        lessonStatus.needsAttention 
+                                                            ? 'border-red-200 bg-red-50' 
+                                                            : lessonStatus.status === 'completed'
+                                                            ? 'border-green-200 bg-green-50'
+                                                            : 'border-gray-200 hover:border-green-300'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                    lessonStatus.needsAttention 
+                                                                        ? 'bg-red-100' 
+                                                                        : lessonStatus.status === 'completed'
+                                                                        ? 'bg-green-100'
+                                                                        : 'bg-green-100'
+                                                                }`}>
+                                                                    <Icon 
+                                                                        path={lessonStatus.needsAttention ? ICONS.WARNING : ICONS.CALENDAR_CHECK} 
+                                                                        className={`w-5 h-5 ${
+                                                                            lessonStatus.needsAttention 
+                                                                                ? 'text-red-600' 
+                                                                                : lessonStatus.status === 'completed'
+                                                                                ? 'text-green-600'
+                                                                                : 'text-green-600'
+                                                                        }`} 
+                                                                    />
+                                                                </div>
+                                                <div>
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <p className="font-semibold text-gray-800 text-base">{lesson.topic}</p>
+                                                                        {lessonStatus.needsAttention && (
+                                                                            <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                                                                Needs Attendance
+                                                                            </span>
+                                                                        )}
+                                                                        {lessonStatus.status === 'completed' && (
+                                                                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                                                Completed
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
                                                                         <span className="flex items-center">
-                                                                            <Icon path={ICONS.CLOCK} className="w-3 h-3 mr-1" />
-                                                                            {lesson.startTime} - {lesson.endTime}
+                                                                            <Icon path={ICONS.CALENDAR} className="w-3 h-3 mr-1" />
+                                                                            {formatDate(lesson.lessonDate, 'long')}
                                                                         </span>
-                                                                    )}
+                                                                        {lesson.startTime && lesson.endTime && (
+                                                                            <span className="flex items-center">
+                                                                                <Icon path={ICONS.CLOCK} className="w-3 h-3 mr-1" />
+                                                                                {lesson.startTime} - {lesson.endTime}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <button 
-                                                                onClick={() => openAttendanceModal(lesson)} 
-                                                                className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                                                            >
-                                                                Attendance
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => openLessonFormModal(lesson)} 
-                                                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                title="Edit Lesson"
-                                                            >
-                                                                <Icon path={ICONS.EDIT} className="w-5 h-5" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => setLessonToDelete(lesson)} 
-                                                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="Delete Lesson"
-                                                            >
-                                                                <Icon path={ICONS.TRASH} className="w-5 h-5" />
-                                                            </button>
+                                                            <div className="flex items-center space-x-2">
+                                                                {lessonStatus.needsAttention && (
+                                                                    <button 
+                                                                        onClick={() => openAttendanceModal(lesson)} 
+                                                                        className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                                                                    >
+                                                                        Log Attendance
+                                                                    </button>
+                                                                )}
+                                                                {!lessonStatus.needsAttention && lesson.status !== 'Complete' && (
+                                                                    <button 
+                                                                        onClick={() => openAttendanceModal(lesson)} 
+                                                                        className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                                                                    >
+                                                                        Attendance
+                                                                    </button>
+                                                                )}
+                                                                <button 
+                                                                    onClick={() => openLessonFormModal(lesson)} 
+                                                                    className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                                                    title="Edit Lesson"
+                                                                >
+                                                                    <Icon path={ICONS.EDIT} className="w-5 h-5" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setLessonToDelete(lesson)} 
+                                                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                                                    title="Delete Lesson"
+                                                                >
+                                                                    <Icon path={ICONS.TRASH} className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                );
+                                            })}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                                </div>
                                 ) : (
                                     <div className="text-center py-12">
                                         <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">

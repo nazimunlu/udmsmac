@@ -326,7 +326,7 @@ const StudentDetailsModal = ({ isOpen, onClose, student: initialStudent }) => {
                                      style={{ width: `${paymentSummary.totalFee > 0 ? (paymentSummary.totalPaid / paymentSummary.totalFee) * 100 : 0}%` }}>
                                 </div>
                             </div>
-                            <p className="text-center text-blue-800 mt-2">₺{paymentSummary.totalPaid.toFixed(0)} paid out of ₺{paymentSummary.totalFee.toFixed(0)}</p>
+                            <p className="text-center text-teal-800 mt-2">₺{paymentSummary.totalPaid.toFixed(0)} paid out of ₺{paymentSummary.totalFee.toFixed(0)}</p>
                             <div className="text-center mt-4">
                                 <button 
                                     onClick={() => setIsPaymentPlanPrintOpen(true)} 

@@ -66,7 +66,7 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
             isOpen={isOpen} 
             onClose={onClose} 
             title="Edit Document"
-            headerStyle={{ backgroundColor: '#2563EB' }}
+            headerStyle={{ backgroundColor: '#8B5CF6' }}
         >
             <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
@@ -79,7 +79,7 @@ const DocumentEditModal = ({ isOpen, onClose, documentToEdit }) => {
                 </div>
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Changes'}</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Changes'}</button>
                 </div>
             </form>
         </Modal>

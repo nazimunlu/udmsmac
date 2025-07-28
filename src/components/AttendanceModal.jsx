@@ -39,7 +39,10 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
         setIsSubmitting(true);
 
         try {
-            await apiClient.update('lessons', lesson.id, { attendance: attendance });
+            // Only save attendance data - lesson status should be managed separately
+            await apiClient.update('lessons', lesson.id, { 
+                attendance: attendance
+            });
             fetchData();
             onClose();
         } catch (error) {
@@ -124,7 +127,7 @@ const AttendanceModal = ({ isOpen, onClose, lesson, studentsInGroup, student }) 
             isOpen={isOpen} 
             onClose={onClose} 
             title="Log Attendance"
-            headerStyle={{ backgroundColor: '#2563EB' }}
+            headerStyle={{ backgroundColor: '#0891B2' }}
         >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Mark Attendance">

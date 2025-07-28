@@ -64,81 +64,36 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
 
     // Helper function to calculate end date based on schedule and program length
     const calculateEndDate = (startDate, programLength, schedule) => {
-        if (!startDate || !programLength || !schedule.days || schedule.days.length === 0) {
+        if (!startDate || !programLength || !schedule?.days?.length) {
             return null;
         }
 
         const start = new Date(startDate);
-        const dayMap = {
-            'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
-        };
-        const scheduledDayNumbers = schedule.days.map(day => dayMap[day]);
-        
-        console.log('Calculating end date:', {
-            startDate,
-            programLength,
-            scheduleDays: schedule.days,
-            scheduledDayNumbers
-        });
-        
-        // Calculate the end date by finding the last lesson of the program length weeks
         let currentDate = new Date(start);
         let weeksCompleted = 0;
-        let lessonsInCurrentWeek = 0;
-        let lastLessonDate = null;
         let totalLessons = 0;
-        
-        // Find the first lesson day (start date might not be a lesson day)
-        while (!scheduledDayNumbers.includes(currentDate.getDay())) {
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        console.log('First lesson day:', currentDate.toISOString().split('T')[0]);
-        
-        // Now iterate through weeks until we reach the program length
-        while (weeksCompleted < parseInt(programLength, 10)) {
-            // Check if current date is a lesson day
-            if (scheduledDayNumbers.includes(currentDate.getDay())) {
-                lessonsInCurrentWeek++;
-                lastLessonDate = new Date(currentDate);
+        const targetLessons = parseInt(programLength) * schedule.days.length;
+
+        while (totalLessons < targetLessons) {
+            const dayOfWeek = currentDate.getDay();
+            const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+            
+            if (schedule.days.includes(dayName)) {
                 totalLessons++;
-                console.log(`Week ${weeksCompleted + 1}, Lesson ${lessonsInCurrentWeek}: ${currentDate.toISOString().split('T')[0]}`);
-                
-                // If we've completed all lessons for this week, move to next week
-                if (lessonsInCurrentWeek >= schedule.days.length) {
-                    weeksCompleted++;
-                    lessonsInCurrentWeek = 0;
-                    console.log(`Completed week ${weeksCompleted}, total lessons so far: ${totalLessons}`);
-                    
-                    // If we haven't reached the program length, move to the next week's first lesson day
-                    if (weeksCompleted < parseInt(programLength, 10)) {
-                        // Find the next lesson day after the current week ends
-                        let nextWeekDate = new Date(currentDate);
-                        nextWeekDate.setDate(nextWeekDate.getDate() + 1);
-                        
-                        // Find the next scheduled lesson day
-                        while (!scheduledDayNumbers.includes(nextWeekDate.getDay())) {
-                            nextWeekDate.setDate(nextWeekDate.getDate() + 1);
-                        }
-                        currentDate = nextWeekDate;
-                        continue; // Skip the automatic date increment below
-                    }
-                }
             }
             
-            // Move to next day
             currentDate.setDate(currentDate.getDate() + 1);
+            
+            // Check if we've completed a week
+            if (currentDate.getDay() === start.getDay() && currentDate > start) {
+                weeksCompleted++;
+            }
         }
         
-        // The end date should be the last lesson date found
-        const result = lastLessonDate ? lastLessonDate.toISOString().split('T')[0] : null;
-        console.log('End date calculation result:', {
-            endDate: result,
-            totalLessons,
-            totalWeeks: weeksCompleted
-        });
+        // Go back one day since we went past the target
+        currentDate.setDate(currentDate.getDate() - 1);
         
-        return result;
+        return currentDate.toISOString().split('T')[0];
     };
 
     const handleChange = (e) => {
@@ -315,7 +270,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
             isOpen={isOpen} 
             onClose={onClose} 
             title={groupToEdit ? "Edit Group" : "Add New Group"}
-            headerStyle={{ backgroundColor: '#2563EB' }}
+            headerStyle={{ backgroundColor: '#16A34A' }}
         >
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
@@ -385,9 +340,9 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
                         <div className="flex flex-wrap gap-2 mb-4">
-                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
                                 <button type="button" key={day} onClick={() => toggleScheduleDay(day)} className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${formData.schedule.days.includes(day) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                                    {day}
+                                    {day.substring(0, 3)}
                                 </button>
                             ))}
                         </div>
@@ -400,7 +355,7 @@ const GroupFormModal = ({ isOpen, onClose, groupToEdit }) => {
                 </div>
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Group'}</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Group'}</button>
                 </div>
             </form>
         </Modal>

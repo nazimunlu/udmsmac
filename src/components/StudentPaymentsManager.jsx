@@ -17,7 +17,22 @@ const StudentPaymentsManager = ({ students, payments, onPaymentRecorded }) => {
     const processedStudents = useMemo(() => {
         return students.map(student => {
             const studentPayments = payments.filter(p => p.studentId === student.id);
-            const installments = student.installments || [];
+            
+            // Parse installments if it's a string, otherwise use as is
+            let installments = student.installments;
+            if (typeof installments === 'string') {
+                try {
+                    installments = JSON.parse(installments);
+                } catch (error) {
+                    console.error('Error parsing installments for student:', student.id, error);
+                    installments = [];
+                }
+            }
+            
+            // Ensure installments is an array
+            if (!Array.isArray(installments)) {
+                installments = [];
+            }
             
             const totalOwed = installments.reduce((sum, inst) => sum + inst.amount, 0);
             const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);

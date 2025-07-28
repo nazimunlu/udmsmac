@@ -18,9 +18,10 @@ import { generateAllLessons, generateGroupLessons, generateTutoringLessons } fro
 import CustomDatePicker from './CustomDatePicker';
 import CustomTimePicker from './CustomTimePicker';
 import Modal from './Modal';
+import { calculateLessonsWithinRange } from '../utils/lessonCalculator';
 
 const DashboardModule = ({ setActiveModule }) => {
-    const { students, groups, lessons, events, payments, fetchData } = useAppContext();
+    const { students, groups, lessons, events, transactions, fetchData } = useAppContext();
     const { showNotification } = useNotification();
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -197,7 +198,13 @@ const DashboardModule = ({ setActiveModule }) => {
             return item.effectiveEndTime >= now.getTime() && item.startTime.getTime() <= todayEnd.getTime();
         }).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
 
-        setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday' || item.type === 'lesson') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => a.startTime.getTime() - b.startTime.getTime()));
+        setUpcomingEvents(eventsWithEndTimes.filter(item => (item.type === 'event' || item.type === 'birthday' || item.type === 'lesson') && item.startTime.getTime() >= now.getTime() && item.startTime.getTime() <= now.getTime() + 30 * 24 * 60 * 60 * 1000).sort((a,b) => {
+            // Put all-day events at the bottom
+            if (a.isAllDay && !b.isAllDay) return 1;
+            if (!a.isAllDay && b.isAllDay) return -1;
+            // For non-all-day events, sort by start time
+            return a.startTime.getTime() - b.startTime.getTime();
+        }));
 
         const filteredWeekEvents = eventsWithEndTimes.filter(item => {
             // Include events that start within the week OR end within the week
@@ -211,7 +218,23 @@ const DashboardModule = ({ setActiveModule }) => {
 
         const paymentsDue = [];
         (students || []).forEach(student => {
-            const overdueInstallments = student.installments?.filter(
+            // Parse installments if it's a string, otherwise use as is
+            let installments = student.installments;
+            if (typeof installments === 'string') {
+                try {
+                    installments = JSON.parse(installments);
+                } catch (error) {
+                    console.error('Error parsing installments for student:', student.id, error);
+                    installments = [];
+                }
+            }
+            
+            // Ensure installments is an array
+            if (!Array.isArray(installments)) {
+                installments = [];
+            }
+
+            const overdueInstallments = installments.filter(
                 inst => inst.status === 'Unpaid' && new Date(inst.dueDate) <= now
             );
 
@@ -232,7 +255,7 @@ const DashboardModule = ({ setActiveModule }) => {
         });
         setDuePayments(paymentsDue);
 
-    }, [students, groups, lessons, events, payments]);
+    }, [students, groups, lessons, events, transactions]);
     
     const EventIcon = ({type, color, category}) => {
         const iconMap = {
@@ -580,9 +603,7 @@ const DashboardModule = ({ setActiveModule }) => {
 
             // Generate lessons for selected groups
             for (const group of selectedGroupsData) {
-                const endDate = lessonGenerationData.useIndividualEndDates && group.endDate 
-                    ? group.endDate 
-                    : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 3 months from now
+                const endDate = group.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 
                 const lessons = generateGroupLessons(
                     group,
@@ -935,9 +956,7 @@ const DashboardModule = ({ setActiveModule }) => {
 
             // Generate lessons for selected groups
             for (const group of selectedGroupsData) {
-                const endDate = lessonGenerationData.useIndividualEndDates && group.endDate 
-                    ? group.endDate 
-                    : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 3 months from now
+                const endDate = group.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 
                 const lessons = generateGroupLessons(
                     group,
@@ -997,6 +1016,35 @@ const DashboardModule = ({ setActiveModule }) => {
         }
     };
 
+    // Lesson warning calculations
+    const getOverdueLessons = () => {
+        const now = new Date();
+        return lessons?.filter(lesson => {
+            const lessonDateTime = new Date(`${lesson.lessonDate}T${lesson.startTime || '09:00'}`);
+            const lessonEndDateTime = new Date(`${lesson.lessonDate}T${lesson.endTime || '10:00'}`);
+            return lessonEndDateTime < now && lesson.status === 'Complete' && (!lesson.attendance || Object.keys(lesson.attendance).length === 0);
+        }) || [];
+    };
+
+    const getTodayLessons = () => {
+        const now = new Date();
+        const today = new Date().toISOString().split('T')[0];
+        return lessons?.filter(lesson => {
+            const lessonDate = new Date(lesson.lessonDate).toISOString().split('T')[0];
+            const lessonEndDateTime = new Date(`${lesson.lessonDate}T${lesson.endTime || '10:00'}`);
+            return lessonDate === today && lessonEndDateTime < now && lesson.status === 'Complete' && (!lesson.attendance || Object.keys(lesson.attendance).length === 0);
+        }) || [];
+    };
+
+    const getUpcomingLessons = () => {
+        const now = new Date();
+        const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        return lessons?.filter(lesson => {
+            const lessonDateTime = new Date(`${lesson.lessonDate}T${lesson.startTime || '09:00'}`);
+            return lessonDateTime > now && lessonDateTime <= next24Hours && lesson.status === 'Incomplete';
+        }) || [];
+    };
+
     return (
         <div className="relative p-4 md:p-8 bg-gray-50 rounded-lg shadow-lg">
             {/* Simple Premium Header */}
@@ -1011,137 +1059,150 @@ const DashboardModule = ({ setActiveModule }) => {
                             <p className="text-gray-600 text-sm lg:text-base">Welcome, Nazım!</p>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                        <div className="hidden lg:flex items-center space-x-2 text-gray-600">
-                            <div className="text-sm">
-                                <div>{currentTime.toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                                <div className="font-mono font-semibold">{currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
-                            </div>
+                    <div className="hidden lg:flex items-center space-x-6 text-gray-700">
+                        <div className="text-right">
+                            <div className="text-xl font-bold text-gray-900">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
+                        </div>
+                        <div className="w-px h-8 bg-gray-300"></div>
+                        <div className="text-right">
+                            <div className="text-lg font-bold text-gray-900">{currentTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</div>
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-1">{currentTime.toLocaleDateString('en-US', { weekday: 'long' })}</div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('students')}>
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.STUDENTS} className="w-7 h-7 text-white" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+                 <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('students')}>
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.STUDENTS} className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">{students.length}</h3>
-                    <p className="text-sm font-medium text-blue-700">Total Students</p>
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{students.length}</h3>
+                    <p className="text-xs md:text-sm font-medium text-blue-700">Total Students</p>
                 </div>
-                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('groups')}>
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.GROUPS} className="w-7 h-7 text-white"/>
+                 <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveModule('groups')}>
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.GROUPS} className="w-5 h-5 md:w-7 md:h-7 text-white"/>
                         </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">{groups.length}</h3>
-                    <p className="text-sm font-medium text-green-700">Total Groups</p>
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{groups.length}</h3>
+                    <p className="text-xs md:text-sm font-medium text-purple-700">Total Groups</p>
                 </div>
-                <button onClick={() => setIsStudentModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.ADD} className="w-7 h-7 text-white"/>
+                <button onClick={() => setIsStudentModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.ADD} className="w-5 h-5 md:w-7 md:h-7 text-white"/>
                         </div>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Enroll Student</h3>
-                    <p className="text-sm text-gray-600">Add a new student.</p>
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Enroll Student</h3>
+                    <p className="text-xs md:text-sm text-gray-600">Add a new student.</p>
                 </button>
-                <button onClick={() => setIsEventModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.CALENDAR} className="w-7 h-7 text-white"/>
+                <button onClick={() => setIsEventModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-green-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Icon path={ICONS.CALENDAR} className="w-5 h-5 md:w-7 md:h-7 text-white"/>
                         </div>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Log Event</h3>
-                    <p className="text-sm text-gray-600">Add a new event.</p>
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Log Event</h3>
+                    <p className="text-xs md:text-sm text-gray-600">Add a new event.</p>
                 </button>
-                <button onClick={() => setIsLessonGenerationModalOpen(true)} className="bg-white text-gray-900 rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 text-left group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Icon path={ICONS.LESSON} className="w-7 h-7 text-white"/>
-                        </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Generate Lessons</h3>
-                    <p className="text-sm text-gray-600">Auto-generate lessons.</p>
-                </button>
+
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
-                        <div className="flex items-center mb-6">
-                            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
-                                <Icon path={ICONS.CALENDAR} className="w-5 h-5 text-white" />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 mb-6">
+                <div className="space-y-4 md:space-y-6">
+                    <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 min-h-[300px] md:min-h-[350px] flex flex-col">
+                        <div className="flex items-center mb-4 md:mb-6 flex-shrink-0">
+                            <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
+                                <Icon path={ICONS.CALENDAR} className="w-4 h-4 md:w-5 md:h-5 text-white" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800">Today's Schedule</h3>
+                            <h3 className="text-lg md:text-xl font-bold text-gray-800">Today's Schedule</h3>
                         </div>
-                        {todaysSchedule.length > 0 ? (
-                            <ul className="space-y-4">
-                                {todaysSchedule.map(item => (
-                                    <li key={item.id} className="flex items-center justify-between group p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                                        <div className="flex items-center">
-                                            <EventIcon type={item.type} color={item.color} category={item.category} />
-                                            <div>
-                                                <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                                <p className="text-sm text-gray-600">
-                                                    {item.allDay ? 'All Day' : 
-                                                     item.type === 'lesson' ? 
-                                                        `${item.originalStartTime || '09:00'} - ${item.originalEndTime || '10:00'}` :
-                                                        item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Europe/Istanbul'})
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {(item.type === 'event' || item.type === 'lesson') && (
-                                            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-gray-500 text-center py-8">No events or lessons scheduled for today.</p>
-                        )}
+                        <div className="flex-1 overflow-y-auto">
+                            {todaysSchedule.length > 0 ? (
+                                <div className="max-h-80 overflow-y-auto">
+                                    <ul className="space-y-3 md:space-y-4">
+                                        {todaysSchedule.map(item => (
+                                            <li key={item.id} className="flex items-center justify-between group p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-center min-w-0 flex-1">
+                                                    <EventIcon type={item.type} color={item.color} category={item.category} />
+                                                    <div className="min-w-0 flex-1 ml-3">
+                                                        <p className="font-medium text-gray-800 text-sm md:text-base truncate">{item.eventName} {getTimeRemaining(item) && <span className="text-xs md:text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                                        <p className="text-xs md:text-sm text-gray-600">
+                                                            {item.allDay ? 'All Day' : 
+                                                             item.type === 'lesson' ? 
+                                                                `${item.originalStartTime || '09:00'} - ${item.originalEndTime || '10:00'}` :
+                                                                item.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Europe/Istanbul'})
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {(item.type === 'event' || item.type === 'lesson') && (
+                                                    <div className="flex space-x-1 md:space-x-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                        <button onClick={() => handleEditItem(item)} className="p-1 md:p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-4 h-4 md:w-5 md:h-5" /></button>
+                                                        <button onClick={() => openDeleteConfirmation(item)} className="p-1 md:p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.TRASH} className="w-4 h-4 md:w-5 md:h-5" /></button>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center flex-1">
+                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                        <Icon path={ICONS.CALENDAR} className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
+                                    </div>
+                                    <p className="text-gray-500 text-sm md:text-base">No events or lessons scheduled for today.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
-                        <div className="flex items-center mb-6">
-                            <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
-                                <Icon path={ICONS.CLOCK} className="w-5 h-5 text-white" />
+                    <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 min-h-[300px] md:min-h-[350px] flex flex-col">
+                        <div className="flex items-center mb-4 md:mb-6 flex-shrink-0">
+                            <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-sm mr-3">
+                                <Icon path={ICONS.CLOCK} className="w-4 h-4 md:w-5 md:h-5 text-white" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800">Upcoming Events</h3>
+                            <h3 className="text-lg md:text-xl font-bold text-gray-800">Upcoming Events</h3>
                         </div>
-                        {upcomingEvents.length > 0 ? (
-                            <ul className="space-y-4">
-                                {upcomingEvents.slice(0, 5).map((item, index) => (
-                                    <li key={item.id} className={`p-3 rounded-xl flex items-center justify-between group transition-colors ${index === 0 ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'}`}>
-                                        <div className="flex items-center">
-                                            <EventIcon type={item.type} color={item.color} category={item.category} />
-                                            <div>
-                                                <p className="font-medium text-gray-800">{item.eventName} {getTimeRemaining(item) && <span className="text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
-                                                <p className="text-sm text-gray-600">{formatDate(item.startTime)}</p>
-                                            </div>
-                                        </div>
-                                        {(item.type === 'event' || item.type === 'lesson') && (
-                                            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-5 h-5" /></button>
-                                                <button onClick={() => openDeleteConfirmation(item)} className="p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.DELETE} className="w-5 h-5" /></button>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-gray-500 text-center py-8">No upcoming events.</p>
-                        )}
+                        <div className="flex-1 overflow-y-auto">
+                            {upcomingEvents.length > 0 ? (
+                                <div className="max-h-80 overflow-y-auto">
+                                    <ul className="space-y-3 md:space-y-4">
+                                        {upcomingEvents.map((item, index) => (
+                                            <li key={item.id} className={`p-3 rounded-xl flex items-center justify-between group transition-colors ${index === 0 ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'}`}>
+                                                <div className="flex items-center min-w-0 flex-1">
+                                                    <EventIcon type={item.type} color={item.color} category={item.category} />
+                                                    <div className="min-w-0 flex-1 ml-3">
+                                                        <p className="font-medium text-gray-800 text-sm md:text-base truncate">{item.eventName} {getTimeRemaining(item) && <span className="text-xs md:text-sm text-gray-500">({getTimeRemaining(item)})</span>}</p>
+                                                        <p className="text-xs md:text-sm text-gray-600">{formatDate(item.startTime)}</p>
+                                                    </div>
+                                                </div>
+                                                {(item.type === 'event' || item.type === 'lesson') && (
+                                                    <div className="flex space-x-1 md:space-x-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                        <button onClick={() => handleEditItem(item)} className="p-1 md:p-2 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition-colors"><Icon path={ICONS.EDIT} className="w-4 h-4 md:w-5 md:h-5" /></button>
+                                                        <button onClick={() => openDeleteConfirmation(item)} className="p-1 md:p-2 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50 transition-colors"><Icon path={ICONS.TRASH} className="w-4 h-4 md:w-5 md:h-5" /></button>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center flex-1">
+                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                        <Icon path={ICONS.CLOCK} className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
+                                    </div>
+                                    <p className="text-gray-500 text-sm md:text-base">No upcoming events.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-                <div className="lg:col-span-1 space-y-6">
+                <div className="min-h-[600px] md:min-h-[700px]">
                     <TodoModule />
                 </div>
             </div>
@@ -1154,6 +1215,66 @@ const DashboardModule = ({ setActiveModule }) => {
                     </div>
                     <h3 className="text-xl font-bold text-gray-800">Important Notifications</h3>
                 </div>
+                
+                {/* Lesson Warnings */}
+                {(() => {
+                    const overdueLessons = getOverdueLessons();
+                    const todayLessons = getTodayLessons();
+                    
+                    if (overdueLessons.length > 0 || todayLessons.length > 0) {
+                        return (
+                            <div className="mb-6">
+                                <h4 className="font-semibold text-red-800 mb-3 flex items-center">
+                                    <Icon path={ICONS.WARNING} className="w-5 h-5 mr-2" />
+                                    Lesson Attendance Required
+                                </h4>
+                                <ul className="space-y-3">
+                                    {overdueLessons.length > 0 && (
+                                        <li className="flex items-center justify-between group p-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+                                            <div className="flex items-center">
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-red-500 shadow-sm">
+                                                    <Icon path={ICONS.CLOCK} className="w-4 h-4 text-white"/>
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-red-800">{overdueLessons.length} completed lesson(s) missing attendance</p>
+                                                    <p className="text-sm text-red-600">Need immediate attention</p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => setActiveModule('groups')}
+                                                className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                                            >
+                                                View
+                                            </button>
+                                        </li>
+                                    )}
+                                    {todayLessons.length > 0 && (
+                                        <li className="flex items-center justify-between group p-3 rounded-xl bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-colors">
+                                            <div className="flex items-center">
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 bg-orange-500 shadow-sm">
+                                                    <Icon path={ICONS.CALENDAR} className="w-4 h-4 text-white"/>
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-orange-800">{todayLessons.length} completed lesson(s) from today missing attendance</p>
+                                                    <p className="text-sm text-orange-600">Need attendance logging</p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => setActiveModule('groups')}
+                                                className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                                            >
+                                                View
+                                            </button>
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
+
+                {/* Payment Notifications */}
                 {duePayments.length > 0 ? (
                     <ul className="space-y-4">
                         {duePayments.map(notification => (
@@ -1376,7 +1497,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                         disabled={lessons.length === 0 || isDeletingAllLessons}
                                         className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                     >
-                                        <Icon path={ICONS.DELETE} className="w-4 h-4 mr-2"/>
+                                        <Icon path={ICONS.TRASH} className="w-4 h-4 mr-2"/>
                                         {isDeletingAllLessons ? 'Deleting...' : `Delete All Lessons (${lessons.length})`}
                                     </button>
                                     <button 
@@ -1435,16 +1556,14 @@ const DashboardModule = ({ setActiveModule }) => {
 
                                         // Calculate lessons for selected groups
                                         for (const group of selectedGroupsData) {
-                                            const endDate = lessonGenerationData.useIndividualEndDates && group.endDate 
-                                                ? group.endDate 
-                                                : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 3 months from now
+                                            const endDate = group.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                                             
-                                            const lessons = generateGroupLessons(
-                                                group,
-                                                group.startDate, // Start from the group's actual start date
-                                                endDate
+                                            const lessonCount = calculateLessonsWithinRange(
+                                                group.startDate,
+                                                endDate,
+                                                group.schedule.days
                                             );
-                                            totalLessons += lessons.length;
+                                            totalLessons += lessonCount;
                                         }
 
                                         // Calculate lessons for selected tutoring students
@@ -1453,12 +1572,12 @@ const DashboardModule = ({ setActiveModule }) => {
                                                 ? student.tutoringDetails.endDate 
                                                 : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 3 months from now
                                             
-                                            const lessons = generateTutoringLessons(
-                                                student,
-                                                student.enrollmentDate, // Start from the student's actual enrollment date
-                                                endDate
+                                            const lessonCount = calculateLessonsWithinRange(
+                                                student.enrollmentDate,
+                                                endDate,
+                                                student.tutoringDetails.schedule.days
                                             );
-                                            totalLessons += lessons.length;
+                                            totalLessons += lessonCount;
                                         }
 
                                         return totalLessons;
@@ -1951,7 +2070,7 @@ const DashboardModule = ({ setActiveModule }) => {
                                 </>
                             ) : (
                                 <>
-                                    <Icon path={ICONS.DELETE} className="w-4 h-4" />
+                                    <Icon path={ICONS.TRASH} className="w-4 h-4" />
                                     <span>Delete Selected Lessons</span>
                                 </>
                             )}

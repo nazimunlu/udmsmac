@@ -12,9 +12,9 @@ const CustomTimePicker = ({ label, value, onChange, name, options }) => {
     // Use provided options or fall back to default time options
     const timeOptions = options || (() => {
         const defaultOptions = [];
-        for (let h = 8; h <= 23; h++) {
-            for (let m = 0; m < 60; m += 30) {
-                if (h === 8 && m === 0) continue; // Skip 8:00
+    for (let h = 8; h <= 23; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            if (h === 8 && m === 0) continue; // Skip 8:00
                 defaultOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
             }
         }
@@ -51,7 +51,6 @@ const CustomTimePicker = ({ label, value, onChange, name, options }) => {
                 placeholder="Select Time"
                 readOnly 
                 onClick={() => setIsOpen(!isOpen)} 
-                icon={ICONS.CLOCK}
                 className="cursor-pointer"
                 ref={inputRef}
             />

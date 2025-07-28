@@ -18,6 +18,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
     const [groups, setGroups] = useState([]);
     const [files, setFiles] = useState({ nationalId: null, agreement: null });
 
+
     const defaultPricePerLesson = useMemo(() => {
         return settings && settings.pricePerLesson ? parseFloat(settings.pricePerLesson) : 800;
     }, [settings]);
@@ -197,45 +198,32 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
         setFormData(prev => ({ ...prev, tutoringDetails: { ...prev.tutoringDetails, schedule: { ...prev.tutoringDetails.schedule, days: newDays } } }));
     };
 
-    const handleFileChange = (e) => {
-        const { name, files: selectedFiles } = e.target;
-        console.log('File change detected:', { name, selectedFiles: selectedFiles[0]?.name });
-        if (selectedFiles[0]) {
-            setFiles(prev => ({ ...prev, [name]: selectedFiles[0] }));
-            console.log('Files state updated for:', name);
+    const handleFileChange = (e, name) => {
+        const selectedFiles = e.target.files;
+        if (selectedFiles && selectedFiles.length > 0) {
+            setFiles(prev => ({
+                ...prev,
+                [name]: selectedFiles[0]
+            }));
         }
     };
 
     const uploadFile = async (file, path) => {
         try {
-            console.log('Uploading file:', file.name, 'to path:', path);
-            
-            const { data, error } = await supabase.storage.from('udms').upload(path, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
+            const { error: uploadError } = await supabase.storage
+                .from('udms')
+                .upload(path, file);
 
-            if (error) {
-                console.error('Storage upload error:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    statusCode: error.statusCode,
-                    error: error.error
-                });
-                throw new Error(`Storage upload failed: ${error.message}`);
+            if (uploadError) {
+                throw uploadError;
             }
 
-            console.log('Upload successful, getting public URL for:', path);
-            const { data: urlData } = supabase.storage.from('udms').getPublicUrl(path);
-            
-            if (!urlData.publicUrl) {
-                throw new Error('Failed to get public URL for uploaded file');
-            }
-            
-            console.log('Public URL generated:', urlData.publicUrl);
+            const { data: urlData } = supabase.storage
+                .from('udms')
+                .getPublicUrl(path);
+
             return urlData.publicUrl;
         } catch (error) {
-            console.error('File upload failed:', error);
             throw error;
         }
     };
@@ -301,10 +289,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             let nationalIdUrl = '';
             let agreementUrl = '';
 
-            console.log('Files state at submission:', files);
-            console.log('National ID file:', files.nationalId);
-            console.log('Agreement file:', files.agreement);
-
             // Upload files in parallel for better performance
             const uploadPromises = [];
 
@@ -312,12 +296,10 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 const nationalIdFileName = generateFileName(formData.fullName, 'nationalId', files.nationalId.name);
                 const timestamp = Date.now();
                 const nationalIdPath = `students/${timestamp}_${nationalIdFileName}`;
-                console.log('Preparing National ID upload to path:', nationalIdPath);
                 
                 uploadPromises.push(
                     uploadFile(files.nationalId, nationalIdPath)
                         .then(url => {
-                            console.log('National ID upload completed:', url);
                             return { type: 'nationalId', url };
                         })
                 );
@@ -327,12 +309,10 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 const agreementFileName = generateFileName(formData.fullName, 'agreement', files.agreement.name);
                 const timestamp = Date.now();
                 const agreementPath = `students/${timestamp}_${agreementFileName}`;
-                console.log('Preparing Agreement upload to path:', agreementPath);
                 
                 uploadPromises.push(
                     uploadFile(files.agreement, agreementPath)
                         .then(url => {
-                            console.log('Agreement upload completed:', url);
                             return { type: 'agreement', url };
                         })
                 );
@@ -341,7 +321,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             // Wait for all uploads to complete
             if (uploadPromises.length > 0) {
                 setSubmitProgress(`Uploading ${uploadPromises.length} file${uploadPromises.length > 1 ? 's' : ''}...`);
-                console.log(`Starting ${uploadPromises.length} parallel file uploads...`);
                 const uploadResults = await Promise.all(uploadPromises);
                 
                 // Process results
@@ -352,7 +331,6 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                         agreementUrl = result.url;
                     }
                 });
-                console.log('All file uploads completed successfully');
             }
 
             // Prepare data to save
@@ -360,6 +338,8 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             
             // Generate installments for group students
             let finalInstallments = formData.installments;
+            let finalFeeDetails = formData.feeDetails;
+            
             if (!formData.isTutoring && formData.feeDetails.totalFee && formData.feeDetails.numberOfInstallments) {
                 // If editing and student already has installments, preserve them
                 if (studentToEdit && formData.installments && formData.installments.length > 0) {
@@ -383,10 +363,29 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                         };
                     });
                 }
+            } else if (formData.isTutoring) {
+                // Generate installments for tutoring students based on their schedule and payment frequency
+                const installments = generateInstallments(
+                    parseFloat(formData.tutoringDetails.pricePerLesson),
+                    formData.enrollmentDate,
+                    formData.tutoringDetails.endDate,
+                    formData.tutoringDetails.installmentFrequency,
+                    formData.tutoringDetails.schedule.days
+                );
+                finalInstallments = installments;
+                // Update fee details to reflect tutoring structure
+                finalFeeDetails = {
+                    totalFee: formData.tutoringDetails.totalCalculatedFee.toString(),
+                    numberOfInstallments: installments.length.toString()
+                };
             }
             
             const dataToSave = {
                 ...formData,
+                // Filter out empty date strings to prevent database errors
+                enrollmentDate: formData.enrollmentDate || null,
+                birthDate: formData.birthDate || null,
+                feeDetails: JSON.stringify(finalFeeDetails),
                 installments: JSON.stringify(finalInstallments),
                 documents: JSON.stringify({
                     nationalIdUrl,
@@ -401,12 +400,13 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             if (studentToEdit) {
                 await apiClient.update('students', studentToEdit.id, dataToSave);
                 showNotification('Student updated successfully!', 'success');
+                onClose();
             } else {
-                await apiClient.create('students', dataToSave);
+                const result = await apiClient.create('students', dataToSave);
                 showNotification('Student enrolled successfully!', 'success');
+                onClose();
             }
 
-            onClose();
             fetchData();
         } catch (error) {
             console.error('File upload error details:', error);
@@ -424,7 +424,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
             isOpen={isOpen} 
             onClose={onClose} 
             title={studentToEdit ? "Edit Student" : "Enroll New Student"}
-            headerStyle={{ backgroundColor: '#2563EB' }}
+            headerStyle={{ backgroundColor: '#4F46E5' }}
         >
             <form onSubmit={handleSubmit}>
                 <FormSection title="General Information">
@@ -469,7 +469,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                     <div className="sm:col-span-6 flex items-center justify-end pt-5">
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="isTutoring" checked={formData.isTutoring} onChange={handleChange} className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                             <span className="ml-3 text-sm font-medium text-gray-900">Is Tutoring Student?</span>
                         </label>
                     </div>
@@ -780,7 +780,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="nationalId" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
                                                 <span>{files.nationalId ? files.nationalId.name : (formData.documentNames?.nationalId || 'Upload a file')}</span>
-                                                <input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={handleFileChange} />
+                                                <input id="nationalId" name="nationalId" type="file" className="sr-only" onChange={(e) => handleFileChange(e, 'nationalId')} />
                                             </label>
                                             {!files.nationalId && !formData.documentNames?.nationalId && <p className="pl-1">or drag and drop</p>}
                                         </div>
@@ -796,7 +796,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                                         <div className="flex text-sm text-gray-600 justify-center">
                                             <label htmlFor="agreement" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
                                                 <span>{files.agreement ? files.agreement.name : (formData.documentNames?.agreement || 'Upload a file')}</span>
-                                                <input id="agreement" name="agreement" type="file" className="sr-only" onChange={handleFileChange} />
+                                                <input id="agreement" name="agreement" type="file" className="sr-only" onChange={(e) => handleFileChange(e, 'agreement')} />
                                             </label>
                                             {!files.agreement && !formData.documentNames?.agreement && <p className="pl-1">or drag and drop</p>}
                                         </div>
@@ -809,7 +809,7 @@ const StudentFormModal = ({ isOpen, onClose, studentToEdit }) => {
                 )}
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center space-x-2">
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center space-x-2">
                         {isSubmitting && <Icon path={ICONS.LOADING} className="w-4 h-4 animate-spin" />}
                         <span>
                             {isSubmitting ? (submitProgress || 'Saving...') : (studentToEdit ? 'Save Changes' : 'Enroll Student')}

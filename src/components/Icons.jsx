@@ -29,7 +29,6 @@ import {
     faSave,
     faCheck,
     faExclamationTriangle,
-    faExclamationCircle,
     faMoneyBillWave,
     faBriefcase,
     faUtensils,
@@ -37,7 +36,7 @@ import {
     faSignOutAlt,
     faWallet,
     faArrowLeft,
-    faExclamation,
+    faExclamationCircle,
     faCar,
     faBolt,
     faBullhorn,
@@ -82,7 +81,11 @@ import {
     faReceipt,
     faFileContract,
     faInbox,
-    faPaperPlane
+    faPaperPlane,
+    faUser,
+    faLock,
+    faSignInAlt,
+    faSync
 } from '@fortawesome/free-solid-svg-icons';
 
 export const Icon = ({ path, className = "" }) => {
@@ -114,6 +117,7 @@ export const ICONS = {
     SETTINGS: faCog,
     MENU: faBars,
     DELETE: faTrash,
+    TRASH: faTrash,
     EDIT: faEdit,
     ADD: faPlus,
     CLOSE: faTimes,
@@ -136,6 +140,7 @@ export const ICONS = {
     EXCLAMATION: faExclamationTriangle,
     INCOME: faMoneyBillWave,
     BUSINESS_EXPENSE: faBriefcase,
+    BRIEFCASE: faBriefcase,
     PERSONAL_EXPENSE: faUtensils,
     PROFIT: faChartLine,
     LOGOUT: faSignOutAlt,
@@ -160,7 +165,7 @@ export const ICONS = {
     MOBILE: faMobile,
     BOOK_OPEN: faBookOpen,
     MONEY_BILL_WAVE: faMoneyBillWave,
-    USER: faUserGraduate,
+    USER: faUser,
     USERS: faUsers,
     SEARCH: faSearch,
     BELL: faBell,
@@ -193,5 +198,10 @@ export const ICONS = {
     RECEIPT: faReceipt,
     FILE_CONTRACT: faFileContract,
     INBOX: faInbox,
-    PAPER_PLANE: faPaperPlane
+    PAPER_PLANE: faPaperPlane,
+    NOTIFICATION: faBell,
+    EMAIL: faEnvelope,
+    LOCK: faLock,
+    LOGIN: faSignInAlt,
+    REFRESH: faSync
 };

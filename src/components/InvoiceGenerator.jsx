@@ -46,16 +46,48 @@ const InvoiceGenerator = ({ isOpen, onClose, student, newlyPaidInstallment }) =>
                 if (newlyPaidInstallment) {
                     setSelectedInstallments([newlyPaidInstallment]);
                 } else {
+                    // Parse installments if it's a string, otherwise use as is
+                    let installments = studentToUse.installments;
+                    if (typeof installments === 'string') {
+                        try {
+                            installments = JSON.parse(installments);
+                        } catch (error) {
+                            console.error('Error parsing installments for student:', studentToUse.id, error);
+                            installments = [];
+                        }
+                    }
+                    
+                    // Ensure installments is an array
+                    if (!Array.isArray(installments)) {
+                        installments = [];
+                    }
+                    
                     // Auto-select all paid installments if no specific installment
-                    const paidInstallments = studentToUse.installments?.filter(inst => inst.status === 'Paid').map(inst => inst.number) || [];
+                    const paidInstallments = installments.filter(inst => inst.status === 'Paid').map(inst => inst.number) || [];
                     setSelectedInstallments(paidInstallments);
+                }
+                
+                // Parse installments for invoice data
+                let installments = studentToUse.installments;
+                if (typeof installments === 'string') {
+                    try {
+                        installments = JSON.parse(installments);
+                    } catch (error) {
+                        console.error('Error parsing installments for student:', studentToUse.id, error);
+                        installments = [];
+                    }
+                }
+                
+                // Ensure installments is an array
+                if (!Array.isArray(installments)) {
+                    installments = [];
                 }
                 
                 setInvoiceData(prev => ({
                     ...prev,
                     studentId: studentToUse.id,
                     invoiceNumber: `UDL-${Date.now()}`,
-                    items: studentToUse.installments?.filter(inst => inst.status === 'Paid').map(inst => ({
+                    items: installments.filter(inst => inst.status === 'Paid').map(inst => ({
                         description: `Taksit ${inst.number} - ${formatDate(new Date(inst.dueDate), 'dd/MM/yyyy')}`,
                         quantity: 1,
                         unitPrice: inst.amount,
@@ -195,7 +227,7 @@ const InvoiceGenerator = ({ isOpen, onClose, student, newlyPaidInstallment }) =>
                 .trim()
                 .replace(/\s+/g, '_');
             const invoiceNumber = invoiceData.invoiceNumber.replace(/[^a-zA-Z0-9]/g, '');
-            const filename = `${studentName}_Fatura_${invoiceNumber}.pdf`;
+            const filename = `${studentName}_Invoice_${invoiceNumber}.pdf`;
 
             const invoiceWindow = window.open('', '_blank');
             invoiceWindow.document.write(`
@@ -719,7 +751,7 @@ const InvoiceGenerator = ({ isOpen, onClose, student, newlyPaidInstallment }) =>
                                     onClick={() => removeItem(index)}
                                     className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                                 >
-                                    <Icon path={ICONS.DELETE} className="w-4 h-4" />
+                                    <Icon path={ICONS.TRASH} className="w-4 h-4" />
                                 </button>
             </div>
         </div>

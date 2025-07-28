@@ -36,7 +36,20 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
             if (student) {
                 setFormData(prev => ({ ...prev, studentId: student.id }));
                 setSelectedStudent(student);
-                setStudentInstallments(student.installments || []);
+                // Ensure installments is always an array
+                let installments = student.installments || [];
+                if (typeof installments === 'string') {
+                    try {
+                        installments = JSON.parse(installments);
+                    } catch (error) {
+                        console.error('Error parsing installments for student:', student.id, error);
+                        installments = [];
+                    }
+                }
+                if (!Array.isArray(installments)) {
+                    installments = [];
+                }
+                setStudentInstallments(installments);
             } else if (installment) {
                 setFormData(prev => ({ 
                     ...prev, 
@@ -46,7 +59,20 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                     description: `${installment.student.fullName} - Installment ${installment.number}`
                 }));
                 setSelectedStudent(installment.student);
-                setStudentInstallments(installment.student.installments || []);
+                // Ensure installments is always an array
+                let installments = installment.student.installments || [];
+                if (typeof installments === 'string') {
+                    try {
+                        installments = JSON.parse(installments);
+                    } catch (error) {
+                        console.error('Error parsing installments for student:', installment.student.id, error);
+                        installments = [];
+                    }
+                }
+                if (!Array.isArray(installments)) {
+                    installments = [];
+                }
+                setStudentInstallments(installments);
             } else {
                 setFormData({
                     studentId: '',
@@ -69,10 +95,23 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
         if (name === 'studentId') {
             const selectedStudentData = students.find(s => s.id === value);
             setSelectedStudent(selectedStudentData);
-            setStudentInstallments(selectedStudentData?.installments || []);
+            // Ensure installments is always an array
+            let installments = selectedStudentData?.installments || [];
+            if (typeof installments === 'string') {
+                try {
+                    installments = JSON.parse(installments);
+                } catch (error) {
+                    console.error('Error parsing installments for student:', selectedStudentData?.id, error);
+                    installments = [];
+                }
+            }
+            if (!Array.isArray(installments)) {
+                installments = [];
+            }
+            setStudentInstallments(installments);
         } else if (name === 'installmentNumber' && value) {
             // Auto-fill amount when installment is selected
-            const selectedInstallment = studentInstallments.find(inst => inst.number === parseInt(value));
+            const selectedInstallment = (studentInstallments || []).find(inst => inst.number === parseInt(value));
             if (selectedInstallment) {
                 setFormData(prev => ({ 
                     ...prev, 
@@ -93,7 +132,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
             
             // If installment is selected, use its amount
             if (formData.installmentNumber) {
-                const selectedInstallment = studentInstallments.find(inst => inst.number === parseInt(formData.installmentNumber));
+                const selectedInstallment = (studentInstallments || []).find(inst => inst.number === parseInt(formData.installmentNumber));
                 if (selectedInstallment) {
                     paymentAmount = selectedInstallment.amount;
                 }
@@ -124,7 +163,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
 
             // Update installment status if specific installment is being paid
             if (formData.installmentNumber && selectedStudent) {
-                const updatedInstallments = [...studentInstallments];
+                const updatedInstallments = [...(studentInstallments || [])];
                 const installmentIndex = updatedInstallments.findIndex(inst => inst.number === parseInt(formData.installmentNumber));
                 
                 if (installmentIndex !== -1) {
@@ -142,10 +181,10 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                 }
             } else if (selectedStudent) {
                 // For general payments, find the oldest unpaid installment and mark it as paid
-                const unpaidInstallments = studentInstallments.filter(inst => inst.status === 'Unpaid');
+                const unpaidInstallments = (studentInstallments || []).filter(inst => inst.status === 'Unpaid');
                 if (unpaidInstallments.length > 0) {
                     const oldestUnpaid = unpaidInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
-                    const updatedInstallments = [...studentInstallments];
+                    const updatedInstallments = [...(studentInstallments || [])];
                     const installmentIndex = updatedInstallments.findIndex(inst => inst.number === oldestUnpaid.number);
                     
                     if (installmentIndex !== -1) {
@@ -185,15 +224,18 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
     };
 
     const getUnpaidInstallments = () => {
-        return studentInstallments.filter(inst => inst.status === 'Unpaid');
+        if (!Array.isArray(studentInstallments)) return [];
+        return studentInstallments.filter(inst => inst && inst.status === 'Unpaid');
     };
 
     const getTotalOwed = () => {
-        return studentInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+        if (!Array.isArray(studentInstallments)) return 0;
+        return studentInstallments.reduce((sum, inst) => sum + (inst && inst.amount ? inst.amount : 0), 0);
     };
 
     const getTotalPaid = () => {
-        return studentInstallments.filter(inst => inst.status === 'Paid').reduce((sum, inst) => sum + inst.amount, 0);
+        if (!Array.isArray(studentInstallments)) return 0;
+        return studentInstallments.filter(inst => inst && inst.status === 'Paid').reduce((sum, inst) => sum + (inst && inst.amount ? inst.amount : 0), 0);
     };
 
     const getRemainingBalance = () => {
@@ -206,9 +248,9 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
     };
 
     const getSelectedInstallmentAmount = () => {
-        if (formData.installmentNumber) {
-            const selectedInstallment = studentInstallments.find(inst => inst.number === parseInt(formData.installmentNumber));
-            return selectedInstallment ? selectedInstallment.amount : 0;
+        if (formData.installmentNumber && Array.isArray(studentInstallments)) {
+            const selectedInstallment = studentInstallments.find(inst => inst && inst.number === parseInt(formData.installmentNumber));
+            return selectedInstallment && selectedInstallment.amount ? selectedInstallment.amount : 0;
         }
         return 0;
     };
@@ -268,7 +310,7 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                                 onChange={handleChange}
                             >
                                 <option value="">General payment</option>
-                                {getUnpaidInstallments().map(inst => (
+                                {(getUnpaidInstallments() || []).map(inst => (
                                     <option key={inst.number} value={inst.number}>
                                         Installment {inst.number} - {Math.round(inst.amount)} ₺ (Due: {new Date(inst.dueDate).toLocaleDateString()})
                                     </option>
@@ -337,8 +379,8 @@ const PaymentModal = ({ isOpen, onClose, student, installment, onPaymentRecorded
                     <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-semibold text-blue-800">Payment Recorded Successfully!</h3>
-                                <p className="text-blue-600">Would you like to generate an invoice for this payment?</p>
+                                <h3 className="text-lg font-semibold text-teal-800">Payment Recorded Successfully!</h3>
+                                <p className="text-teal-600">Would you like to generate an invoice for this payment?</p>
                             </div>
                             <Icon path={ICONS.SUCCESS} className="w-8 h-8 text-green-600" />
                         </div>

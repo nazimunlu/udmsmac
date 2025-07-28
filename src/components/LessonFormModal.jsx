@@ -59,11 +59,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
 
     // Debug useEffect to check if events and lessons are loaded
     useEffect(() => {
-        console.log('LessonFormModal - Data loaded:', {
-            lessonsCount: lessons.length,
-            eventsCount: events.length,
-            events: events.slice(0, 3).map(e => ({ id: e.id, name: e.eventName, start: e.startTime, end: e.endTime }))
-        });
+        // Data loaded successfully
     }, [lessons, events]);
 
     const handleFileChange = (e) => {
@@ -94,14 +90,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
     const checkForOverlappingItems = (startDateTime, endDateTime, currentLessonId = null) => {
         const conflicts = [];
         
-        console.log('Checking for overlaps:', {
-            startDateTime: startDateTime.toISOString(),
-            endDateTime: endDateTime.toISOString(),
-            currentLessonId,
-            totalLessons: lessons.length,
-            totalEvents: events.length
-        });
-        
         // Check for overlapping lessons
         lessons.forEach(lesson => {
             if (currentLessonId && lesson.id === currentLessonId) return;
@@ -110,7 +98,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
             const lessonEndTime = new Date(`${lesson.lessonDate}T${lesson.endTime || '10:00'}:00`);
             
             if (startDateTime < lessonEndTime && endDateTime > lessonStartTime) {
-                console.log('Found overlapping lesson:', lesson);
                 conflicts.push({ 
                     ...lesson, 
                     type: 'lesson', 
@@ -133,17 +120,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
             
             // Only check for overlaps if they're on the same day
             if (lessonDate.toDateString() === eventDate.toDateString()) {
-                console.log('Checking event on same day:', {
-                    eventName: event.eventName,
-                    eventStart: eventStart.toISOString(),
-                    eventEnd: eventEnd.toISOString(),
-                    lessonStart: startDateTime.toISOString(),
-                    lessonEnd: endDateTime.toISOString(),
-                    overlaps: startDateTime < eventEnd && endDateTime > eventStart
-                });
-                
                 if (startDateTime < eventEnd && endDateTime > eventStart) {
-                    console.log('Found overlapping event:', event);
                     conflicts.push({ 
                         ...event, 
                         type: 'event', 
@@ -154,7 +131,6 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
             }
         });
         
-        console.log('Total conflicts found:', conflicts.length);
         return conflicts;
     };
 
@@ -292,7 +268,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
             isOpen={isOpen} 
             onClose={onClose} 
             title={lessonToEdit ? "Edit Lesson" : "Log New Lesson"}
-            headerStyle={{ backgroundColor: '#2563EB' }}
+            headerStyle={{ backgroundColor: '#0D9488' }}
         >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Lesson Details">
@@ -400,7 +376,7 @@ const LessonFormModal = ({ isOpen, onClose, group, lessonToEdit, student, onLess
 
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Creating Lesson...' : 'Save Lesson'}</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Lesson'}</button>
                 </div>
             </form>
         </Modal>

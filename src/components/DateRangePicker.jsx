@@ -69,34 +69,39 @@ const DateRangePicker = ({ onDateChange, initialRange }) => {
             
             // Helper function to compare dates by date only (ignoring time)
             const isSameDate = (date1, date2) => {
+                if (!date1 || !date2) return false;
                 return date1.getFullYear() === date2.getFullYear() &&
                        date1.getMonth() === date2.getMonth() &&
                        date1.getDate() === date2.getDate();
             };
 
             // Check which preset matches the initial range
-            if (isSameDate(initialRange.startDate, thisMonthStart) && 
-                isSameDate(initialRange.endDate, thisMonthEnd)) {
-                setRange('this-month');
-            } else if (isSameDate(initialRange.startDate, last3MonthsStart) && 
-                       isSameDate(initialRange.endDate, last3MonthsEnd)) {
-                setRange('last-3-months');
-            } else if (isSameDate(initialRange.startDate, last6MonthsStart) && 
-                       isSameDate(initialRange.endDate, last6MonthsEnd)) {
-                setRange('last-6-months');
-            } else if (isSameDate(initialRange.startDate, ytdStart) && 
-                       isSameDate(initialRange.endDate, ytdEnd)) {
-                setRange('ytd');
-            } else if (isSameDate(initialRange.startDate, lastYearStart) && 
-                       isSameDate(initialRange.endDate, lastYearEnd)) {
-                setRange('last-year');
+            if (initialRange?.startDate && initialRange?.endDate) {
+                if (isSameDate(initialRange.startDate, thisMonthStart) && 
+                    isSameDate(initialRange.endDate, thisMonthEnd)) {
+                    setRange('this-month');
+                } else if (isSameDate(initialRange.startDate, last3MonthsStart) && 
+                           isSameDate(initialRange.endDate, last3MonthsEnd)) {
+                    setRange('last-3-months');
+                } else if (isSameDate(initialRange.startDate, last6MonthsStart) && 
+                           isSameDate(initialRange.endDate, last6MonthsEnd)) {
+                    setRange('last-6-months');
+                } else if (isSameDate(initialRange.startDate, ytdStart) && 
+                           isSameDate(initialRange.endDate, ytdEnd)) {
+                    setRange('ytd');
+                } else if (isSameDate(initialRange.startDate, lastYearStart) && 
+                           isSameDate(initialRange.endDate, lastYearEnd)) {
+                    setRange('last-year');
+                } else {
+                    setRange('custom');
+                    setCustomStart(format(initialRange.startDate, 'yyyy-MM-dd'));
+                    setCustomEnd(format(initialRange.endDate, 'yyyy-MM-dd'));
+                }
             } else {
-                setRange('custom');
-                setCustomStart(format(initialRange.startDate, 'yyyy-MM-dd'));
-                setCustomEnd(format(initialRange.endDate, 'yyyy-MM-dd'));
+                handlePresetChange('this-month');
             }
         } else {
-            handlePresetChange('this-month');
+        handlePresetChange('this-month');
         }
     }, [initialRange]);
 

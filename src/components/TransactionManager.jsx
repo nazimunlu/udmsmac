@@ -5,6 +5,7 @@ import ConfirmationModal from './ConfirmationModal';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import { useNotification } from '../contexts/NotificationContext';
 import apiClient from '../apiClient';
+import { openDocument, isValidDocumentUrl } from '../utils/documentUtils';
 
 const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) => {
     const { showNotification } = useNotification();
@@ -172,10 +173,10 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
         const colorMap = {
             'income-group': 'bg-green-100 text-green-800',
             'income-tutoring': 'bg-blue-100 text-blue-800',
-            'expense-business': 'bg-red-100 text-red-800',
-            'expense-personal': 'bg-orange-100 text-orange-800',
-            'personal': 'bg-orange-100 text-orange-800',
-            'business': 'bg-red-100 text-red-800',
+            'expense-business': 'bg-blue-100 text-blue-800',
+            'expense-personal': 'bg-purple-100 text-purple-800',
+            'personal': 'bg-purple-100 text-purple-800',
+            'business': 'bg-blue-100 text-blue-800',
             'group': 'bg-green-100 text-green-800',
             'tutoring': 'bg-blue-100 text-blue-800',
             'income': 'bg-green-100 text-green-800',
@@ -208,26 +209,24 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
     };
 
     const getCategoryColor = (category) => {
-        const colorMap = {
-            'Rent': 'bg-red-100 text-red-800',
-            'Food': 'bg-orange-100 text-orange-800',
-            'Transportation': 'bg-blue-100 text-blue-800',
-            'Utilities': 'bg-yellow-100 text-yellow-800',
-            'Marketing': 'bg-purple-100 text-purple-800',
-            'Equipment': 'bg-green-100 text-green-800',
-            'Salaries': 'bg-indigo-100 text-indigo-800',
-            'Insurance': 'bg-pink-100 text-pink-800',
-            'Taxes': 'bg-gray-100 text-gray-800',
-            'Entertainment': 'bg-purple-100 text-purple-800',
-            'Shopping': 'bg-pink-100 text-pink-800',
-            'Healthcare': 'bg-red-100 text-red-800',
-            'Education': 'bg-green-100 text-green-800',
-            'Housing': 'bg-indigo-100 text-indigo-800',
-            'Travel': 'bg-teal-100 text-teal-800',
-            'Student Payment': 'bg-green-100 text-green-800',
-            'Other': 'bg-gray-100 text-gray-800'
-        };
-        return colorMap[category] || 'bg-gray-100 text-gray-800';
+        // Business expense categories (blue)
+        const businessCategories = ['Rent', 'Marketing', 'Equipment', 'Salaries', 'Insurance', 'Taxes', 'Materials', 'Bills'];
+        // Personal expense categories (purple)
+        const personalCategories = ['Food', 'Entertainment', 'Shopping', 'Healthcare', 'Housing', 'Travel'];
+        // Income categories (green)
+        const incomeCategories = ['Student Payment'];
+        // Neutral categories (gray)
+        const neutralCategories = ['Transportation', 'Utilities', 'Education', 'Other'];
+        
+        if (businessCategories.includes(category)) {
+            return 'bg-blue-100 text-blue-800';
+        } else if (personalCategories.includes(category)) {
+            return 'bg-purple-100 text-purple-800';
+        } else if (incomeCategories.includes(category)) {
+            return 'bg-green-100 text-green-800';
+        } else {
+            return 'bg-gray-100 text-gray-800';
+        }
     };
 
     const getTypeLabel = (type) => {
@@ -359,8 +358,87 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
 
             {/* Transactions List */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
+                {/* Mobile Card View */}
+                <div className="block sm:hidden">
+                    {filteredTransactions.map((transaction) => (
+                        <div key={transaction.id} className="border-b border-gray-200 p-4 hover:bg-gray-50">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <h3 className="text-sm font-medium text-gray-900 truncate mb-1">{transaction.description}</h3>
+                                    {transaction.invoiceName && (
+                                        <div className="text-xs text-gray-500">
+                                            <Icon path={ICONS.DOCUMENTS} className="w-3 h-3 inline mr-1" />
+                                            {transaction.invoiceUrl ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        console.log('Document clicked:', transaction.invoiceName, 'URL:', transaction.invoiceUrl);
+                                                        if (isValidDocumentUrl(transaction.invoiceUrl)) {
+                                                            openDocument(transaction.invoiceUrl, transaction.invoiceName);
+                                                        } else {
+                                                            showNotification('Invalid document URL', 'error');
+                                                        }
+                                                    }}
+                                                    className="cursor-pointer hover:underline text-blue-600 hover:text-blue-800 bg-transparent border-none p-0 text-left text-xs"
+                                                    title="Click to open document"
+                                                >
+                                                    {transaction.invoiceName}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-400">{transaction.invoiceName}</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <span className={`font-semibold text-sm ${transaction.isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                                        {transaction.isIncome ? '+' : '-'}{transaction.amount.toFixed(2)} ₺
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(transaction.type)}`}>
+                                        <Icon path={getTypeIcon(transaction.type)} className="w-3 h-3 mr-1" />
+                                        {getTypeLabel(transaction.type)}
+                                    </span>
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(transaction.category)}`}>
+                                        <Icon path={getCategoryIcon(transaction.category)} className="w-3 h-3 mr-1" />
+                                        {transaction.category}
+                                    </span>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {format(new Date(transaction.transactionDate), 'MMM dd, yyyy')}
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-end gap-2">
+                                <button
+                                    onClick={() => handleEdit(transaction)}
+                                    className="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                                    title="View transaction details"
+                                >
+                                    <Icon path={ICONS.INFO} className="w-3 h-3 mr-1" />
+                                    Details
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(transaction)}
+                                    className="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                    title="Delete transaction"
+                                >
+                                    <Icon path={ICONS.TRASH} className="w-3 h-3 mr-1" />
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                {/* Desktop Table View */}
+                <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full min-w-full">
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
@@ -379,7 +457,25 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                                         {transaction.invoiceName && (
                                             <div className="text-sm text-gray-500">
                                                 <Icon path={ICONS.DOCUMENTS} className="w-3 h-3 inline mr-1" />
-                                                {transaction.invoiceName}
+                                                {transaction.invoiceUrl ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            if (isValidDocumentUrl(transaction.invoiceUrl)) {
+                                                                openDocument(transaction.invoiceUrl, transaction.invoiceName);
+                                                            } else {
+                                                                showNotification('Invalid document URL', 'error');
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer hover:underline text-blue-600 hover:text-blue-800 bg-transparent border-none p-0 text-left"
+                                                        title="Click to open document"
+                                                    >
+                                                        {transaction.invoiceName}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-400">{transaction.invoiceName}</span>
+                                                )}
                                             </div>
                                         )}
                                     </td>
@@ -418,7 +514,7 @@ const TransactionManager = ({ transactions, dateRange, onTransactionUpdated }) =
                                                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                                                 title="Delete transaction"
                                             >
-                                                <Icon path={ICONS.DELETE} className="w-3 h-3 mr-1" />
+                                                <Icon path={ICONS.TRASH} className="w-3 h-3 mr-1" />
                                                 Delete
                                             </button>
                                         </div>

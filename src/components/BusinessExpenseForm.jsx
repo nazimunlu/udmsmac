@@ -26,16 +26,16 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const businessCategories = [
-        { value: 'Rent', label: 'Rent & Utilities', icon: ICONS.BUILDING, color: 'bg-red-100 text-red-800' },
+        { value: 'Rent', label: 'Rent & Utilities', icon: ICONS.BUILDING, color: 'bg-blue-100 text-blue-800' },
         { value: 'Materials', label: 'Teaching Materials', icon: ICONS.BOOK_OPEN, color: 'bg-blue-100 text-blue-800' },
-        { value: 'Bills', label: 'Utility Bills', icon: ICONS.BOLT, color: 'bg-yellow-100 text-yellow-800' },
-        { value: 'Salaries', label: 'Employee Salaries', icon: ICONS.USERS, color: 'bg-green-100 text-green-800' },
-        { value: 'Marketing', label: 'Marketing & Advertising', icon: ICONS.BULLHORN, color: 'bg-purple-100 text-purple-800' },
-        { value: 'Equipment', label: 'Equipment & Technology', icon: ICONS.TOOLS, color: 'bg-indigo-100 text-indigo-800' },
-        { value: 'Insurance', label: 'Insurance', icon: ICONS.SHIELD, color: 'bg-pink-100 text-pink-800' },
-        { value: 'Taxes', label: 'Taxes & Licenses', icon: ICONS.CALCULATOR, color: 'bg-gray-100 text-gray-800' },
-        { value: 'Travel', label: 'Travel & Transportation', icon: ICONS.CAR, color: 'bg-orange-100 text-orange-800' },
-        { value: 'Other', label: 'Other Business Expenses', icon: ICONS.INFO, color: 'bg-gray-100 text-gray-800' }
+        { value: 'Bills', label: 'Utility Bills', icon: ICONS.BOLT, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Salaries', label: 'Employee Salaries', icon: ICONS.USERS, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Marketing', label: 'Marketing & Advertising', icon: ICONS.BULLHORN, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Equipment', label: 'Equipment & Technology', icon: ICONS.TOOLS, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Insurance', label: 'Insurance', icon: ICONS.SHIELD, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Taxes', label: 'Taxes & Licenses', icon: ICONS.CALCULATOR, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Travel', label: 'Travel & Transportation', icon: ICONS.CAR, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Other', label: 'Other Business Expenses', icon: ICONS.INFO, color: 'bg-blue-100 text-blue-800' }
     ];
 
 
@@ -102,6 +102,8 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
 
     const uploadFile = async (file, path) => {
         try {
+            console.log('📤 Starting file upload...', { path, fileName: file.name });
+            
             const { data, error } = await supabase.storage
                 .from('udms')
                 .upload(path, file, {
@@ -110,19 +112,45 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
                 });
 
             if (error) {
-                console.error('Storage upload error:', error);
-                throw new Error('Storage access denied. Please check your permissions or try again.');
+                console.error('❌ Storage upload error:', error);
+                throw new Error(`Storage access denied: ${error.message}`);
             }
 
-            return supabase.storage.from('udms').getPublicUrl(path).data.publicUrl;
+            console.log('✅ File uploaded successfully:', data);
+
+            // Get the public URL
+            const { data: urlData } = supabase.storage.from('udms').getPublicUrl(path);
+            const publicUrl = urlData.publicUrl;
+            
+            console.log('🔗 Generated public URL:', publicUrl);
+            
+            if (!publicUrl) {
+                throw new Error('Failed to generate public URL for uploaded file');
+            }
+
+            return publicUrl;
         } catch (error) {
-            console.error('File upload failed:', error);
+            console.error('❌ File upload failed:', error);
             throw error;
         }
     };
 
     const generateFileName = (description, amount, originalFileName) => {
-        const sanitizedDescription = description.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ\s]/g, '').trim().replace(/\s+/g, '_');
+        // Remove special characters and convert to ASCII-safe filename
+        const sanitizedDescription = description
+            .replace(/[ğ]/g, 'g')
+            .replace(/[ü]/g, 'u')
+            .replace(/[şı]/g, 'si')
+            .replace(/[ö]/g, 'o')
+            .replace(/[ç]/g, 'c')
+            .replace(/[Ğ]/g, 'G')
+            .replace(/[Ü]/g, 'U')
+            .replace(/[Şİ]/g, 'SI')
+            .replace(/[Ö]/g, 'O')
+            .replace(/[Ç]/g, 'C')
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .trim()
+            .replace(/\s+/g, '_');
         const fileExtension = originalFileName.split('.').pop().toLowerCase();
         const amountStr = amount ? `_${amount}TL` : '';
         return `${sanitizedDescription}${amountStr}_Invoice.${fileExtension}`;
@@ -140,37 +168,49 @@ const BusinessExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
                 return;
             }
 
-            let dataToSave = { ...formData };
+            let invoiceUrl = formData.invoice_url;
+            let invoiceName = formData.invoice_name;
 
-            // Set both type and expense_type for compatibility
-            dataToSave.type = 'expense-business';
-            dataToSave.expense_type = 'business';
-
-            // Upload invoice if provided
+            // Upload file if selected
             if (invoiceFile) {
-                const invoiceFileName = generateFileName(formData.description, formData.amount, invoiceFile.name);
-                const invoicePath = `business_expenses/${user.id}/${Date.now()}_${invoiceFileName}`;
-                dataToSave.invoice_url = await uploadFile(invoiceFile, invoicePath);
-                dataToSave.invoice_name = invoiceFileName;
+                setUploadProgress(10);
+                const timestamp = new Date().getTime();
+                const fileName = generateFileName(formData.description, formData.amount, invoiceFile.name);
+                // Simplified path structure to avoid nested folders
+                const storagePath = `business_expenses/${timestamp}_${fileName}`;
+                
+                try {
+                    invoiceUrl = await uploadFile(invoiceFile, storagePath);
+                    invoiceName = fileName;
+                    setUploadProgress(100);
+                } catch (uploadError) {
+                    console.error('File upload failed:', uploadError);
+                    showNotification('Failed to upload invoice file. Please try again.', 'error');
+                    return;
+                }
             }
 
-            // Convert amount to number
-            dataToSave.amount = parseFloat(formData.amount);
+            const dataToSave = {
+                amount: parseFloat(formData.amount),
+                type: 'expense-business',
+                description: formData.description,
+                category: formData.category,
+                transaction_date: formData.transaction_date,
+                invoice_url: invoiceUrl,
+                invoice_name: invoiceName
+            };
 
-            console.log('Saving business expense data:', JSON.stringify(dataToSave, null, 2));
-
+            let result;
             if (expenseToEdit) {
-                const result = await apiClient.update('transactions', expenseToEdit.id, dataToSave);
-                console.log('Update result:', result);
-                showNotification('Business expense updated successfully!', 'success');
+                result = await apiClient.update('transactions', expenseToEdit.id, dataToSave);
             } else {
-                const result = await apiClient.create('transactions', dataToSave);
-                console.log('Create result:', result);
-                showNotification('Business expense logged successfully!', 'success');
+                result = await apiClient.create('transactions', dataToSave);
             }
 
-            console.log('Expense saved successfully, refreshing data...');
-            await fetchData();
+            showNotification(
+                expenseToEdit ? 'Business expense updated successfully!' : 'Business expense logged successfully!',
+                'success'
+            );
             onExpenseAdded?.();
             onClose();
         } catch (error) {

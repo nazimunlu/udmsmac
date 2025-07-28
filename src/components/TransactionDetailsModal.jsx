@@ -2,8 +2,11 @@ import React from 'react';
 import Modal from './Modal';
 import { Icon, ICONS } from './Icons';
 import { formatDate } from '../utils/formatDate';
+import { openDocument, isValidDocumentUrl } from '../utils/documentUtils';
+import { useNotification } from '../contexts/NotificationContext';
 
 const TransactionDetailsModal = ({ isOpen, onClose, transaction, onTransactionUpdated }) => {
+    const { showNotification } = useNotification();
     if (!isOpen || !transaction) return null;
 
     const isIncome = (transaction.type || transaction.expenseType || '').startsWith('income');
@@ -48,7 +51,26 @@ const TransactionDetailsModal = ({ isOpen, onClose, transaction, onTransactionUp
                     {transaction.invoiceName && (
                         <div className="flex justify-between items-center">
                             <span className="font-medium text-gray-600">Invoice:</span>
-                            <span className="text-gray-800">{transaction.invoiceName}</span>
+                            <span className="text-gray-800">
+                                {transaction.invoiceUrl ? (
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            if (isValidDocumentUrl(transaction.invoiceUrl)) {
+                                                openDocument(transaction.invoiceUrl, transaction.invoiceName);
+                                            } else {
+                                                showNotification('Invalid document URL', 'error');
+                                            }
+                                        }}
+                                        className="cursor-pointer hover:underline text-blue-600 hover:text-blue-800 bg-transparent border-none p-0 text-left"
+                                        title="Click to open document"
+                                    >
+                                        {transaction.invoiceName}
+                                    </button>
+                                ) : (
+                                    <span className="text-gray-400">{transaction.invoiceName}</span>
+                                )}
+                            </span>
                         </div>
                     )}
                 </div>

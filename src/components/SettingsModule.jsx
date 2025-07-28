@@ -126,22 +126,26 @@ const ExportProgressModal = ({ isOpen, onClose, progress, status }) => {
 
 // Main Settings Module Component
 const SettingsModule = () => {
-    const { students, groups, documents, transactions, lessons } = useAppContext();
+    const { students, groups, lessons, events, todos, documents, transactions, fetchData } = useAppContext();
     const { showNotification } = useNotification();
-    
-    const [activeTab, setActiveTab] = useState('export');
+    const [activeTab, setActiveTab] = useState('system');
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
     const [exportStatus, setExportStatus] = useState('');
+    const [lastExportDate, setLastExportDate] = useState(localStorage.getItem('lastExportDate') || 'Never');
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [editingTemplate, setEditingTemplate] = useState(null);
     const [messageTemplates, setMessageTemplates] = useState(getMessageTemplates());
     const [storageInfo, setStorageInfo] = useState({
         totalSize: 0,
         usedSize: 0,
         fileCount: 0,
-        loading: true
+        loading: false,
+        lastUpdated: new Date()
     });
+    const [isResettingData, setIsResettingData] = useState(false);
+    const [resetProgress, setResetProgress] = useState(0);
+    const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
     // Load templates from localStorage on component mount
     useEffect(() => {
@@ -158,53 +162,66 @@ const SettingsModule = () => {
         try {
             setStorageInfo(prev => ({ ...prev, loading: true }));
             
-            // Get all files from the storage bucket
-            const { data: files, error } = await supabase.storage
-                .from('udms')
-                .list('', { limit: 1000, offset: 0 });
-
-            if (error) {
-                console.error('Error fetching storage info:', error);
-                setStorageInfo(prev => ({ ...prev, loading: false }));
-                return;
-            }
-
             // Calculate total size and file count
             let totalSize = 0;
             let fileCount = 0;
 
-            // Recursively get all files and their sizes
-            const getAllFiles = async (path = '') => {
-                const { data: items, error } = await supabase.storage
-                    .from('udms')
-                    .list(path, { limit: 1000, offset: 0 });
+            // Get all files from different folders
+            const folders = ['documents', 'business_expenses', 'lesson_materials', 'student_documents', 'students', 'transactions'];
+            
+            for (const folder of folders) {
+                try {
+                    const { data: items, error } = await supabase.storage
+                        .from('udms')
+                        .list(folder, { limit: 1000, offset: 0 });
 
-                if (error) return;
-
-                for (const item of items) {
-                    if (item.metadata) {
-                        // This is a file
-                        totalSize += item.metadata.size || 0;
-                        fileCount++;
-                    } else {
-                        // This is a folder, recursively get its contents
-                        await getAllFiles(path ? `${path}/${item.name}` : item.name);
+                    if (error) {
+                        console.error(`Error fetching ${folder}:`, error);
+                        continue;
                     }
-                }
-            };
 
-            await getAllFiles();
+                    if (items && items.length > 0) {
+                        for (const item of items) {
+                            // Check if it's a file (has metadata) or folder
+                            if (item.metadata && item.metadata.size) {
+                                totalSize += item.metadata.size;
+                                fileCount++;
+                            } else if (!item.metadata) {
+                                // This might be a folder, try to get its contents
+                                try {
+                                    const { data: subItems, error: subError } = await supabase.storage
+                                        .from('udms')
+                                        .list(`${folder}/${item.name}`, { limit: 1000, offset: 0 });
+                                    
+                                    if (!subError && subItems) {
+                                        for (const subItem of subItems) {
+                                            if (subItem.metadata && subItem.metadata.size) {
+                                                totalSize += subItem.metadata.size;
+                                                fileCount++;
+                                            }
+                                        }
+                                    }
+                                } catch (subError) {
+                                    console.error(`Error fetching subfolder ${folder}/${item.name}:`, subError);
+                                }
+                            }
+                        }
+                    }
+                } catch (folderError) {
+                    console.error(`Error processing folder ${folder}:`, folderError);
+                }
+            }
 
             // Set storage info (assuming 1GB total storage for now)
             const totalStorage = 1024 * 1024 * 1024; // 1GB in bytes
             const usedStorage = totalSize;
-            const remainingStorage = totalStorage - usedStorage;
 
             setStorageInfo({
                 totalSize: totalStorage,
                 usedSize: usedStorage,
                 fileCount,
-                loading: false
+                loading: false,
+                lastUpdated: new Date()
             });
 
         } catch (error) {
@@ -361,31 +378,72 @@ const SettingsModule = () => {
             // Collect all file URLs from different sources
             const fileUrls = new Set();
 
-            // From documents table
+            // From documents table - categorize exactly as in the system
             documents.forEach(doc => {
-                if (doc.url) {
-                    fileUrls.add({ url: doc.url, name: doc.name, category: 'documents' });
+                if (doc.url && doc.url.trim() !== '') {
+                    // Use the exact category from the system
+                    let category = doc.category;
+                    if (!category) {
+                        // Fallback categorization based on type
+                        if (doc.type === 'payment_plan') {
+                            category = 'student';
+                        } else if (doc.type === 'invoice') {
+                            category = 'finance';
+                        } else {
+                            category = 'other';
+                        }
+                    }
+                    
+                    // Extract storage path for student documents
+                    let storagePath = null;
+                    let studentName = null;
+                    
+                    if (category === 'student' && doc.storagePath) {
+                        storagePath = doc.storagePath;
+                        // Extract student name from storage path
+                        const pathParts = doc.storagePath.split('/');
+                        const studentIdIndex = pathParts.indexOf('student') + 1;
+                        const studentId = pathParts[studentIdIndex];
+                        
+                        if (studentId) {
+                            const student = students.find(s => s.id === studentId);
+                            if (student) {
+                                studentName = student.fullName;
+                            }
+                        }
+                    }
+                    
+                    fileUrls.add({ 
+                        url: doc.url, 
+                        name: doc.name, 
+                        category: category,
+                        type: doc.type,
+                        storagePath: storagePath,
+                        studentName: studentName
+                    });
                 }
             });
 
-            // From students (National ID, Agreement, etc.)
+            // From students (National ID, Agreement, etc.) - these are student documents
             students.forEach(student => {
                 try {
                     const studentDocuments = typeof student.documents === 'string' ? JSON.parse(student.documents) : (student.documents || {});
                     const studentDocumentNames = typeof student.documentNames === 'string' ? JSON.parse(student.documentNames) : (student.documentNames || {});
 
-                    if (studentDocuments.nationalIdUrl) {
+                    if (studentDocuments.nationalIdUrl && studentDocuments.nationalIdUrl.trim() !== '') {
                         fileUrls.add({ 
                             url: studentDocuments.nationalIdUrl, 
-                            name: studentDocumentNames.nationalId || `National_ID_${student.fullName}.pdf`,
-                            category: 'students'
+                            name: studentDocumentNames.nationalId || `${student.fullName}_NationalID.pdf`,
+                            category: 'student',
+                            studentName: student.fullName
                         });
                     }
-                    if (studentDocuments.agreementUrl) {
+                    if (studentDocuments.agreementUrl && studentDocuments.agreementUrl.trim() !== '') {
                         fileUrls.add({ 
                             url: studentDocuments.agreementUrl, 
-                            name: studentDocumentNames.agreement || `Agreement_${student.fullName}.pdf`,
-                            category: 'students'
+                            name: studentDocumentNames.agreement || `${student.fullName}_Agreement.pdf`,
+                            category: 'student',
+                            studentName: student.fullName
                         });
                     }
                 } catch (error) {
@@ -393,24 +451,35 @@ const SettingsModule = () => {
                 }
             });
 
-            // From transactions (business expense invoices)
+            // From transactions (business expense invoices) - these are finance documents
             transactions.forEach(transaction => {
-                if (transaction.invoiceUrl) {
+                if (transaction.invoiceUrl && transaction.invoiceUrl.trim() !== '') {
                     fileUrls.add({ 
                         url: transaction.invoiceUrl, 
-                        name: `Invoice_${transaction.description || transaction.id}.pdf`,
-                        category: 'transactions'
+                        name: transaction.invoiceName || `Transaction_${transaction.description || transaction.id}_Invoice.pdf`,
+                        category: 'finance',
+                        transactionType: transaction.type
                     });
                 }
             });
 
-            // From lessons (lesson materials)
+            // From lessons (lesson materials) - these are student documents
             lessons.forEach(lesson => {
-                if (lesson.materialsUrl) {
+                if (lesson.materialsUrl && lesson.materialsUrl.trim() !== '') {
+                    // Try to find the student name from the lesson
+                    let studentName = 'Unknown Student';
+                    if (lesson.studentId) {
+                        const student = students.find(s => s.id === lesson.studentId);
+                        if (student) {
+                            studentName = student.fullName;
+                        }
+                    }
+                    
                     fileUrls.add({ 
                         url: lesson.materialsUrl, 
-                        name: `Lesson_Materials_${lesson.topic || lesson.id}.pdf`,
-                        category: 'lessons'
+                        name: lesson.materialsName || `Lesson_${lesson.topic || lesson.id}_Materials.pdf`,
+                        category: 'student',
+                        studentName: studentName
                     });
                 }
             });
@@ -423,10 +492,6 @@ const SettingsModule = () => {
                 try {
                     setExportStatus(`Downloading file: ${fileInfo.name}...`);
                     
-                    // Debug: Log the URL structure
-                    console.log(`Processing file: ${fileInfo.name}`);
-                    console.log(`Original URL: ${fileInfo.url}`);
-                    
                     // Extract storage path from URL - handle different URL formats
                     let storagePath;
                     if (fileInfo.url.includes('/storage/v1/object/public/')) {
@@ -437,22 +502,26 @@ const SettingsModule = () => {
                             console.error(`Invalid URL format for file ${fileInfo.name}:`, fileInfo.url);
                             continue;
                         }
-                        // Extract everything after 'public/' but skip the first bucket name if it's duplicated
+                        // Extract everything after 'public/' and remove the bucket name
                         const pathAfterPublic = urlParts.slice(publicIndex + 1);
-                        if (pathAfterPublic.length >= 2 && pathAfterPublic[0] === pathAfterPublic[1]) {
-                            // Skip the first bucket name if it's duplicated
-                            storagePath = pathAfterPublic.slice(1).join('/');
-                        } else {
-                            storagePath = pathAfterPublic.join('/');
-                        }
+                        // Remove the bucket name (first element) and join the rest
+                        storagePath = pathAfterPublic.slice(1).join('/');
                     } else {
                         // Direct path format
                         storagePath = fileInfo.url;
                     }
                     
+                    // Validate storage path
+                    if (!storagePath || storagePath.trim() === '') {
+                        console.error(`Invalid storage path for file ${fileInfo.name}:`, storagePath);
+                        continue;
+                    }
+
+                    // Download file from Supabase storage
+                    console.log(`Attempting to download: ${fileInfo.name}`);
+                    console.log(`Original URL: ${fileInfo.url}`);
                     console.log(`Extracted storage path: ${storagePath}`);
                     
-                    // Download file from Supabase storage
                     const { data, error } = await supabase.storage
                         .from('udms')
                         .download(storagePath);
@@ -466,7 +535,57 @@ const SettingsModule = () => {
                     if (data) {
                         // Create folder structure in ZIP
                         const categoryFolder = filesFolder.folder(fileInfo.category);
-                        categoryFolder.file(fileInfo.name, data);
+                        
+                        // For student documents, create individual student folders
+                        if (fileInfo.category === 'student') {
+                            // Try to find the student name from the document name or storage path
+                            let studentName = 'Unknown Student';
+                            
+                            // Check if this is a student document with a specific student
+                            if (fileInfo.studentName) {
+                                studentName = fileInfo.studentName;
+                            } else if (fileInfo.storagePath) {
+                                // Extract student name from storage path: documents/student/{studentId}/...
+                                const pathParts = fileInfo.storagePath.split('/');
+                                const studentIdIndex = pathParts.indexOf('student') + 1;
+                                const studentId = pathParts[studentIdIndex];
+                                
+                                if (studentId) {
+                                    const student = students.find(s => s.id === studentId);
+                                    if (student) {
+                                        studentName = student.fullName;
+                                    }
+                                }
+                            }
+                            
+                            // Create student folder and add file
+                            const studentFolder = categoryFolder.folder(studentName);
+                            studentFolder.file(fileInfo.name, data);
+                        } else if (fileInfo.category === 'meb') {
+                            // For MEB documents, create subfolders based on type (received/sent)
+                            let subfolder = 'other';
+                            if (fileInfo.type === 'received') {
+                                subfolder = 'received';
+                            } else if (fileInfo.type === 'sent') {
+                                subfolder = 'sent';
+                            }
+                            const subfolderFolder = categoryFolder.folder(subfolder);
+                            subfolderFolder.file(fileInfo.name, data);
+                        } else if (fileInfo.category === 'finance') {
+                            // For finance documents, create subfolders based on transaction type
+                            let subfolder = 'other';
+                            if (fileInfo.transactionType === 'income') {
+                                subfolder = 'income';
+                            } else if (fileInfo.transactionType === 'expense' || fileInfo.transactionType === 'expense-business') {
+                                subfolder = 'expenses';
+                            }
+                            const subfolderFolder = categoryFolder.folder(subfolder);
+                            subfolderFolder.file(fileInfo.name, data);
+                        } else {
+                            // For other documents, add directly to category folder
+                            categoryFolder.file(fileInfo.name, data);
+                        }
+                        
                         downloadedCount++;
                     }
 
@@ -506,7 +625,7 @@ const SettingsModule = () => {
     };
 
     const handleEditTemplate = (templateType) => {
-        setSelectedTemplate(messageTemplates[templateType]);
+        setEditingTemplate(messageTemplates[templateType]);
         setIsTemplateModalOpen(true);
     };
 
@@ -540,10 +659,101 @@ const SettingsModule = () => {
     };
 
     const tabs = [
-        { id: 'export', label: 'Data Export', icon: ICONS.DOWNLOAD },
+        { id: 'system', label: 'System Info', icon: ICONS.INFO },
         { id: 'messages', label: 'Message Templates', icon: ICONS.MESSAGE },
-        { id: 'system', label: 'System Info', icon: ICONS.INFO }
+        { id: 'export', label: 'Data Export', icon: ICONS.DOWNLOAD }
     ];
+
+    // Data Reset Functions
+    const handleResetAllData = async () => {
+        setIsResettingData(true);
+        setResetProgress(0);
+        
+        try {
+            setIsResettingData(true);
+            setResetProgress(0);
+            setExportStatus('Starting data reset...');
+
+            // Step 1: Clear storage (30%)
+            setResetProgress(10);
+            setExportStatus('Clearing file storage...');
+            
+            const { data: files } = await supabase.storage.from('documents').list();
+            if (files && files.length > 0) {
+                const filePaths = files.map(file => file.name);
+                await supabase.storage.from('documents').remove(filePaths);
+            }
+
+            // Step 2: Delete all data from tables
+            setResetProgress(30);
+            setExportStatus('Deleting all database records...');
+
+            const tables = ['students', 'groups', 'lessons', 'events', 'todos', 'documents', 'transactions'];
+            
+            for (let i = 0; i < tables.length; i++) {
+                const table = tables[i];
+                setExportStatus(`Deleting ${table}...`);
+                
+                // First get all records, then delete them individually
+                const { data: records, error: fetchError } = await supabase
+                    .from(table)
+                    .select('id');
+                
+                if (fetchError) {
+                    throw new Error(`Error fetching ${table}: ${fetchError.message}`);
+                }
+                
+                if (records && records.length > 0) {
+                    const ids = records.map(record => record.id);
+                    const { error: deleteError } = await supabase
+                        .from(table)
+                        .delete()
+                        .in('id', ids);
+                    
+                    if (deleteError) {
+                        throw new Error(`Error deleting ${table}: ${deleteError.message}`);
+                    }
+                }
+                
+                setResetProgress(30 + ((i + 1) / tables.length) * 30);
+            }
+
+            // Step 3: Clear localStorage (80%)
+            setResetProgress(80);
+            setExportStatus('Clearing local storage...');
+            
+            localStorage.clear();
+
+            // Step 4: Refresh data (100%)
+            setResetProgress(90);
+            setExportStatus('Refreshing application...');
+            
+            await fetchData();
+            
+            setResetProgress(100);
+            setExportStatus('Data reset completed successfully!');
+            
+            showNotification('All data has been successfully reset!', 'success');
+            
+            // Close modal after a short delay
+            setTimeout(() => {
+                setIsResettingData(false);
+                setResetProgress(0);
+                setExportStatus('');
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error resetting data:', error);
+            showNotification(`Error resetting data: ${error.message}`, 'error');
+            setIsResettingData(false);
+            setResetProgress(0);
+            setExportStatus('');
+        }
+    };
+
+    const openResetConfirmation = () => {
+        setIsResetConfirmOpen(true);
+    };
 
     return (
         <div className="bg-gray-50 min-h-screen p-4 lg:p-6">
@@ -617,6 +827,63 @@ const SettingsModule = () => {
                                         Export All Data
                                     </button>
                                 </div>
+
+                                {/* Data Reset Section */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+                <div className="flex items-center mb-4">
+                    <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center mr-3">
+                        <Icon path={ICONS.TRASH} className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-red-800">Danger Zone</h3>
+                        <p className="text-sm text-red-600">Permanently delete all data and documents</p>
+                    </div>
+                </div>
+                
+                <div className="bg-white border border-red-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium text-red-800 mb-1">Reset All Data</h4>
+                            <p className="text-sm text-red-600">
+                                This will permanently delete ALL data including:
+                            </p>
+                            <ul className="text-sm text-red-600 mt-2 space-y-1">
+                                <li>• All students, groups, lessons, and events</li>
+                                <li>• All financial records and transactions</li>
+                                <li>• All uploaded documents and files</li>
+                                <li>• All todos and settings</li>
+                                <li>• All local storage data</li>
+                            </ul>
+                            <p className="text-sm font-medium text-red-700 mt-2">
+                                ⚠️ This action cannot be undone!
+                            </p>
+                        </div>
+                        <button
+                            onClick={openResetConfirmation}
+                            disabled={isResettingData}
+                            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors font-semibold"
+                        >
+                            {isResettingData ? 'Resetting...' : 'Reset All Data'}
+                        </button>
+                    </div>
+                </div>
+
+                {isResettingData && (
+                    <div className="bg-white border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-red-800">Progress</span>
+                            <span className="text-sm text-red-600">{resetProgress}%</span>
+                        </div>
+                        <div className="w-full bg-red-200 rounded-full h-2 mb-2">
+                            <div 
+                                className="bg-red-600 h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${resetProgress}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-sm text-red-600">{exportStatus}</p>
+                    </div>
+                )}
+            </div>
 
                                 <div className="border-t border-gray-200 pt-6">
                                     <h3 className="text-md font-semibold text-gray-900 mb-4">System Statistics</h3>
@@ -730,19 +997,34 @@ const SettingsModule = () => {
                                     <div className="bg-white border border-gray-200 rounded-lg p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-medium text-gray-900">Storage Information</h3>
-                                            <button
+                                                                                        <button
                                                 onClick={fetchStorageInfo}
                                                 disabled={storageInfo.loading}
                                                 className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
                                             >
-                                                <Icon path={ICONS.LOADING} className={`w-4 h-4 mr-1 ${storageInfo.loading ? 'animate-spin' : ''}`} />
-                                                Refresh
-                    </button>
+                                                {storageInfo.loading ? (
+                                                    <>
+                                                        <Icon path={ICONS.LOADING} className="w-4 h-4 mr-1 animate-spin" />
+                                                        Calculating...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icon path={ICONS.REFRESH} className="w-4 h-4 mr-1" />
+                                                        Refresh
+                                                    </>
+                                                )}
+                                            </button>
                                         </div>
                                         {storageInfo.loading ? (
-                                            <div className="flex items-center justify-center py-4">
-                                                <Icon path={ICONS.LOADING} className="w-5 h-5 text-blue-600 animate-spin mr-2" />
-                                                <span className="text-gray-600">Loading storage information...</span>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-center py-4">
+                                                    <Icon path={ICONS.LOADING} className="w-5 h-5 text-blue-600 animate-spin mr-2" />
+                                                    <span className="text-gray-600">Calculating storage usage...</span>
+                                                </div>
+                                                <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                                                    <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                                                </div>
+                                                <p className="text-xs text-gray-500 text-center">Scanning files and calculating sizes...</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
@@ -892,7 +1174,7 @@ const SettingsModule = () => {
                                                 }}
                                                 className="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                                             >
-                                                <Icon path={ICONS.DELETE} className="w-4 h-4 mr-2" />
+                                                <Icon path={ICONS.TRASH} className="w-4 h-4 mr-2" />
                                                 Clear Local Data
                                             </button>
                                             <button
@@ -906,25 +1188,7 @@ const SettingsModule = () => {
                                                 <Icon path={ICONS.CALENDAR} className="w-4 h-4 mr-2" />
                                                 Update Export Date
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    fetchStorageInfo();
-                                                    showNotification('Storage information refreshed!', 'success');
-                                                }}
-                                                className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                                            >
-                                                <Icon path={ICONS.LOADING} className="w-4 h-4 mr-2" />
-                                                Refresh Storage Info
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    window.location.reload();
-                                                }}
-                                                className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                                            >
-                                                <Icon path={ICONS.REDO} className="w-4 h-4 mr-2" />
-                                                Reload Application
-                                            </button>
+
                                         </div>
                                     </div>
                                 </div>
@@ -938,7 +1202,7 @@ const SettingsModule = () => {
             <MessageTemplateModal
                 isOpen={isTemplateModalOpen}
                 onClose={() => setIsTemplateModalOpen(false)}
-                template={selectedTemplate}
+                template={editingTemplate}
                 onSave={handleSaveTemplate}
             />
 
@@ -948,6 +1212,59 @@ const SettingsModule = () => {
                 progress={exportProgress}
                 status={exportStatus}
             />
+
+            {/* Reset Confirmation Modal */}
+            <Modal isOpen={isResetConfirmOpen} onClose={() => setIsResetConfirmOpen(false)} title="Confirm Data Reset">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center mb-3">
+                            <Icon path={ICONS.EXCLAMATION_TRIANGLE} className="w-6 h-6 text-red-600 mr-3" />
+                            <h3 className="text-lg font-semibold text-red-800">Warning: Irreversible Action</h3>
+                        </div>
+                        <p className="text-red-700 mb-3">
+                            You are about to permanently delete ALL data from the system. This action cannot be undone.
+                        </p>
+                        <div className="bg-white border border-red-200 rounded p-3">
+                            <h4 className="font-medium text-red-800 mb-2">This will delete:</h4>
+                            <ul className="text-sm text-red-700 space-y-1">
+                                <li>• All students and their information</li>
+                                <li>• All groups and lesson schedules</li>
+                                <li>• All financial records and transactions</li>
+                                <li>• All uploaded documents and files</li>
+                                <li>• All todos and system settings</li>
+                                <li>• All local storage data</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                            <Icon path={ICONS.INFO} className="w-5 h-5 text-yellow-600 mr-3" />
+                            <p className="text-yellow-800 text-sm">
+                                <strong>Recommendation:</strong> Export your data first before proceeding with the reset.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                        <button
+                            onClick={() => setIsResetConfirmOpen(false)}
+                            className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => {
+                                setIsResetConfirmOpen(false);
+                                handleResetAllData();
+                            }}
+                            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                        >
+                            Yes, Reset All Data
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

@@ -198,23 +198,26 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
         // Check for overlapping events and lessons (only if not already showing warning)
         if (overlappingEvents.length === 0) {
-            const overlapping = checkForOverlappingItems(startDateTime, endDateTime, eventToEdit?.id);
-            
-            if (overlapping.length > 0) {
-                setOverlappingEvents(overlapping);
-                const eventCount = overlapping.filter(item => item.type === 'event').length;
-                const lessonCount = overlapping.filter(item => item.type === 'lesson').length;
-                let message = `Warning: This event overlaps with `;
-                if (eventCount > 0 && lessonCount > 0) {
-                    message += `${eventCount} event(s) and ${lessonCount} lesson(s).`;
-                } else if (eventCount > 0) {
-                    message += `${eventCount} existing event(s).`;
-                } else {
-                    message += `${lessonCount} existing lesson(s).`;
+            // Skip overlap checking for all-day events since they don't appear on Weekly Overview
+            if (!isAllDay) {
+                const overlapping = checkForOverlappingItems(startDateTime, endDateTime, eventToEdit?.id);
+                
+                if (overlapping.length > 0) {
+                    setOverlappingEvents(overlapping);
+                    const eventCount = overlapping.filter(item => item.type === 'event').length;
+                    const lessonCount = overlapping.filter(item => item.type === 'lesson').length;
+                    let message = `Warning: This event overlaps with `;
+                    if (eventCount > 0 && lessonCount > 0) {
+                        message += `${eventCount} event(s) and ${lessonCount} lesson(s).`;
+                    } else if (eventCount > 0) {
+                        message += `${eventCount} existing event(s).`;
+                    } else {
+                        message += `${lessonCount} existing lesson(s).`;
+                    }
+                    message += ` Please review the conflicts below.`;
+                    showNotification(message, 'warning');
+                    return;
                 }
-                message += ` Please review the conflicts below.`;
-                showNotification(message, 'warning');
-                return;
             }
         } else {
             // If we have overlapping events but some are selected for deletion, proceed
@@ -225,24 +228,26 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             }
         }
 
-        const dataToSave = {
-            eventName,
-            category,
-            startTime: startDateTime.toISOString(),
-            endTime: endDateTime.toISOString(),
-            isAllDay,
-        };
-
-        console.log('Saving event data:', dataToSave); // Debug log
-
         try {
+            const dataToSave = {
+                eventName: formData.eventName,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                isAllDay: formData.isAllDay,
+                category: formData.category
+            };
+
+            let result;
             if (eventToEdit) {
-                await apiClient.update('events', eventToEdit.id, dataToSave);
-                showNotification('Event updated successfully!', 'success');
+                result = await apiClient.update('events', eventToEdit.id, dataToSave);
             } else {
-                await apiClient.create('events', dataToSave);
-                showNotification('Event logged successfully!', 'success');
+                result = await apiClient.create('events', dataToSave);
             }
+
+            showNotification(
+                eventToEdit ? 'Event updated successfully!' : 'Event created successfully!',
+                'success'
+            );
             fetchData();
             onClose();
         } catch (error) {
@@ -273,7 +278,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
             isOpen={isOpen} 
             onClose={onClose} 
             title={eventToEdit ? "Edit Event" : "Log New Event"}
-            headerStyle={{ backgroundColor: '#10B981' }}
+            headerStyle={{ backgroundColor: '#EA580C' }}
         >
             <form onSubmit={handleSubmit}>
                 <FormSection title="Event Details">
@@ -442,7 +447,7 @@ const EventFormModal = ({ isOpen, onClose, eventToEdit }) => {
 
                 <div className="flex justify-end pt-8 mt-8 border-t border-gray-200 space-x-4">
                     <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Event'}</button>
+                    <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg text-white bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 disabled:cursor-not-allowed">{isSubmitting ? 'Saving...' : 'Save Event'}</button>
                 </div>
             </form>
         </Modal>

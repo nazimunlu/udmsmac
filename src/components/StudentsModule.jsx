@@ -12,7 +12,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const StudentsModule = () => {
     const { showNotification } = useNotification();
-    const { students, archivedStudents, groups, lessons, fetchData, loading } = useAppContext();
+    const { students, groups, lessons, fetchData, loading } = useAppContext();
     
     const [activeStudentType, setActiveStudentType] = useState('all'); // 'all', 'group', 'tutoring', 'archived'
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,8 +25,9 @@ const StudentsModule = () => {
     const [isPaymentPlanPrintOpen, setIsPaymentPlanPrintOpen] = useState(false);
     const [studentToPrint, setStudentToPrint] = useState(null);
 
-    const groupStudents = useMemo(() => students.filter(s => !s.isTutoring), [students]);
-    const tutoringStudents = useMemo(() => students.filter(s => s.isTutoring), [students]);
+    const groupStudents = useMemo(() => students?.filter(s => !s.isTutoring) || [], [students]);
+    const tutoringStudents = useMemo(() => students?.filter(s => s.isTutoring) || [], [students]);
+    const archivedStudents = useMemo(() => students?.filter(s => s.isArchived) || [], [students]);
 
     const filteredStudents = useMemo(() => {
         let sourceStudents;
@@ -41,7 +42,7 @@ const StudentsModule = () => {
                 sourceStudents = archivedStudents;
                 break;
             default:
-                sourceStudents = students;
+                sourceStudents = students || [];
         }
 
         let studentsToDisplay = sourceStudents;
@@ -134,22 +135,22 @@ const StudentsModule = () => {
                 />
                 <div className="bg-white rounded-lg p-1 shadow-sm">
                     <div className="flex flex-wrap gap-1">
-                        <button
-                            onClick={() => setActiveStudentType('all')}
+                    <button
+                        onClick={() => setActiveStudentType('all')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeStudentType === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}
-                        >All ({students.length})</button>
-                        <button
-                            onClick={() => setActiveStudentType('group')}
+                    >All ({students?.length || 0})</button>
+                    <button
+                        onClick={() => setActiveStudentType('group')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeStudentType === 'group' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}
-                        >Group ({groupStudents.length})</button>
-                        <button
-                            onClick={() => setActiveStudentType('tutoring')}
+                    >Group ({groupStudents?.length || 0})</button>
+                    <button
+                        onClick={() => setActiveStudentType('tutoring')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeStudentType === 'tutoring' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}
-                        >Tutoring ({tutoringStudents.length})</button>
-                        <button
-                            onClick={() => setActiveStudentType('archived')}
+                    >Tutoring ({tutoringStudents?.length || 0})</button>
+                    <button
+                        onClick={() => setActiveStudentType('archived')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeStudentType === 'archived' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'}`}
-                        >Archived ({archivedStudents.length})</button>
+                    >Archived ({archivedStudents?.length || 0})</button>
                     </div>
                 </div>
             </div>
@@ -161,119 +162,118 @@ const StudentsModule = () => {
                     {/* Desktop Table View (hidden on mobile) */}
                     <div className="hidden lg:block bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide">Full Name</th>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide">Contact</th>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide">Group</th>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide text-center">Enrollment Date</th>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide text-center">Lesson Progress</th>
-                                        <th className="p-4 font-bold text-base text-gray-700 uppercase tracking-wide text-center">Actions</th>
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-left">Full Name</th>
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-left">Contact</th>
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-left">Group</th>
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-left">Enrollment Date</th>
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-left">Lesson Progress</th>
+                                    <th className="p-4 font-bold text-sm text-gray-700 uppercase tracking-wide text-center">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody>
                                 {filteredStudents.map(student => (
-                                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-4 text-gray-800 text-base font-semibold">{student.fullName}</td>
-                                            <td className="p-4 text-gray-700 text-base">{formatPhoneNumber(student.studentContact)}</td>
-                                        <td className="p-4 text-gray-700">
+                                    <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                                        <td className="p-4 text-gray-800 text-sm text-left">{student.fullName}</td>
+                                        <td className="p-4 text-gray-700 text-sm text-left">{formatPhoneNumber(student.studentContact)}</td>
+                                        <td className="p-4 text-gray-700 text-sm text-left">
                                             {student.isTutoring ? (
-                                                    <span className="px-3 py-2 rounded-full text-sm font-semibold text-white shadow-sm" style={{backgroundColor: student.color || '#8B5CF6'}}>Tutoring</span>
+                                                <span className="px-2 py-1 rounded-full text-xs font-semibold text-white" style={{backgroundColor: student.color || '#8B5CF6'}}>Tutoring</span>
                                             ) : student.groupId ? (
-                                                    (() => {
-                                                        const foundGroup = groups.find(g => g.id === student.groupId);
-                                                        return (
-                                                            <span className="px-3 py-2 rounded-full text-sm font-semibold shadow-sm" style={{backgroundColor: foundGroup?.color, color: 'white'}}>{foundGroup?.groupName || 'N/A'}</span>
-                                                        );
-                                                    })()
-                                                ) : (
-                                                    <span className="text-base text-gray-400">Unassigned</span>
+                                                (() => {
+                                                    const foundGroup = groups.find(g => g.id === student.groupId);
+                                                    return (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: foundGroup?.color, color: 'white'}}>{foundGroup?.groupName || 'N/A'}</span>
+                                                    );
+                                                })()
+                                            ) : (
+                                                <span className="text-sm text-gray-400">Unassigned</span>
                                             )}
                                         </td>
-                                            <td className="p-4 text-gray-700 text-base text-center">{formatDate(student.enrollmentDate)}</td>
-                                            <td className="p-4 text-gray-700 text-center">
-                                                {(() => {
-                                                    if (student.isTutoring) {
-                                                        // For tutoring students, use tutoring details
-                                                        const tutoringDetails = student.tutoringDetails || {};
-                                                        const totalLessons = tutoringDetails.numberOfLessons || 0;
-                                                        const completedLessons = lessons.filter(l => 
-                                                            l.studentId === student.id && l.status === 'Complete'
-                                                        ).length;
-                                                        
-                                                        if (totalLessons === 0) {
-                                                            return <span className="text-base text-gray-400">No lessons planned</span>;
-                                                        }
-                                                        
-                                                        const progressPercentage = Math.round((completedLessons / totalLessons) * 100);
-                                                        const remainingLessons = totalLessons - completedLessons;
-                                                        
-                                                        if (completedLessons === totalLessons) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-green-100 text-green-800 shadow-sm">
-                                                                    Complete ({totalLessons}/{totalLessons})
-                                                                </span>
-                                                            );
-                                                        } else if (progressPercentage >= 75) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 shadow-sm">
-                                                                    {completedLessons}/{totalLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        } else if (progressPercentage >= 50) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800 shadow-sm">
-                                                                    {completedLessons}/{totalLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        } else {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-red-100 text-red-800 shadow-sm">
-                                                                    {completedLessons}/{totalLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        }
-                                                    } else {
-                                                        // For group students, count lessons in their group
-                                                        const groupLessons = lessons.filter(l => l.groupId === student.groupId);
-                                                        const totalGroupLessons = groupLessons.length;
-                                                        const completedGroupLessons = groupLessons.filter(l => l.status === 'Complete').length;
-                                                        
-                                                        if (totalGroupLessons === 0) {
-                                                            return <span className="text-base text-gray-400">No lessons planned</span>;
-                                                        }
-                                                        
-                                                        const progressPercentage = Math.round((completedGroupLessons / totalGroupLessons) * 100);
-                                                        
-                                                        if (completedGroupLessons === totalGroupLessons) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-green-100 text-green-800 shadow-sm">
-                                                                    Complete ({totalGroupLessons}/{totalGroupLessons})
-                                                                </span>
-                                                            );
-                                                        } else if (progressPercentage >= 75) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 shadow-sm">
-                                                                    {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        } else if (progressPercentage >= 50) {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800 shadow-sm">
-                                                                    {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        } else {
-                                                            return (
-                                                                <span className="px-3 py-2 rounded-full text-sm font-semibold bg-red-100 text-red-800 shadow-sm">
-                                                                    {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
-                                                                </span>
-                                                            );
-                                                        }
+                                        <td className="p-4 text-gray-700 text-sm text-left">{formatDate(student.enrollmentDate)}</td>
+                                        <td className="p-4 text-gray-700 text-sm text-left">
+                                            {(() => {
+                                                if (student.isTutoring) {
+                                                    const tutoringDetails = student.tutoringDetails || {};
+                                                    const totalLessons = tutoringDetails.numberOfLessons || 0;
+                                                    const completedLessons = lessons?.filter(l => 
+                                                        l.studentId === student.id && l.status === 'Complete'
+                                                    )?.length || 0;
+                                                    
+                                                    if (totalLessons === 0) {
+                                                        return <span className="text-sm text-gray-400">No lessons planned</span>;
                                                     }
-                                                })()}
-                                            </td>
+                                                    
+                                                    const progressPercentage = Math.round((completedLessons / totalLessons) * 100);
+                                                    const remainingLessons = totalLessons - completedLessons;
+                                                    
+                                                    if (completedLessons === totalLessons) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-green-100 text-green-800 shadow-sm">
+                                                                Complete ({totalLessons}/{totalLessons})
+                                                            </span>
+                                                        );
+                                                    } else if (progressPercentage >= 75) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 shadow-sm">
+                                                                {completedLessons}/{totalLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    } else if (progressPercentage >= 50) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 shadow-sm">
+                                                                {completedLessons}/{totalLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-red-100 text-red-800 shadow-sm">
+                                                                {completedLessons}/{totalLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    }
+                                                } else {
+                                                    // For group students, count lessons in their group
+                                                    const groupLessons = lessons?.filter(l => l.groupId === student.groupId) || [];
+                                                    const totalGroupLessons = groupLessons.length;
+                                                    const completedGroupLessons = groupLessons.filter(l => l.status === 'Complete').length;
+                                                    
+                                                    if (totalGroupLessons === 0) {
+                                                        return <span className="text-sm text-gray-400">No lessons planned</span>;
+                                                    }
+                                                    
+                                                    const progressPercentage = Math.round((completedGroupLessons / totalGroupLessons) * 100);
+                                                    
+                                                    if (completedGroupLessons === totalGroupLessons) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-green-100 text-green-800 shadow-sm">
+                                                                Complete ({totalGroupLessons}/{totalGroupLessons})
+                                                            </span>
+                                                        );
+                                                    } else if (progressPercentage >= 75) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 shadow-sm">
+                                                                {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    } else if (progressPercentage >= 50) {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 shadow-sm">
+                                                                {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <span className="px-3 py-2 rounded-full text-xs font-semibold bg-red-100 text-red-800 shadow-sm">
+                                                                {completedGroupLessons}/{totalGroupLessons} ({progressPercentage}%)
+                                                            </span>
+                                                        );
+                                                    }
+                                                }
+                                            })()}
+                                        </td>
                                             <td className="p-4 text-gray-700 text-center">
                                                 <div className="flex items-center justify-center space-x-2">
                                                     <button onClick={() => openDetailsModal(student)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors" title="View Details">
@@ -282,7 +282,10 @@ const StudentsModule = () => {
                                                     <button onClick={() => openEditModal(student)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-green-50 transition-colors" title="Edit">
                                                         <Icon path={ICONS.EDIT} className="w-5 h-5" />
                                                     </button>
-                                                    <button onClick={() => { setStudentToPrint(student); setIsPaymentPlanPrintOpen(true); }} className="p-2 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-50 transition-colors" title="Print Payment Plan">
+                                                                                        <button onClick={() => { 
+                                        setStudentToPrint(student); 
+                                        setIsPaymentPlanPrintOpen(true); 
+                                    }} className="p-2 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-50 transition-colors" title="Print Payment Plan">
                                                         <Icon path={ICONS.PRINT} className="w-5 h-5" />
                                                     </button>
                                                     {activeStudentType === 'archived' ? (
@@ -293,11 +296,11 @@ const StudentsModule = () => {
                                                         <button onClick={() => openDeleteConfirmation(student)} className="p-2 text-orange-600 hover:text-orange-800 rounded-full hover:bg-orange-50 transition-colors" title="Archive">
                                                             <Icon path={ICONS.ARCHIVE} className="w-5 h-5" />
                                                         </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
@@ -312,7 +315,7 @@ const StudentsModule = () => {
                                         <Icon path={ICONS.STUDENTS} className="w-7 h-7 text-white" />
                                     </div>
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 mb-3">{student.fullName}</h3>
+                                <h3 className="text-xl text-gray-900 mb-3">{student.fullName}</h3>
                                 <div className="space-y-3 mb-6">
                                     <div className="flex items-center text-sm text-gray-700">
                                         <Icon path={ICONS.PHONE} className="w-4 h-4 mr-2 text-gray-600" />
@@ -346,9 +349,9 @@ const StudentsModule = () => {
                                                 if (student.isTutoring) {
                                                     const tutoringDetails = student.tutoringDetails || {};
                                                     const totalLessons = tutoringDetails.numberOfLessons || 0;
-                                                    const completedLessons = lessons.filter(l => 
+                                                    const completedLessons = lessons?.filter(l => 
                                                         l.studentId === student.id && l.status === 'Complete'
-                                                    ).length;
+                                                    )?.length || 0;
                                                     
                                                     if (totalLessons === 0) {
                                                         return <span className="text-gray-400">No lessons planned</span>;
@@ -382,7 +385,7 @@ const StudentsModule = () => {
                                                         );
                                                     }
                                                 } else {
-                                                    const groupLessons = lessons.filter(l => l.groupId === student.groupId);
+                                                    const groupLessons = lessons?.filter(l => l.groupId === student.groupId) || [];
                                                     const totalGroupLessons = groupLessons.length;
                                                     const completedGroupLessons = groupLessons.filter(l => l.status === 'Complete').length;
                                                     
@@ -430,7 +433,10 @@ const StudentsModule = () => {
                                     <button onClick={() => openEditModal(student)} className="p-2 text-green-600 hover:text-green-800 rounded-full hover:bg-green-50 transition-colors" title="Edit">
                                         <Icon path={ICONS.EDIT} className="w-5 h-5" />
                                     </button>
-                                    <button onClick={() => { setStudentToPrint(student); setIsPaymentPlanPrintOpen(true); }} className="p-2 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-50 transition-colors" title="Print Payment Plan">
+                                    <button onClick={() => { 
+                                        setStudentToPrint(student); 
+                                        setIsPaymentPlanPrintOpen(true); 
+                                    }} className="p-2 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-50 transition-colors" title="Print Payment Plan">
                                         <Icon path={ICONS.PRINT} className="w-5 h-5" />
                                     </button>
                                     {activeStudentType === 'archived' ? (
@@ -494,11 +500,15 @@ const StudentsModule = () => {
                 />
             )}
 
-            {isPaymentPlanPrintOpen && (
+            {isPaymentPlanPrintOpen && studentToPrint && (
                 <PaymentPlanPrint
+                    key={studentToPrint.id} // Force re-mount when student changes
                     isOpen={isPaymentPlanPrintOpen}
                     student={studentToPrint}
-                    onClose={() => setIsPaymentPlanPrintOpen(false)}
+                    onClose={() => {
+                        setIsPaymentPlanPrintOpen(false);
+                        setStudentToPrint(null); // Reset the student data
+                    }}
                 />
             )}
         </div>

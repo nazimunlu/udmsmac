@@ -21,16 +21,16 @@ const PersonalExpenseForm = ({ isOpen, onClose, expenseToEdit, onExpenseAdded })
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const personalCategories = [
-        { value: 'Food', label: 'Food & Dining', icon: ICONS.UTENSILS, color: 'bg-orange-100 text-orange-800' },
-        { value: 'Transportation', label: 'Transportation', icon: ICONS.CAR, color: 'bg-blue-100 text-blue-800' },
+        { value: 'Food', label: 'Food & Dining', icon: ICONS.UTENSILS, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Transportation', label: 'Transportation', icon: ICONS.CAR, color: 'bg-purple-100 text-purple-800' },
         { value: 'Entertainment', label: 'Entertainment', icon: ICONS.MUSIC, color: 'bg-purple-100 text-purple-800' },
-        { value: 'Shopping', label: 'Shopping & Retail', icon: ICONS.SHOPPING_CART, color: 'bg-pink-100 text-pink-800' },
-        { value: 'Healthcare', label: 'Healthcare', icon: ICONS.HEART, color: 'bg-red-100 text-red-800' },
-        { value: 'Education', label: 'Education & Learning', icon: ICONS.GRADUATION_CAP, color: 'bg-green-100 text-green-800' },
-        { value: 'Housing', label: 'Housing & Rent', icon: ICONS.HOME, color: 'bg-indigo-100 text-indigo-800' },
-        { value: 'Utilities', label: 'Utilities & Bills', icon: ICONS.BOLT, color: 'bg-yellow-100 text-yellow-800' },
-        { value: 'Travel', label: 'Travel & Vacation', icon: ICONS.PLANE, color: 'bg-teal-100 text-teal-800' },
-        { value: 'Other', label: 'Other Personal', icon: ICONS.INFO, color: 'bg-gray-100 text-gray-800' }
+        { value: 'Shopping', label: 'Shopping & Retail', icon: ICONS.SHOPPING_CART, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Healthcare', label: 'Healthcare', icon: ICONS.HEART, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Education', label: 'Education & Learning', icon: ICONS.GRADUATION_CAP, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Housing', label: 'Housing & Rent', icon: ICONS.HOME, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Utilities', label: 'Utilities & Bills', icon: ICONS.BOLT, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Travel', label: 'Travel & Vacation', icon: ICONS.PLANE, color: 'bg-purple-100 text-purple-800' },
+        { value: 'Other', label: 'Other Personal', icon: ICONS.INFO, color: 'bg-purple-100 text-purple-800' }
     ];
 
     useEffect(() => {
